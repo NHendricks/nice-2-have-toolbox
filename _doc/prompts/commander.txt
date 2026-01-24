@@ -24,3 +24,6 @@ Prompts and costs
 
 10. Im Kopieren Dialog wird ENTER nicht erkannt. Ich will auch ganze Verzeichnisse kopieren / verschieben können.   
   (0,30)
+
+11. Die Navigation klappt nicht von d:/devtools über .. nach oben. Er landet im aktuellen Verzeichnis der Anwendung. Außerdem will ich, dass beim click auf das aktuelle Verzeichnis (header) eine Auswahl der verfügbaren Verzeichnisse kommt. Dafür brauchst Du vermutlich noch einen neuen command.
+2.18

@@ -26,6 +26,8 @@ export class FileOperationsCommand implements ICommand {
       switch (operation) {
         case 'list':
           return await this.listFiles(folderPath);
+        case 'drives':
+          return await this.listDrives();
         case 'read':
           return await this.readFile(filePath);
         case 'copy':
@@ -45,6 +47,38 @@ export class FileOperationsCommand implements ICommand {
         stack: error.stack,
       };
     }
+  }
+
+  /**
+   * List available drives (Windows)
+   */
+  private async listDrives(): Promise<any> {
+    const drives: any[] = [];
+
+    // Check drives A-Z
+    for (let i = 65; i <= 90; i++) {
+      const letter = String.fromCharCode(i);
+      const drivePath = `${letter}:\\`;
+
+      try {
+        if (fs.existsSync(drivePath)) {
+          const stats = await stat(drivePath);
+          drives.push({
+            letter: letter,
+            path: drivePath,
+            label: `${letter}:`,
+          });
+        }
+      } catch (error) {
+        // Drive not accessible, skip
+      }
+    }
+
+    return {
+      success: true,
+      operation: 'drives',
+      drives: drives,
+    };
   }
 
   /**

@@ -84,6 +84,11 @@ export class Commander extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
+    }
+
+    .pane-header:hover {
+      background: #5a6f86;
     }
 
     .pane.active .pane-header {
@@ -91,11 +96,66 @@ export class Commander extends LitElement {
       color: #fff;
     }
 
+    .pane.active .pane-header:hover {
+      background: #0284c7;
+    }
+
     .path-display {
       font-size: 0.9rem;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    /* Drive Selector */
+    .drive-selector {
+      width: 400px;
+      height: auto;
+      max-height: 500px;
+    }
+
+    .drive-list {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .drive-item {
+      padding: 1rem;
+      background: #0f172a;
+      border: 2px solid #475569;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.2s;
+    }
+
+    .drive-item:hover {
+      background: #1e293b;
+      border-color: #0ea5e9;
+      transform: translateX(4px);
+    }
+
+    .drive-icon {
+      font-size: 2rem;
+    }
+
+    .drive-info {
+      flex: 1;
+    }
+
+    .drive-label {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #fbbf24;
+    }
+
+    .drive-path {
+      font-size: 0.85rem;
+      color: #94a3b8;
     }
 
     .item-count {
@@ -395,14 +455,56 @@ export class Commander extends LitElement {
     destination: string
   } | null = null
 
+  @property({ type: Array })
+  availableDrives: any[] = []
+
+  @property({ type: Boolean })
+  showDriveSelector = false
+
   async connectedCallback() {
     super.connectedCallback()
     // Load initial directories
     await this.loadDirectory('left', this.leftPane.currentPath)
     await this.loadDirectory('right', this.rightPane.currentPath)
 
+    // Load available drives
+    await this.loadDrives()
+
     // Add global keyboard listeners
     window.addEventListener('keydown', this.handleGlobalKeydown.bind(this))
+  }
+
+  async loadDrives() {
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'drives',
+        },
+      )
+
+      if (response.success && response.data) {
+        this.availableDrives = response.data.drives
+      }
+    } catch (error: any) {
+      console.error('Failed to load drives:', error)
+    }
+  }
+
+  async handlePathClick() {
+    if (this.availableDrives.length > 0) {
+      this.showDriveSelector = true
+    }
+  }
+
+  async selectDrive(drivePath: string) {
+    this.showDriveSelector = false
+    await this.navigateToDirectory(drivePath)
+  }
+
+  closeDriveSelector() {
+    this.showDriveSelector = false
   }
 
   disconnectedCallback() {
@@ -480,11 +582,36 @@ export class Commander extends LitElement {
   }
 
   getParentPath(currentPath: string): string {
-    const normalized = currentPath.replace(/\\/g, '/')
-    const parts = normalized.split('/').filter((p) => p)
-    if (parts.length <= 1) return 'd:\\'
-    parts.pop()
-    return parts.join('\\') || 'd:\\'
+    // Handle Windows paths properly - normalize separators
+    const normalized = currentPath.replace(/\//g, '\\')
+
+    // Check if we're at root (e.g., "d:\" or "d:")
+    if (normalized.match(/^[a-zA-Z]:\\?$/)) {
+      return normalized
+    }
+
+    // Remove trailing backslash if present
+    const cleanPath =
+      normalized.endsWith('\\') && normalized.length > 3
+        ? normalized.slice(0, -1)
+        : normalized
+
+    // Find last backslash
+    const lastBackslash = cleanPath.lastIndexOf('\\')
+    if (lastBackslash === -1) {
+      return normalized
+    }
+
+    // Return everything up to the last backslash
+    // But keep at least the drive letter and colon
+    const parentPath = cleanPath.substring(0, lastBackslash)
+
+    // If parent path is just drive letter, add backslash
+    if (parentPath.match(/^[a-zA-Z]:$/)) {
+      return parentPath + '\\'
+    }
+
+    return parentPath || normalized
   }
 
   setStatus(message: string, type: 'normal' | 'success' | 'error') {
@@ -888,6 +1015,41 @@ export class Commander extends LitElement {
 
         ${this.viewerFile ? this.renderViewer() : ''}
         ${this.operationDialog ? this.renderOperationDialog() : ''}
+        ${this.showDriveSelector ? this.renderDriveSelector() : ''}
+      </div>
+    `
+  }
+
+  renderDriveSelector() {
+    return html`
+      <div class="dialog-overlay" @click=${this.closeDriveSelector}>
+        <div
+          class="dialog drive-selector"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <div class="dialog-header">
+            <span class="dialog-title">💾 Laufwerk wählen</span>
+            <button class="dialog-close" @click=${this.closeDriveSelector}>
+              ESC - Schließen
+            </button>
+          </div>
+          <div class="drive-list">
+            ${this.availableDrives.map(
+              (drive) => html`
+                <div
+                  class="drive-item"
+                  @click=${() => this.selectDrive(drive.path)}
+                >
+                  <span class="drive-icon">💾</span>
+                  <div class="drive-info">
+                    <div class="drive-label">${drive.label}</div>
+                    <div class="drive-path">${drive.path}</div>
+                  </div>
+                </div>
+              `,
+            )}
+          </div>
+        </div>
       </div>
     `
   }
@@ -900,7 +1062,14 @@ export class Commander extends LitElement {
         class="pane ${isActive ? 'active' : ''}"
         @click=${() => this.handlePaneClick(side)}
       >
-        <div class="pane-header">
+        <div
+          class="pane-header"
+          @click=${(e: Event) => {
+            e.stopPropagation()
+            this.handlePaneClick(side)
+            this.handlePathClick()
+          }}
+        >
           <span class="path-display">${pane.currentPath}</span>
           <span class="item-count">${pane.items.length} Items</span>
         </div>
