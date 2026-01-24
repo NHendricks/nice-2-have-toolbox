@@ -5,4 +5,10 @@ Prompts and costs
 3. Send screenshot and d:/temp (erfolglos 0,80)
 4. If i dont explicitely choose a combo box entry in ui the value is '' (0,70)
 
-5. Implementiere in meine neue Seite Commander.ts einen File-Commander wie den Total Commander. Operatioinen anzeigen, Verzeichnisse wechseln (klicken oder ENTER), Datei anschauen (F3), Dateien markieren (Strg + click bzw. Strg und Pfeil hoch und runter) sollen mehrere Dateien auswählen. Dann kopieren mit F5 oder verschieben mit F6.
+5. Implementiere in meine neue Seite Commander.ts einen File-Commander wie den Total Commander. 
+   Operatioinen anzeigen, Verzeichnisse wechseln (klicken oder ENTER), Datei anschauen (F3), 
+   Dateien markieren (Strg + click bzw. Strg und Pfeil hoch und runter) sollen mehrere Dateien auswählen. 
+   Dann kopieren mit F5 oder verschieben mit F6.
+   (0,53 !!!)
+6. Die Fenster sollen nebeneinander sein, der commander genau in den verfügbaren Bereich passen. Mit Enter oder Doppelklick soll in das Verzeichnis gewechselt werden, das gerade aktiv ist. Mit Pfeil rauf und runter soll man in einem Verzeichnis links und rechts (Tab wechselt den Fokus von links nach rechts und umgekehrt) die aktuell gewählte Datei ändern können. 
+   (0,85 hä?)
