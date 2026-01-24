@@ -379,7 +379,17 @@ export class NHStart extends LitElement {
     // Initialize parameter values with defaults
     this.paramValues = {}
     command.parameters.forEach((param) => {
-      this.paramValues[param.name] = param.default ?? ''
+      // For select type, use first option as default if no default is provided
+      if (
+        param.type === 'select' &&
+        !param.default &&
+        param.options &&
+        param.options.length > 0
+      ) {
+        this.paramValues[param.name] = param.options[0]
+      } else {
+        this.paramValues[param.name] = param.default ?? ''
+      }
     })
     this.lastResult = null
   }

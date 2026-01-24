@@ -1,0 +1,8 @@
+Prompts and costs
+
+1. add command in backend to list files in a folder, copy or move a file from one location to antoher (0,60)
+2. fix ui service call Unknow operation (0,60)
+3. Send screenshot and d:/temp (erfolglos 0,80)
+4. If i dont explicitely choose a combo box entry in ui the value is '' (0,70)
+
+5. Implementiere in meine neue Seite Commander.ts einen File-Commander wie den Total Commander. Operatioinen anzeigen, Verzeichnisse wechseln (klicken oder ENTER), Datei anschauen (F3), Dateien markieren (Strg + click bzw. Strg und Pfeil hoch und runter) sollen mehrere Dateien auswählen. Dann kopieren mit F5 oder verschieben mit F6.
