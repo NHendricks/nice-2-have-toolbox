@@ -46,13 +46,6 @@ npm install
 npm run start
 ```
 
-### Built-in Commands
-
-- **ping** - Simple connectivity test
-- **echo** - Echo back input parameters
-- **calculate** - Basic arithmetic operations (add, subtract, multiply, divide)
-- **help** - List all available commands
-
 ### CLI Usage
 
 ```bash
@@ -73,21 +66,6 @@ npm run buildElectron
 ```
 
 The executable will be created in the `dist/` directory.
-
-## Adding New Commands
-
-1. Create a new command class in `backend/commands/`
-2. Implement the `ICommand` interface
-3. Register in `backend/commands/command-registry.ts`
-4. Rebuild: `npm run buildBackend`
-
-See [backend/README.md](backend/README.md) for detailed instructions.
-
-## Documentation
-
-- [Quick Start Guide](QUICKSTART.md) - Detailed setup and usage
-- [Backend Documentation](backend/README.md) - CLI and command system
-- [Backend Integration](backend/INTEGRATION.md) - IPC integration guide
 
 ## Technology Stack
 

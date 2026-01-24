@@ -8,8 +8,5 @@
   },
   "dependencies": {
     "fs-extra": "^11.2.0"
-  },
-  "devDependencies": {
-    "@electron/asar": "^3.2.15"
   }
 }

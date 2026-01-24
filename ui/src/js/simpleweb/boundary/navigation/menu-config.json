@@ -11,16 +11,8 @@
   ],
   "bonusActions": [
     {
-      "label": "Datenschutz",
-      "path": "/datenschutz"
-    },
-    {
-      "label": "Impressum",
-      "path": "/impressum"
-    },
-    {
-      "label": "Kontakt",
-      "path": "/kontakt"
+      "label": "www.nilshendricks.de",
+      "path": "https://www.nilshendricks.de"
     }
   ]
 }

@@ -11,7 +11,9 @@
     "buildBackend": "npx tsc backend/cli.ts backend/command-handler.ts backend/ipc-bridge.ts backend/commands/command-interface.ts backend/commands/command-registry.ts backend/commands/ping-command.ts backend/commands/calculate-command.ts backend/commands/help-command.ts --outDir backend/dist --module ESNext --target ES2020 --moduleResolution node --esModuleInterop --skipLibCheck",
     "buildUI": "cd ui && npm run build",
     "buildProcess": "cd process && npm run build",
-    "buildElectron": "set CSC_IDENTITY_AUTO_DISCOVERY=false && npm run buildBackend && npm run buildUI && npm run buildProcess && npx rimraf dist && cd tools && npm run build"
+    "buildWindowsApp": "set CSC_IDENTITY_AUTO_DISCOVERY=false && npm run buildBackend && npm run buildUI && npm run buildProcess && npx rimraf dist && cd tools && npm run build",
+    "buildMacApp": "dont use it but will be easy to implement in the tools project",
+    "buildLinuxApp": "dont use it but will be easy to implement in the tools project"
   },
   "devDependencies": {
     "@types/node": "^25.0.10",

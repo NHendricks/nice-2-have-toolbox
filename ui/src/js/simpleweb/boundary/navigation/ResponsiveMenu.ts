@@ -602,8 +602,14 @@ export class ResponsiveMenu extends LitElement {
     this.isMenuOpen = false
     this.openSubmenu = null
     this.isActionsOverlayOpen = false
-    // Here you can integrate with your router
-    Router.go(path)
+
+    // Check if path is external URL
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      window.open(path, '_blank')
+    } else {
+      // Here you can integrate with your router
+      Router.go(path)
+    }
   }
 
   private openActionsOverlay() {
