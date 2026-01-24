@@ -1,0 +1,26 @@
+{
+  "mainNavigation": [
+    {
+      "label": "Start",
+      "path": "/"
+    },
+    {
+      "label": "FAQ",
+      "path": "/faq"
+    }
+  ],
+  "bonusActions": [
+    {
+      "label": "Datenschutz",
+      "path": "/datenschutz"
+    },
+    {
+      "label": "Impressum",
+      "path": "/impressum"
+    },
+    {
+      "label": "Kontakt",
+      "path": "/kontakt"
+    }
+  ]
+}

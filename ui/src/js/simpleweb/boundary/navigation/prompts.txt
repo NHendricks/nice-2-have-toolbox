@@ -1,0 +1,51 @@
+Mit anthropic/claude-sonnet-4.5 (VS-Code und Cline-Extension) erstellt.
+
+
+1. Version (30 Cent):
+Erstelle mit eine lit web component <responsive-menu>, die als Menü eingebunden werden kann. Wenn orientation portrait, 
+soll es oben rechts als burger-Menü auftauchen und beim Öffnen die ganze Seite einnehmen, 
+beim Öffnen des Menüs ein X anstelle des Burger-Icons anzeigen zum Schließen. 
+Einige Punkte sollen auch Unter-Menüs haben. 
+Es besteht aus 2 Abschnitten, oben einer normalen Navigation und darunter ein paar Aktionen (kleinere Schrift).
+
+Struktur:
+
+Erster Abschnitt:
+Start
+FAQ
+Aktionen
+- anlegen
+- ändern
+- löschen
+
+Zweiter Abschnitt (Bonus-Aktionen):
+Datenschutz
+Impressum
+Kontakt
+
+
+Im Landscape-Modus soll es oben im Header nebeneinander angezeigt werden. 
+Oben links erscheint ein Icon meiner Seite.
+Die Bonus-Aktionen sollen über den anderen Punkten etwas kleiner dargestellt werden. 
+Beim Scrollen der Seite sollen die Bonus-Aktionen verschwinden und beim zurückscrollen wieder erscheinen.
+Der Header nimmt dann weniger Platz ein und das Icon verkleinert / vergrößert sich entsprechend.
+Beim Aufklappen der normalen Aktionen erscheinen diese in einem nach unten sich öffnenden Kasten. 
+
+Das Menü soll modern aussehen und optisch ansprechend. Dark Theme.
+
+2. Anpassung:
+2.1 (65 Cent)
+Im Portait-Modus soll die Schrift gut lesbar sein und immer in den verfügbaren Bereich passen.
+Die einzelnen Punkte der beiden Menüs (landscape und portrait) sollen nicht redundant gepflegt werden, sondern aus einer separaten text-Datei kommen.
+
+✅ Umgesetzt:
+- Menu-Konfiguration in menu-config.json ausgelagert
+- Portrait-Modus mit responsiven clamp()-Funktionen für optimale Lesbarkeit
+- Font-Größen, Padding, Gaps passen sich automatisch an die Viewport-Höhe (vh) an
+- max-height: 85vh und overflow-y: auto für scrollbaren Inhalt im Portrait-Modus
+- text-overflow: ellipsis für lange Texte
+- Helper-Methoden zum dynamischen Rendern der Menüpunkte aus der Konfiguration
+
+2.2 (50 Cent)
+Im Portrait-Menü sollen die Aktionen (also anlegen, ändern, löschen) in einem Overlay eingeblendet werden, nicht im Menü selbst,
+da sonst das Layout wieder zerstört wird.

@@ -1,0 +1,15 @@
+{
+  "name": "electron-build-tools",
+  "version": "1.0.0",
+  "description": "Manual Electron build tools (without ASAR)",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@electron/asar": "^3.2.15"
+  }
+}

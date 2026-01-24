@@ -1,0 +1,7 @@
+node_modules
+release-builds
+dist
+.env
+dist-electron
+build-output
+app-content

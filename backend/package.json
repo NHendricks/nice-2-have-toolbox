@@ -1,0 +1,29 @@
+{
+  "name": "backend-cli",
+  "version": "1.0.0",
+  "description": "Backend Command-Line Interface with IPC support",
+  "main": "dist/cli.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node test.js",
+    "test:ping": "node dist/cli.js ping",
+    "test:echo": "node dist/cli.js echo \"Hello World\"",
+    "test:calculate": "node dist/cli.js calculate \"{\\\"operation\\\":\\\"add\\\",\\\"a\\\":5,\\\"b\\\":3}\"",
+    "test:help": "node dist/cli.js help"
+  },
+  "keywords": [
+    "cli",
+    "command-line",
+    "ipc",
+    "backend"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {}
+}

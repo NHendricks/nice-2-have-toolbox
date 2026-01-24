@@ -1,0 +1,25 @@
+{
+  "name": "ui",
+  "version": "1.0.0",
+  "description": "ui for nilsomat tools",
+  "type": "module",
+  "keywords": [
+    "mobile"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "vite": "^6.2.0"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@vaadin/router": "^2.0.0",
+    "lit": "^3.3.1",
+    "lit-html": "^3.3.1"
+  }
+}

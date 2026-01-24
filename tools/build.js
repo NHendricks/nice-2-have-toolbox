@@ -1,0 +1,178 @@
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Paths
+const rootDir = path.resolve(__dirname, '..');
+const electronDistPath = path.join(
+  rootDir,
+  'process',
+  'node_modules',
+  'electron',
+  'dist',
+);
+const outputDir = path.join(rootDir, 'build-output');
+const appDir = path.join(rootDir, 'app-content');
+const versionFile = path.join(rootDir, 'version', 'version.txt');
+
+console.log('🚀 Starting manual Electron build (without ASAR)...\n');
+
+// Step 1: Clean and prepare directories
+console.log('📁 Step 1: Preparing directories...');
+
+// Clean app-content
+if (fs.existsSync(appDir)) {
+  try {
+    fs.removeSync(appDir);
+    console.log('   ✅ Cleaned app-content directory');
+  } catch (err) {
+    console.log(`   ⚠️  Could not clean app-content: ${err.message}`);
+  }
+}
+fs.mkdirSync(appDir, { recursive: true });
+
+// Try to clean build-output, but continue if it fails
+if (fs.existsSync(outputDir)) {
+  try {
+    fs.removeSync(outputDir);
+    console.log('   ✅ Cleaned build-output directory');
+  } catch (err) {
+    console.log(
+      `   ⚠️  Could not fully clean build-output (files might be in use)`,
+    );
+    console.log(
+      '   💡 Tip: Close Electron app and retry, or manually delete build-output',
+    );
+  }
+}
+fs.mkdirSync(outputDir, { recursive: true });
+
+// Step 2: Copy Electron distribution
+console.log('📦 Step 2: Copying Electron from node_modules...');
+fs.copySync(electronDistPath, outputDir);
+console.log(`   ✅ Copied from: ${electronDistPath}`);
+console.log(`   ✅ To: ${outputDir}`);
+
+// Step 3: Prepare app content
+console.log('\n📋 Step 3: Preparing app content...');
+
+// Copy backend
+const backendDist = path.join(rootDir, 'backend', 'dist');
+const appBackend = path.join(appDir, 'backend', 'dist');
+if (fs.existsSync(backendDist)) {
+  fs.copySync(backendDist, appBackend);
+  console.log('   ✅ Backend copied');
+} else {
+  console.log('   ⚠️  Backend dist not found - run buildBackend first!');
+}
+
+// Copy process
+const processDist = path.join(rootDir, 'process', 'dist');
+const appProcess = path.join(appDir, 'process', 'dist');
+if (fs.existsSync(processDist)) {
+  fs.copySync(processDist, appProcess);
+  console.log('   ✅ Process copied');
+} else {
+  console.log('   ⚠️  Process dist not found - run buildProcess first!');
+}
+
+// Copy process node_modules (if needed)
+const processNodeModules = path.join(rootDir, 'process', 'node_modules');
+const appProcessNodeModules = path.join(appDir, 'process', 'node_modules');
+if (fs.existsSync(processNodeModules)) {
+  fs.copySync(processNodeModules, appProcessNodeModules);
+  console.log('   ✅ Process node_modules copied');
+}
+
+// Copy UI
+const uiDist = path.join(rootDir, 'ui', 'dist');
+const appUi = path.join(appDir, 'ui', 'dist');
+if (fs.existsSync(uiDist)) {
+  fs.copySync(uiDist, appUi);
+  console.log('   ✅ UI copied');
+} else {
+  console.log('   ⚠️  UI dist not found - run buildUI first!');
+}
+
+// Copy package.json
+const packageJson = path.join(rootDir, 'package.json');
+const appPackageJson = path.join(appDir, 'package.json');
+fs.copySync(packageJson, appPackageJson);
+console.log('   ✅ package.json copied');
+
+// Step 4: Copy app folder directly (no ASAR)
+console.log('\n📂 Step 4: Copying app folder to resources...');
+const resourcesDir = path.join(outputDir, 'resources');
+const appFolderPath = path.join(resourcesDir, 'app');
+
+// Remove old app folder if exists
+if (fs.existsSync(appFolderPath)) {
+  fs.removeSync(appFolderPath);
+  console.log('   🗑️  Removed old app folder');
+}
+
+// Remove app.asar if exists (cleanup from old build)
+const oldAsarPath = path.join(resourcesDir, 'app.asar');
+if (fs.existsSync(oldAsarPath)) {
+  fs.removeSync(oldAsarPath);
+  console.log('   🗑️  Removed old app.asar');
+}
+
+// Copy app-content to resources/app
+fs.copySync(appDir, appFolderPath);
+console.log('   ✅ App folder copied successfully!');
+
+// Calculate size
+const calculateDirSize = (dirPath) => {
+  let size = 0;
+  const files = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const file of files) {
+    const filePath = path.join(dirPath, file.name);
+    if (file.isDirectory()) {
+      size += calculateDirSize(filePath);
+    } else {
+      size += fs.statSync(filePath).size;
+    }
+  }
+  return size;
+};
+
+const appSize = calculateDirSize(appFolderPath);
+console.log(`   📊 Size: ${(appSize / 1024 / 1024).toFixed(2)} MB`);
+
+// Step 5: Copy version.txt to resources
+console.log('\n📄 Step 5: Copying version.txt...');
+const targetVersionFile = path.join(resourcesDir, 'version.txt');
+
+if (fs.existsSync(versionFile)) {
+  fs.copySync(versionFile, targetVersionFile);
+  const version = fs.readFileSync(versionFile, 'utf8').trim();
+  console.log(`   ✅ version.txt copied (Version: ${version})`);
+} else {
+  console.log('   ⚠️  version.txt not found!');
+}
+
+// Step 6: Rename electron.exe to x-tools.exe
+console.log('\n🏷️  Step 6: Renaming electron.exe to x-tools.exe...');
+const electronExe = path.join(outputDir, 'electron.exe');
+const xToolsExe = path.join(outputDir, 'x-tools.exe');
+
+if (fs.existsSync(electronExe)) {
+  fs.renameSync(electronExe, xToolsExe);
+  console.log('   ✅ Renamed electron.exe → x-tools.exe');
+} else {
+  console.log('   ⚠️  electron.exe not found!');
+}
+
+// Step 7: Summary
+console.log('\n✅ Build completed successfully!\n');
+console.log('📂 Output directory:', outputDir);
+console.log('📦 App folder location:', appFolderPath);
+console.log('📄 version.txt location:', targetVersionFile);
+console.log('\n🚀 Run the app:');
+console.log(`   ${path.join(outputDir, 'x-tools.exe')}`);
+console.log('\n💡 Note: App runs without ASAR packaging (direct file access)');

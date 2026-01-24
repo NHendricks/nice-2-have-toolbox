@@ -1,0 +1,36 @@
+:root {
+  /* set css variables globally and use them in your sites */
+  --default-font-size: 5.5vw;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0d0d1a;
+  color: #eaeaea;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
+}
+
+/* Add padding for fixed header in landscape mode */
+@media (orientation: landscape) {
+  body {
+    padding-top: 120px;
+  }
+}
+
+/* Adjust padding when scrolled (header is smaller) */
+@media (orientation: landscape) {
+  body.scrolled {
+    padding-top: 80px;
+  }
+}
+
+.main {
+  min-height: 100vh;
+}
