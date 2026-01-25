@@ -13,7 +13,7 @@
     "buildUI": "cd ui && npm run build",
     "buildProcess": "cd process && npm run build",
     "buildWindowsApp": "set CSC_IDENTITY_AUTO_DISCOVERY=false && npm run buildBackend && npm run buildUI && npm run buildProcess && npx rimraf dist && cd tools && npm run build",
-    "buildMacApp": "dont use it but will be easy to implement in the tools project",
+    "buildMacApp": "npm run buildBackend && npm run buildUI && npm run buildProcess && npx rimraf dist && cd tools && npm run build-mac",
     "buildLinuxApp": "dont use it but will be easy to implement in the tools project"
   },
   "devDependencies": {
