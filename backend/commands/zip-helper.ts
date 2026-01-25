@@ -170,7 +170,7 @@ export class ZipHelper {
   }
 
   /**
-   * Extract a file from ZIP to a destination
+   * Extract a file or directory from ZIP to a destination
    */
   static extractFromZip(
     zipFilePath: string,
@@ -184,21 +184,70 @@ export class ZipHelper {
     const zip = new AdmZip(zipFilePath);
     const normalizedPath = internalPath.replace(/\\/g, '/');
 
-    // Extract specific entry
-    zip.extractEntryTo(
-      normalizedPath,
-      path.dirname(destinationPath),
-      false,
-      true,
+    // Check if it's a directory by looking at all entries
+    const entries = zip.getEntries();
+    const isDirectory = entries.some(
+      (entry) =>
+        entry.entryName.replace(/\\/g, '/').startsWith(normalizedPath + '/') ||
+        entry.entryName.replace(/\\/g, '/') === normalizedPath + '/',
     );
 
-    // Rename if needed
-    const extractedPath = path.join(
-      path.dirname(destinationPath),
-      path.basename(normalizedPath),
-    );
-    if (extractedPath !== destinationPath && fs.existsSync(extractedPath)) {
-      fs.renameSync(extractedPath, destinationPath);
+    if (isDirectory) {
+      // Extract all entries that start with this path
+      const prefix = normalizedPath.endsWith('/')
+        ? normalizedPath
+        : normalizedPath + '/';
+
+      for (const entry of entries) {
+        const entryPath = entry.entryName.replace(/\\/g, '/');
+        if (entryPath.startsWith(prefix)) {
+          const relativePath = entryPath.substring(prefix.length);
+          const targetPath = path.join(
+            destinationPath,
+            relativePath.replace(/\//g, path.sep),
+          );
+
+          if (entry.isDirectory) {
+            // Create directory
+            if (!fs.existsSync(targetPath)) {
+              fs.mkdirSync(targetPath, { recursive: true });
+            }
+          } else {
+            // Extract file
+            const targetDir = path.dirname(targetPath);
+            if (!fs.existsSync(targetDir)) {
+              fs.mkdirSync(targetDir, { recursive: true });
+            }
+            zip.extractEntryTo(entry, targetDir, false, true);
+
+            // Rename if needed
+            const extractedFile = path.join(
+              targetDir,
+              path.basename(entry.entryName),
+            );
+            if (extractedFile !== targetPath && fs.existsSync(extractedFile)) {
+              fs.renameSync(extractedFile, targetPath);
+            }
+          }
+        }
+      }
+    } else {
+      // Extract single file
+      zip.extractEntryTo(
+        normalizedPath,
+        path.dirname(destinationPath),
+        false,
+        true,
+      );
+
+      // Rename if needed
+      const extractedPath = path.join(
+        path.dirname(destinationPath),
+        path.basename(normalizedPath),
+      );
+      if (extractedPath !== destinationPath && fs.existsSync(extractedPath)) {
+        fs.renameSync(extractedPath, destinationPath);
+      }
     }
   }
 

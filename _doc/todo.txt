@@ -1,5 +1,5 @@
 - fix functions on mac
-- show images for extensions .jpg, .png
+- implementdelete function
 - integrate more cmdline-Tools
 - music player (IPOD), integrate mp3 metadata helper here
 - build linux
