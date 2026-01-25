@@ -797,6 +797,23 @@ export class Commander extends LitElement {
   }
 
   handleGlobalKeydown(event: KeyboardEvent) {
+    // Handle ESC for dialogs first
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      if (this.viewerFile) {
+        this.closeViewer()
+        return
+      }
+      if (this.operationDialog) {
+        this.cancelOperation()
+        return
+      }
+      if (this.showDriveSelector) {
+        this.closeDriveSelector()
+        return
+      }
+    }
+
     // Ignore if typing in an input field
     if (
       event.target instanceof HTMLInputElement ||
