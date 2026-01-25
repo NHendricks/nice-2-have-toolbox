@@ -1053,20 +1053,21 @@ export class Commander extends LitElement {
 
   moveFocus(delta: number, withSelection: boolean) {
     const pane = this.getActivePane()
+    const newSelected = new Set(pane.selectedIndices)
+
+    if (withSelection) {
+      // Toggle the CURRENT focused item first
+      if (newSelected.has(pane.focusedIndex)) {
+        newSelected.delete(pane.focusedIndex)
+      } else {
+        newSelected.add(pane.focusedIndex)
+      }
+    }
+
     const newIndex = Math.max(
       0,
       Math.min(pane.items.length - 1, pane.focusedIndex + delta),
     )
-
-    const newSelected = new Set(pane.selectedIndices)
-    if (withSelection) {
-      // Toggle the new focused item
-      if (newSelected.has(newIndex)) {
-        newSelected.delete(newIndex)
-      } else {
-        newSelected.add(newIndex)
-      }
-    }
 
     this.updateActivePane({
       focusedIndex: newIndex,
