@@ -1,6 +1,6 @@
 import { Router } from '@vaadin/router'
 import { LitElement, css, html } from 'lit'
-import { customElement, state } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 import menuConfig from './menu-config.json' with { type: 'json' }
 
 interface MenuItem {
@@ -23,7 +23,8 @@ export class ResponsiveMenu extends LitElement {
   @state() private isScrolled = false
   @state() private openSubmenu: string | null = null
   @state() private isActionsOverlayOpen = false
-  @state() public forcePortrait = false
+  @property({ type: Boolean, reflect: true, attribute: 'force-portrait' })
+  public forcePortrait = false
 
   private scrollHandler?: () => void
   private resizeHandler?: () => void
@@ -74,6 +75,15 @@ export class ResponsiveMenu extends LitElement {
     .burger-btn:hover {
       background: var(--accent-color);
       transform: scale(1.05);
+    }
+
+    /* Reduce opacity when force-portrait is active */
+    :host([force-portrait]) .burger-btn {
+      opacity: 0.1;
+    }
+
+    :host([force-portrait]) .burger-btn:hover {
+      opacity: 1;
     }
 
     .burger-line {

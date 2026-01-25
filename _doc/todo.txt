@@ -1,5 +1,6 @@
 Ideen:
-- fix build mac
+- rename to nh-toolbox
+- fix functions on mac
 - build linux
 - menu soll weggehn und wiederkommen wenn maus oben ist
 - eigene bestehende cmdline-Tools integrieren
