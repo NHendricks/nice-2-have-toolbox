@@ -1226,6 +1226,16 @@ export class Commander extends LitElement {
         this.moveFocus(1, event.ctrlKey)
         break
 
+      case 'PageUp':
+        event.preventDefault()
+        this.moveFocus(-20, event.ctrlKey)
+        break
+
+      case 'PageDown':
+        event.preventDefault()
+        this.moveFocus(20, event.ctrlKey)
+        break
+
       case 'Tab':
         event.preventDefault()
         this.activePane = this.activePane === 'left' ? 'right' : 'left'

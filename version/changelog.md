@@ -10,6 +10,7 @@
 - add feature for favorites in drive selection overview
 - fix ESC and Enter keys in dialogs
 - compare directories
+- use page up/down for faster navigation
 
 ### v1.0.0 (25.01.2026)
 
