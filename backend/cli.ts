@@ -64,8 +64,11 @@ async function main() {
 
     // Output based on --json flag
     if (jsonFlag) {
-      // Full JSON response with metadata
-      console.log(JSON.stringify(response, null, 2));
+      // Full JSON response with metadata (compact to avoid buffer issues)
+      // Use callback to ensure stdout is flushed before exit
+      process.stdout.write(JSON.stringify(response) + '\n', () => {
+        process.exit(0);
+      });
     } else {
       // Only the result field from the data
       if (result && typeof result === 'object' && 'result' in result) {
@@ -81,8 +84,8 @@ async function main() {
       } else {
         console.log(result);
       }
+      process.exit(0);
     }
-    process.exit(0);
   } catch (error: any) {
     const response: CliResponse = {
       success: false,

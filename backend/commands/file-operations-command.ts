@@ -119,8 +119,8 @@ export class FileOperationsCommand implements ICommand {
           name: entry.name,
           path: fullPath,
           size: itemStats.size,
-          created: itemStats.birthtime,
-          modified: itemStats.mtime,
+          created: itemStats.birthtime.toISOString(),
+          modified: itemStats.mtime.toISOString(),
           isDirectory: entry.isDirectory(),
           isFile: entry.isFile(),
         };
@@ -215,7 +215,7 @@ export class FileOperationsCommand implements ICommand {
         path: absolutePath,
         content: `data:${mimeType};base64,${base64}`,
         size: stats.size,
-        modified: stats.mtime,
+        modified: stats.mtime.toISOString(),
         isImage: true,
       };
     } else {
@@ -228,7 +228,7 @@ export class FileOperationsCommand implements ICommand {
         path: absolutePath,
         content: content,
         size: stats.size,
-        modified: stats.mtime,
+        modified: stats.mtime.toISOString(),
         isImage: false,
       };
     }
