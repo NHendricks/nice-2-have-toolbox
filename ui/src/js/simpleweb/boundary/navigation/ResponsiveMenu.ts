@@ -23,6 +23,7 @@ export class ResponsiveMenu extends LitElement {
   @state() private isScrolled = false
   @state() private openSubmenu: string | null = null
   @state() private isActionsOverlayOpen = false
+  @state() public forcePortrait = false
 
   private scrollHandler?: () => void
   private resizeHandler?: () => void
@@ -567,7 +568,8 @@ export class ResponsiveMenu extends LitElement {
     // Monitor orientation changes
     const mediaQuery = window.matchMedia('(orientation: portrait)')
     mediaQuery.addEventListener('change', (e) => {
-      this.isPortrait = e.matches
+      // Use forced orientation if set, otherwise use actual orientation
+      this.isPortrait = this.forcePortrait ? true : e.matches
       this.isMenuOpen = false
       this.openSubmenu = null
       this.isActionsOverlayOpen = false
@@ -575,7 +577,9 @@ export class ResponsiveMenu extends LitElement {
 
     // Monitor scroll in landscape mode
     this.scrollHandler = () => {
-      if (!this.isPortrait) {
+      // Consider forcePortrait when determining scroll behavior
+      const effectivePortrait = this.forcePortrait || this.isPortrait
+      if (!effectivePortrait) {
         this.isScrolled = window.scrollY > 50
       }
     }
@@ -777,9 +781,15 @@ export class ResponsiveMenu extends LitElement {
   }
 
   render() {
+    // Use forced portrait mode if set
+    const effectivePortrait = this.forcePortrait || this.isPortrait
+
     return html`
       <!-- Portrait Mode -->
-      <div class="portrait-only">
+      <div
+        class="portrait-only"
+        style="${this.forcePortrait ? 'display: block !important;' : ''}"
+      >
         <div class="portrait-header">
           <button
             class="burger-btn ${this.isMenuOpen ? 'open' : ''}"
@@ -807,7 +817,10 @@ export class ResponsiveMenu extends LitElement {
       </div>
 
       <!-- Landscape Mode -->
-      <div class="landscape-only">
+      <div
+        class="landscape-only"
+        style="${this.forcePortrait ? 'display: none !important;' : ''}"
+      >
         <header class="landscape-header ${this.isScrolled ? 'scrolled' : ''}">
           <!-- Bonus Actions -->
           <div class="landscape-bonus ${this.isScrolled ? 'hidden' : ''}">

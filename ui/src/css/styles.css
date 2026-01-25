@@ -19,16 +19,21 @@ body {
 
 /* Add padding for fixed header in landscape mode */
 @media (orientation: landscape) {
-  body {
+  body:not(.force-portrait) {
     padding-top: 120px;
   }
 }
 
 /* Adjust padding when scrolled (header is smaller) */
 @media (orientation: landscape) {
-  body.scrolled {
+  body.scrolled:not(.force-portrait) {
     padding-top: 80px;
   }
+}
+
+/* When forcing portrait mode, remove landscape padding */
+body.force-portrait {
+  padding-top: 0;
 }
 
 .main {

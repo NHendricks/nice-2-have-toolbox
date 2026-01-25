@@ -1,5 +1,7 @@
 Ideen:
-- fix build mac- menu soll weggehn und wiederkommen wenn maus oben ist
-- eigene alte bestehende cmdline-Tools integrieren
-- total commander in wichtigen Teilen nachbauen (Dateien verschieben, kopieren, anschauen)
-- mac und linux unterstützen
+- fix build mac
+- build linux
+- menu soll weggehn und wiederkommen wenn maus oben ist
+- eigene bestehende cmdline-Tools integrieren
+- bildbetracjter
+- music player (IPOD)
