@@ -435,7 +435,7 @@ export class Commander extends LitElement {
 
   @property({ type: Object })
   leftPane: PaneState = {
-    currentPath: 'd:\\',
+    currentPath: '/',
     items: [],
     selectedIndices: new Set(),
     focusedIndex: 0,
@@ -443,7 +443,7 @@ export class Commander extends LitElement {
 
   @property({ type: Object })
   rightPane: PaneState = {
-    currentPath: 'd:\\',
+    currentPath: '/',
     items: [],
     selectedIndices: new Set(),
     focusedIndex: 0,
@@ -490,6 +490,17 @@ export class Commander extends LitElement {
 
     // Add CSS class to body to remove landscape padding
     document.body.classList.add('force-portrait')
+
+    // Load paths from localStorage
+    const savedLeftPath = localStorage.getItem('commander-left-path')
+    const savedRightPath = localStorage.getItem('commander-right-path')
+
+    if (savedLeftPath) {
+      this.leftPane.currentPath = savedLeftPath
+    }
+    if (savedRightPath) {
+      this.rightPane.currentPath = savedRightPath
+    }
 
     // Load initial directories
     await this.loadDirectory('left', this.leftPane.currentPath)
@@ -614,6 +625,8 @@ export class Commander extends LitElement {
             selectedIndices: new Set(),
             focusedIndex: 0,
           }
+          // Save to localStorage
+          localStorage.setItem('commander-left-path', data.path)
         } else {
           this.rightPane = {
             currentPath: data.path,
@@ -621,6 +634,8 @@ export class Commander extends LitElement {
             selectedIndices: new Set(),
             focusedIndex: 0,
           }
+          // Save to localStorage
+          localStorage.setItem('commander-right-path', data.path)
         }
 
         // Display status with safety checks
