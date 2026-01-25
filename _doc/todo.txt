@@ -1,8 +1,5 @@
-Ideen:
-- rename to nh-toolbox
 - fix functions on mac
+- show images for extensions .jpg, .png
+- integrate more cmdline-Tools
+- music player (IPOD), integrate mp3 metadata helper here
 - build linux
-- menu soll weggehn und wiederkommen wenn maus oben ist
-- eigene bestehende cmdline-Tools integrieren
-- bildbetracjter
-- music player (IPOD)

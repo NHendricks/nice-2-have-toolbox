@@ -339,6 +339,20 @@ export class Commander extends LitElement {
       word-wrap: break-word;
     }
 
+    .dialog-content.image-viewer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: #000;
+    }
+
+    .dialog-content.image-viewer img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
     .dialog-footer {
       background: #334155;
       padding: 0.5rem 1rem;
@@ -445,7 +459,12 @@ export class Commander extends LitElement {
   statusType: 'normal' | 'success' | 'error' = 'normal'
 
   @property({ type: Object })
-  viewerFile: { path: string; content: string; size: number } | null = null
+  viewerFile: {
+    path: string
+    content: string
+    size: number
+    isImage: boolean
+  } | null = null
 
   @property({ type: Object })
   operationDialog: {
@@ -726,6 +745,21 @@ export class Commander extends LitElement {
     await this.loadDirectory(this.activePane, path)
   }
 
+  isImageFile(filePath: string): boolean {
+    const imageExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.svg',
+      '.ico',
+    ]
+    const ext = filePath.toLowerCase().substring(filePath.lastIndexOf('.'))
+    return imageExtensions.includes(ext)
+  }
+
   async viewFile(filePath: string) {
     try {
       this.setStatus('Lade Datei...', 'normal')
@@ -744,8 +778,12 @@ export class Commander extends LitElement {
           path: response.data.path,
           content: response.data.content,
           size: response.data.size,
+          isImage: response.data.isImage || false,
         }
-        this.setStatus('Datei geladen', 'success')
+        this.setStatus(
+          response.data.isImage ? 'Bild geladen' : 'Datei geladen',
+          'success',
+        )
       } else {
         this.setStatus(`Fehler: ${response.error}`, 'error')
       }
@@ -1149,19 +1187,34 @@ export class Commander extends LitElement {
   renderViewer() {
     if (!this.viewerFile) return ''
 
+    const icon = this.viewerFile.isImage ? '🖼️' : '📄'
+
     return html`
       <div class="dialog-overlay" @click=${this.closeViewer}>
         <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
           <div class="dialog-header">
-            <span class="dialog-title">📄 ${this.viewerFile.path}</span>
+            <span class="dialog-title">${icon} ${this.viewerFile.path}</span>
             <button class="dialog-close" @click=${this.closeViewer}>
               ESC - Schließen
             </button>
           </div>
-          <div class="dialog-content">${this.viewerFile.content}</div>
+          <div
+            class="dialog-content ${this.viewerFile.isImage
+              ? 'image-viewer'
+              : ''}"
+          >
+            ${this.viewerFile.isImage
+              ? html`<img
+                  src="${this.viewerFile.content}"
+                  alt="Image preview"
+                />`
+              : this.viewerFile.content}
+          </div>
           <div class="dialog-footer">
-            Größe: ${this.formatFileSize(this.viewerFile.size)} | Drücke ESC zum
-            Schließen
+            ${this.viewerFile.isImage
+              ? `Bild: ${this.viewerFile.path.split(/[/\\]/).pop()}`
+              : `Größe: ${this.formatFileSize(this.viewerFile.size)}`}
+            | Drücke ESC zum Schließen
           </div>
         </div>
       </div>

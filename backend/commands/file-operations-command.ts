@@ -153,6 +153,24 @@ export class FileOperationsCommand implements ICommand {
   }
 
   /**
+   * Check if a file is an image based on extension
+   */
+  private isImageFile(filePath: string): boolean {
+    const imageExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.svg',
+      '.ico',
+    ];
+    const ext = path.extname(filePath).toLowerCase();
+    return imageExtensions.includes(ext);
+  }
+
+  /**
    * Read a file's content
    */
   private async readFile(filePath: string): Promise<any> {
@@ -173,17 +191,47 @@ export class FileOperationsCommand implements ICommand {
       throw new Error(`Path is not a file: ${absolutePath}`);
     }
 
-    // Read file content
-    const content = await readFile(absolutePath, 'utf-8');
+    // Check if it's an image file
+    const isImage = this.isImageFile(absolutePath);
 
-    return {
-      success: true,
-      operation: 'read',
-      path: absolutePath,
-      content: content,
-      size: stats.size,
-      modified: stats.mtime,
-    };
+    if (isImage) {
+      // Read image as binary and convert to base64
+      const buffer = await readFile(absolutePath);
+      const base64 = buffer.toString('base64');
+      const ext = path.extname(absolutePath).toLowerCase();
+
+      // Determine MIME type
+      let mimeType = 'image/jpeg';
+      if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.gif') mimeType = 'image/gif';
+      else if (ext === '.bmp') mimeType = 'image/bmp';
+      else if (ext === '.webp') mimeType = 'image/webp';
+      else if (ext === '.svg') mimeType = 'image/svg+xml';
+      else if (ext === '.ico') mimeType = 'image/x-icon';
+
+      return {
+        success: true,
+        operation: 'read',
+        path: absolutePath,
+        content: `data:${mimeType};base64,${base64}`,
+        size: stats.size,
+        modified: stats.mtime,
+        isImage: true,
+      };
+    } else {
+      // Read text file content
+      const content = await readFile(absolutePath, 'utf-8');
+
+      return {
+        success: true,
+        operation: 'read',
+        path: absolutePath,
+        content: content,
+        size: stats.size,
+        modified: stats.mtime,
+        isImage: false,
+      };
+    }
   }
 
   /**
