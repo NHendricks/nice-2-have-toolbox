@@ -653,33 +653,55 @@ export class Commander extends LitElement {
   }
 
   getParentPath(currentPath: string): string {
-    // Handle Windows paths properly - normalize separators
-    const normalized = currentPath.replace(/\//g, '\\')
+    // Detect OS: Windows paths have drive letters (e.g., "C:\"), Unix paths start with "/"
+    const isWindows = /^[a-zA-Z]:[\\\/]/.test(currentPath)
+    const separator = isWindows ? '\\' : '/'
 
-    // Check if we're at root (e.g., "d:\" or "d:")
-    if (normalized.match(/^[a-zA-Z]:\\?$/)) {
-      return normalized
+    // Normalize separators for consistency
+    const normalized = isWindows
+      ? currentPath.replace(/\//g, '\\')
+      : currentPath.replace(/\\/g, '/')
+
+    // Check if we're at root
+    if (isWindows) {
+      // Windows root: "d:\" or "d:"
+      if (normalized.match(/^[a-zA-Z]:\\?$/)) {
+        return normalized
+      }
+    } else {
+      // Unix root: "/"
+      if (normalized === '/') {
+        return '/'
+      }
     }
 
-    // Remove trailing backslash if present
+    // Remove trailing separator if present (but not if it's the root)
+    const minLength = isWindows ? 3 : 1
     const cleanPath =
-      normalized.endsWith('\\') && normalized.length > 3
+      normalized.endsWith(separator) && normalized.length > minLength
         ? normalized.slice(0, -1)
         : normalized
 
-    // Find last backslash
-    const lastBackslash = cleanPath.lastIndexOf('\\')
-    if (lastBackslash === -1) {
+    // Find last separator
+    const lastSeparator = cleanPath.lastIndexOf(separator)
+    if (lastSeparator === -1) {
       return normalized
     }
 
-    // Return everything up to the last backslash
-    // But keep at least the drive letter and colon
-    const parentPath = cleanPath.substring(0, lastBackslash)
+    // Return everything up to the last separator
+    const parentPath = cleanPath.substring(0, lastSeparator)
 
-    // If parent path is just drive letter, add backslash
-    if (parentPath.match(/^[a-zA-Z]:$/)) {
-      return parentPath + '\\'
+    // Handle edge cases
+    if (isWindows) {
+      // If parent path is just drive letter, add backslash
+      if (parentPath.match(/^[a-zA-Z]:$/)) {
+        return parentPath + '\\'
+      }
+    } else {
+      // If parent path is empty, return root
+      if (parentPath === '') {
+        return '/'
+      }
     }
 
     return parentPath || normalized
@@ -1123,7 +1145,9 @@ export class Commander extends LitElement {
       let successCount = 0
       for (const file of files) {
         const fileName = file.split(/[/\\]/).pop() || 'file'
-        const destPath = destination + '\\' + fileName
+        // Use the appropriate separator based on the OS
+        const separator = destination.includes('\\') ? '\\' : '/'
+        const destPath = destination + separator + fileName
 
         const response = await (window as any).electron.ipcRenderer.invoke(
           'cli-execute',

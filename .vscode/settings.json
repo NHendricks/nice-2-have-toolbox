@@ -12,5 +12,7 @@
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
   "prettier.requireConfig": true,
-  "extensions.disabled": ["redhat.java"]
+  "extensions.disabled": ["redhat.java"],
+  "terminal.integrated.defaultProfile.osx": "zsh"
+
 }
