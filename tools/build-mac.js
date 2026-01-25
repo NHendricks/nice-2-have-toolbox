@@ -190,8 +190,20 @@ if (fs.existsSync(electronBinary)) {
   console.log('   ⚠️  Electron binary not found!');
 }
 
-// Step 8: Update Info.plist
-console.log('\n� Step 8: Updating Info.plist...');
+// Step 8: Copy custom icon
+console.log('\n🎨 Step 8: Copying custom icon...');
+const iconSource = path.join(rootDir, 'assets', 'icons', 'icon.icns');
+const iconDest = path.join(targetResourcesDir, 'icon.icns');
+
+if (fs.existsSync(iconSource)) {
+  fs.copySync(iconSource, iconDest);
+  console.log('   ✅ Custom icon copied');
+} else {
+  console.log('   ⚠️  Custom icon not found at assets/icons/icon.icns');
+}
+
+// Step 9: Update Info.plist
+console.log('\n📝 Step 9: Updating Info.plist...');
 const infoPlistPath = path.join(nhToolsAppPath, 'Contents', 'Info.plist');
 
 if (fs.existsSync(infoPlistPath)) {
@@ -210,15 +222,27 @@ if (fs.existsSync(infoPlistPath)) {
     .replace(
       /<key>CFBundleDisplayName<\/key>\s*<string>Electron<\/string>/g,
       '<key>CFBundleDisplayName</key>\n\t<string>nh-toolbox</string>',
+    )
+    .replace(
+      /<key>CFBundleIconFile<\/key>\s*<string>[^<]*<\/string>/g,
+      '<key>CFBundleIconFile</key>\n\t<string>icon.icns</string>',
     );
 
+  // Add icon file reference if it doesn't exist
+  if (!plistContent.includes('CFBundleIconFile')) {
+    plistContent = plistContent.replace(
+      '</dict>\n</plist>',
+      '\t<key>CFBundleIconFile</key>\n\t<string>icon.icns</string>\n</dict>\n</plist>',
+    );
+  }
+
   fs.writeFileSync(infoPlistPath, plistContent, 'utf8');
-  console.log('   ✅ Info.plist updated');
+  console.log('   ✅ Info.plist updated with icon reference');
 } else {
   console.log('   ⚠️  Info.plist not found!');
 }
 
-// Step 9: Summary
+// Step 10: Summary
 console.log('\n✅ Build completed successfully!\n');
 console.log('📂 Output directory:', outputDir);
 console.log('📦 App bundle location:', nhToolsAppPath);
