@@ -14,8 +14,8 @@ const electronDistPath = path.join(
   'electron',
   'dist',
 );
-const outputDir = path.join(rootDir, 'build-output');
-const appDir = path.join(rootDir, 'app-content');
+const outputDir = path.join(rootDir, 'target/build-output');
+const appDir = path.join(rootDir, 'target/app-content');
 const versionFile = path.join(rootDir, 'version', 'version.txt');
 
 console.log('🚀 Starting manual Electron build (without ASAR)...\n');
