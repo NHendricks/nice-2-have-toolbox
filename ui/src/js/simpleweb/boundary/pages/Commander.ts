@@ -966,6 +966,14 @@ export class Commander extends LitElement {
   }
 
   handleGlobalKeydown(event: KeyboardEvent) {
+    // Ignore if typing in an input field (let input handle its own events)
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement
+    ) {
+      return
+    }
+
     // Handle ESC for dialogs first
     if (event.key === 'Escape') {
       event.preventDefault()
@@ -999,14 +1007,6 @@ export class Commander extends LitElement {
         this.viewPreviousImage()
         return
       }
-    }
-
-    // Ignore if typing in an input field
-    if (
-      event.target instanceof HTMLInputElement ||
-      event.target instanceof HTMLTextAreaElement
-    ) {
-      return
     }
 
     const pane = this.getActivePane()
@@ -1046,6 +1046,10 @@ export class Commander extends LitElement {
         break
 
       case 'Enter':
+        // Don't handle Enter if a dialog is open
+        if (this.operationDialog || this.showHelp || this.showDriveSelector) {
+          return
+        }
         event.preventDefault()
         this.handleEnter()
         break
@@ -1562,6 +1566,17 @@ export class Commander extends LitElement {
     const { type, files, destination } = this.operationDialog
     const operation = type === 'copy' ? 'Kopieren' : 'Verschieben'
 
+    // Auto-focus input field when dialog opens
+    setTimeout(() => {
+      const input = this.shadowRoot?.querySelector(
+        '.input-field input',
+      ) as HTMLInputElement
+      if (input) {
+        input.focus()
+        input.select()
+      }
+    }, 100)
+
     return html`
       <div class="dialog-overlay">
         <div
@@ -1585,9 +1600,11 @@ export class Commander extends LitElement {
                 @keydown=${(e: KeyboardEvent) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
+                    e.stopPropagation()
                     this.executeOperation()
                   } else if (e.key === 'Escape') {
                     e.preventDefault()
+                    e.stopPropagation()
                     this.cancelOperation()
                   }
                 }}
