@@ -9,9 +9,9 @@ A modular Electron-based utility application with an extensible command-line bac
 When i changed from Windows to Mac i needed to switch back to Windows because my Total Commander
 was not available :-) And i couldnt get used to the keyboard shortcuts.
 
-Additionaly i have built a lot of cmdline tools for my private use and i wantred to have one place to manage them.
+Additionaly i built a lot of cmdline tools for my private use in the past and i wanted to have one place to manage and run them.
 
-So i thought why not build one app with many apps inside. Usable on all platforms. Beginning with the commander lets see how it grows. Feel free to contribute !
+So i thought why not build one app with many apps inside. Usable on all platforms. Starting with the nh-commander lets see how it grows. Feel free to contribute !
 
 ## Overview
 

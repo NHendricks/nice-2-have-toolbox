@@ -21,7 +21,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/adm-zip": "^0.5.7"
   },
-  "dependencies": {}
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  }
 }

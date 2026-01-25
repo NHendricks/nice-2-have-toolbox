@@ -69,6 +69,22 @@ if (fs.existsSync(backendDist)) {
   console.log('   ⚠️  Backend dist not found - run buildBackend first!');
 }
 
+// Copy backend node_modules (ohne node_modules/electron)
+const backendNodeModules = path.join(rootDir, 'backend', 'node_modules');
+const appbackendNodeModules = path.join(appDir, 'backend', 'node_modules');
+
+if (fs.existsSync(backendNodeModules)) {
+  fs.copySync(backendNodeModules, appbackendNodeModules, {
+    filter: (src) => {
+      // electron-Ordner ausschließen
+      return !src.includes(
+        `${path.sep}node_modules${path.sep}electron${path.sep}`,
+      );
+    },
+  });
+  console.log('   ✅ backend node_modules copied');
+}
+
 // Copy process
 const processDist = path.join(rootDir, 'process', 'dist');
 const appProcess = path.join(appDir, 'process', 'dist');
@@ -79,12 +95,20 @@ if (fs.existsSync(processDist)) {
   console.log('   ⚠️  Process dist not found - run buildProcess first!');
 }
 
-// Copy process node_modules (if needed)
+// Copy process node_modules (ohne node_modules/electron)
 const processNodeModules = path.join(rootDir, 'process', 'node_modules');
 const appProcessNodeModules = path.join(appDir, 'process', 'node_modules');
+
 if (fs.existsSync(processNodeModules)) {
-  fs.copySync(processNodeModules, appProcessNodeModules);
-  console.log('   ✅ Process node_modules copied');
+  fs.copySync(processNodeModules, appProcessNodeModules, {
+    filter: (src) => {
+      // electron-Ordner ausschließen
+      return !src.includes(
+        `${path.sep}node_modules${path.sep}electron${path.sep}`,
+      );
+    },
+  });
+  console.log('   ✅ Process node_modules copied (ohne electron)');
 }
 
 // Copy UI
