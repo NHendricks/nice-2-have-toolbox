@@ -623,7 +623,11 @@ export class Commander extends LitElement {
     window.removeEventListener('keydown', this.handleGlobalKeydown.bind(this))
   }
 
-  async loadDirectory(pane: 'left' | 'right', path: string) {
+  async loadDirectory(
+    pane: 'left' | 'right',
+    path: string,
+    previousPath?: string,
+  ) {
     try {
       this.setStatus('Lade Verzeichnis...', 'normal')
       console.log(`Loading directory for ${pane}: ${path}`)
@@ -676,12 +680,28 @@ export class Commander extends LitElement {
 
         console.log(`Loaded ${items.length} items for ${pane}`)
 
+        // Find the index of the previous directory
+        let focusedIndex = 0
+        if (previousPath) {
+          // Extract just the directory name from the previous path
+          const prevName = previousPath
+            .split(/[/\\]/)
+            .filter((p) => p)
+            .pop()
+          if (prevName) {
+            const index = items.findIndex((item) => item.name === prevName)
+            if (index !== -1) {
+              focusedIndex = index
+            }
+          }
+        }
+
         if (pane === 'left') {
           this.leftPane = {
             currentPath: data.path,
             items,
             selectedIndices: new Set(),
-            focusedIndex: 0,
+            focusedIndex: focusedIndex,
           }
           // Save to localStorage
           localStorage.setItem('commander-left-path', data.path)
@@ -690,7 +710,7 @@ export class Commander extends LitElement {
             currentPath: data.path,
             items,
             selectedIndices: new Set(),
-            focusedIndex: 0,
+            focusedIndex: focusedIndex,
           }
           // Save to localStorage
           localStorage.setItem('commander-right-path', data.path)
@@ -841,7 +861,8 @@ export class Commander extends LitElement {
 
   async navigateToDirectory(path: string) {
     console.log('navigateToDirectory called with:', path)
-    await this.loadDirectory(this.activePane, path)
+    const currentPath = this.getActivePane().currentPath
+    await this.loadDirectory(this.activePane, path, currentPath)
   }
 
   isImageFile(filePath: string): boolean {
