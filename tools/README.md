@@ -29,9 +29,18 @@ npm run buildProcess
 
 ### 2. Dann Electron-App bauen:
 
+**Für Windows:**
+
 ```bash
 cd tools
 npm run build
+```
+
+**Für Mac:**
+
+```bash
+cd tools
+npm run build-mac
 ```
 
 **Alternative mit ASAR (falls gewünscht):**
@@ -43,9 +52,18 @@ npm run build:asar
 
 ### 3. App starten:
 
+**Windows:**
+
 ```bash
 # Aus build-output
-d:\dev\_nas\test\build-output\x-tools.exe
+d:\dev\_nas\test\build-output\nh-tools.exe
+```
+
+**Mac:**
+
+```bash
+# Aus build-output
+open build-output/nh-tools.app
 ```
 
 ## 📂 Struktur
@@ -53,7 +71,8 @@ d:\dev\_nas\test\build-output\x-tools.exe
 ```
 tools/
 ├── package.json          # Dependencies: fs-extra, electron
-├── build.js              # Haupt-Build-Script (ohne ASAR)
+├── build.js              # Windows Build-Script (ohne ASAR)
+├── build-mac.js          # Mac Build-Script (ohne ASAR)
 ├── build-asar.js         # Alternatives Script (mit ASAR)
 └── README.md            # Diese Datei
 
@@ -90,7 +109,7 @@ Nach dem Build:
 
 - `electron/dist/` → Komplette Electron Runtime
 
-## ⚙️ Script-Ablauf (build.js)
+## ⚙️ Script-Ablauf (build.js - Windows)
 
 ```
 1. 📁 Prepare directories
@@ -113,9 +132,43 @@ Nach dem Build:
    └── version/version.txt → build-output/resources/version.txt
 
 6. 🏷️ Rename executable
-   └── electron.exe → x-tools.exe
+   └── electron.exe → nh-tools.exe
 
 7. ✅ Done!
+```
+
+## ⚙️ Script-Ablauf (build-mac.js - Mac)
+
+```
+1. 📁 Prepare directories
+   └── Clean old build-output & app-content
+
+2. 📦 Copy Electron
+   └── node_modules/electron/dist → build-output
+
+3. 📋 Prepare app content
+   ├── backend/dist → app-content/backend/dist
+   ├── process/dist → app-content/process/dist
+   ├── process/node_modules → app-content/process/node_modules
+   ├── ui/dist → app-content/ui/dist
+   └── package.json → app-content/package.json
+
+4. 📂 Copy app folder
+   └── app-content → build-output/Electron.app/Contents/Resources/app
+
+5. 📄 Copy version.txt
+   └── version/version.txt → build-output/Electron.app/Contents/Resources/version.txt
+
+6. 🏷️ Rename app bundle
+   └── Electron.app → nh-tools.app
+
+7. 🏷️ Rename executable
+   └── Contents/MacOS/Electron → Contents/MacOS/nh-tools
+
+8. 📝 Update Info.plist
+   └── CFBundleExecutable, CFBundleName, CFBundleDisplayName → nh-tools
+
+9. ✅ Done!
 ```
 
 ## 💡 Vorteile: Ohne ASAR vs. Mit ASAR
