@@ -796,6 +796,76 @@ export class Commander extends LitElement {
     this.viewerFile = null
   }
 
+  viewNextImage() {
+    if (!this.viewerFile) return
+
+    const pane = this.getActivePane()
+    const currentPath = this.viewerFile.path
+
+    // Find current file index
+    const currentIndex = pane.items.findIndex(
+      (item) => item.path === currentPath,
+    )
+    if (currentIndex === -1) return
+
+    // Find next image file
+    for (let i = currentIndex + 1; i < pane.items.length; i++) {
+      const item = pane.items[i]
+      if (item.isFile && this.isImageFile(item.path)) {
+        this.viewFile(item.path)
+        // Update focused index
+        this.updateActivePane({ focusedIndex: i })
+        return
+      }
+    }
+
+    // Wrap around to beginning
+    for (let i = 0; i < currentIndex; i++) {
+      const item = pane.items[i]
+      if (item.isFile && this.isImageFile(item.path)) {
+        this.viewFile(item.path)
+        // Update focused index
+        this.updateActivePane({ focusedIndex: i })
+        return
+      }
+    }
+  }
+
+  viewPreviousImage() {
+    if (!this.viewerFile) return
+
+    const pane = this.getActivePane()
+    const currentPath = this.viewerFile.path
+
+    // Find current file index
+    const currentIndex = pane.items.findIndex(
+      (item) => item.path === currentPath,
+    )
+    if (currentIndex === -1) return
+
+    // Find previous image file
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const item = pane.items[i]
+      if (item.isFile && this.isImageFile(item.path)) {
+        this.viewFile(item.path)
+        // Update focused index
+        this.updateActivePane({ focusedIndex: i })
+        return
+      }
+    }
+
+    // Wrap around to end
+    for (let i = pane.items.length - 1; i > currentIndex; i--) {
+      const item = pane.items[i]
+      if (item.isFile && this.isImageFile(item.path)) {
+        this.viewFile(item.path)
+        // Update focused index
+        this.updateActivePane({ focusedIndex: i })
+        return
+      }
+    }
+  }
+
   handleGlobalKeydown(event: KeyboardEvent) {
     // Handle ESC for dialogs first
     if (event.key === 'Escape') {
@@ -810,6 +880,20 @@ export class Commander extends LitElement {
       }
       if (this.showDriveSelector) {
         this.closeDriveSelector()
+        return
+      }
+    }
+
+    // Handle arrow keys in image viewer
+    if (this.viewerFile && this.viewerFile.isImage) {
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        this.viewNextImage()
+        return
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        this.viewPreviousImage()
         return
       }
     }
