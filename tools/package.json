@@ -11,6 +11,6 @@
   "dependencies": {
     "fs-extra": "^11.2.0",
     "png-to-ico": "^2.1.8",
-    "rcedit": "^4.0.2"
+    "rcedit": "^5.0.2"
   }
 }
