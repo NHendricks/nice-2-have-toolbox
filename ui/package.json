@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@vaadin/router": "^2.0.0",
+    "diff": "^8.0.3",
     "lit": "^3.3.1",
     "lit-html": "^3.3.1"
   }

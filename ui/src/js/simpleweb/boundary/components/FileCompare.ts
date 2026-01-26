@@ -1,3 +1,4 @@
+import { diffLines, diffWords, type ChangeObject } from 'diff'
 import { LitElement, css, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import './SimpleDialog'
@@ -92,15 +93,21 @@ export class FileCompare extends LitElement {
       color: #0ea5e9;
       font-weight: bold;
     }
+
+    .inline-add {
+      background-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .inline-del {
+      background-color: rgba(239, 68, 68, 0.2);
+    }
   `
 
   /* ---------- Inputs ---------- */
-
   @property() leftPath = ''
   @property() rightPath = ''
 
   /* ---------- State ---------- */
-
   @property() leftContent = ''
   @property() rightContent = ''
 
@@ -115,9 +122,9 @@ export class FileCompare extends LitElement {
 
   private diffLines: number[] = []
   private currentDiff = 0
+  private lineDiffMap: { left: string; right: string; changed: boolean }[] = []
 
   /* ---------- Lifecycle ---------- */
-
   connectedCallback() {
     super.connectedCallback()
     window.addEventListener('keydown', this.onKeyDown)
@@ -137,7 +144,6 @@ export class FileCompare extends LitElement {
   }
 
   /* ---------- File loading ---------- */
-
   async loadFiles() {
     if (!this.leftPath || !this.rightPath) return
 
@@ -171,19 +177,37 @@ export class FileCompare extends LitElement {
   }
 
   /* ---------- Diff logic ---------- */
-
   computeDiffs() {
-    const l = this.leftContent.split('\n')
-    const r = this.rightContent.split('\n')
+    const l = this.leftContent
+    const r = this.rightContent
+
+    const changes: ChangeObject<string>[] = diffLines(l, r)
 
     this.diffLines = []
-    const max = Math.max(l.length, r.length)
+    this.lineDiffMap = []
 
-    for (let i = 0; i < max; i++) {
-      if ((l[i] ?? '') !== (r[i] ?? '')) {
-        this.diffLines.push(i + 1)
+    let lineNum = 1
+    changes.forEach((change) => {
+      const lines = change.value.split('\n')
+      if (lines[lines.length - 1] === '') lines.pop()
+
+      if (change.added || change.removed) {
+        lines.forEach((line) => {
+          this.lineDiffMap.push({
+            left: change.removed ? line : '',
+            right: change.added ? line : '',
+            changed: true,
+          })
+          this.diffLines.push(lineNum)
+          lineNum++
+        })
+      } else {
+        lines.forEach((line) => {
+          this.lineDiffMap.push({ left: line, right: line, changed: false })
+        })
+        lineNum += lines.length
       }
-    }
+    })
   }
 
   scrollToDiff(index: number) {
@@ -214,7 +238,6 @@ export class FileCompare extends LitElement {
   }
 
   /* ---------- Keyboard ---------- */
-
   onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') this.close()
     if (e.key === 'n' || e.key === 'ArrowDown') this.nextDiff()
@@ -231,43 +254,41 @@ export class FileCompare extends LitElement {
   }
 
   /* ---------- Render helpers ---------- */
-
   renderSide() {
-    const l = this.leftContent.split('\n')
-    const r = this.rightContent.split('\n')
-    const max = Math.max(l.length, r.length)
-
-    const rows = Array.from({ length: max }, (_, i) => ({
-      i,
-      left: l[i] ?? '',
-      right: r[i] ?? '',
-      changed: (l[i] ?? '') !== (r[i] ?? ''),
-    }))
-
-    const visible = this.showOnlyDiffs ? rows.filter((r) => r.changed) : rows
+    const visible = this.showOnlyDiffs
+      ? this.lineDiffMap.filter((r) => r.changed)
+      : this.lineDiffMap
 
     return html`
       <div class="compare-body">
         <div class="file">
           ${visible.map(
-            (row) => html`
+            (row, i) => html`
               <span
                 class="line ${row.changed ? 'modified' : ''}"
-                data-line=${row.i + 1}
+                data-line=${i + 1}
               >
-                <span class="num">${row.i + 1}</span>${row.left || ' '}
+                <span class="num">${i + 1}</span>${this.renderInlineDiff(
+                  row.left,
+                  row.right,
+                  'left',
+                )}
               </span>
             `,
           )}
         </div>
         <div class="file">
           ${visible.map(
-            (row) => html`
+            (row, i) => html`
               <span
                 class="line ${row.changed ? 'modified' : ''}"
-                data-line=${row.i + 1}
+                data-line=${i + 1}
               >
-                <span class="num">${row.i + 1}</span>${row.right || ' '}
+                <span class="num">${i + 1}</span>${this.renderInlineDiff(
+                  row.left,
+                  row.right,
+                  'right',
+                )}
               </span>
             `,
           )}
@@ -276,30 +297,48 @@ export class FileCompare extends LitElement {
     `
   }
 
+  renderInlineDiff(left: string, right: string, side: 'left' | 'right') {
+    if (!left && !right) return html``
+    if (left === right) return html`${left}`
+
+    const diffs =
+      side === 'left' ? diffWords(left, right) : diffWords(right, left)
+
+    return html`${diffs.map((part) =>
+      part.added
+        ? html`<span class="inline-add">${part.value}</span>`
+        : part.removed
+          ? html`<span class="inline-del">${part.value}</span>`
+          : html`${part.value}`,
+    )}`
+  }
+
   renderUnified() {
-    const l = this.leftContent.split('\n')
-    const r = this.rightContent.split('\n')
-    const max = Math.max(l.length, r.length)
+    const changes: ChangeObject<string>[] = diffLines(
+      this.leftContent,
+      this.rightContent,
+    )
 
     return html`
       <div class="unified">
         <div class="hdr">--- ${this.leftPath}</div>
         <div class="hdr">+++ ${this.rightPath}</div>
-        ${Array.from({ length: max }, (_, i) => {
-          if ((l[i] ?? '') !== (r[i] ?? '')) {
-            return html`
-              ${l[i] ? html`<div class="del">-${l[i]}</div>` : ''}
-              ${r[i] ? html`<div class="add">+${r[i]}</div>` : ''}
-            `
-          }
-          return this.showOnlyDiffs ? null : html`<div>${l[i] ?? ''}</div>`
+        ${changes.map((change) => {
+          const lines = change.value.split('\n')
+          if (lines[lines.length - 1] === '') lines.pop()
+
+          return lines.map((line) => {
+            if (change.added) return html`<div class="add">+${line}</div>`
+            if (change.removed) return html`<div class="del">-${line}</div>`
+            if (this.showOnlyDiffs) return null
+            return html`<div>${line}</div>`
+          })
         })}
       </div>
     `
   }
 
   /* ---------- Render ---------- */
-
   render() {
     return html`
       <simple-dialog .open=${true} title="📊 Dateivergleich" width="95%">
