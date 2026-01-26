@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit'
 import { property } from 'lit/decorators.js'
+import './FileCompare'
 import './SimpleDialog'
 
 export class CompareDialog extends LitElement {
@@ -109,6 +110,14 @@ export class CompareDialog extends LitElement {
 
     .compare-table tbody tr:hover {
       background: #1e293b;
+    }
+
+    .compare-table tbody tr.clickable {
+      cursor: pointer;
+    }
+
+    .compare-table tbody tr.clickable:hover {
+      background: #1e4d5b;
     }
 
     .compare-table td {
@@ -343,6 +352,9 @@ export class CompareDialog extends LitElement {
   @property({ type: Boolean })
   showRegexDialog = false
 
+  @property({ type: Object })
+  fileCompareData: { leftPath: string; rightPath: string } | null = null
+
   formatFileSize(bytes: number): string {
     if (bytes === 0) return ''
     const sizes = ['B', 'KB', 'MB', 'GB']
@@ -490,6 +502,26 @@ export class CompareDialog extends LitElement {
     )
   }
 
+  compareFiles(item: any) {
+    // Only compare if both files exist and are not directories
+    if (
+      item.status === 'different' &&
+      item.leftFile &&
+      item.rightFile &&
+      !item.leftFile.isDirectory &&
+      !item.rightFile.isDirectory
+    ) {
+      this.fileCompareData = {
+        leftPath: item.leftFile.path,
+        rightPath: item.rightFile.path,
+      }
+    }
+  }
+
+  closeFileCompare() {
+    this.fileCompareData = null
+  }
+
   render() {
     if (!this.result) return html``
 
@@ -614,7 +646,23 @@ export class CompareDialog extends LitElement {
                     <tbody>
                       ${filteredItems.map(
                         (item) => html`
-                          <tr>
+                          <tr
+                            class="${item.status === 'different' &&
+                            item.leftFile &&
+                            item.rightFile &&
+                            !item.leftFile.isDirectory &&
+                            !item.rightFile.isDirectory
+                              ? 'clickable'
+                              : ''}"
+                            @click=${() => this.compareFiles(item)}
+                            title="${item.status === 'different' &&
+                            item.leftFile &&
+                            item.rightFile &&
+                            !item.leftFile.isDirectory &&
+                            !item.rightFile.isDirectory
+                              ? 'Klicken zum Vergleichen'
+                              : ''}"
+                          >
                             <td>
                               ${item.leftFile
                                 ? html`
@@ -815,6 +863,15 @@ export class CompareDialog extends LitElement {
                 </button>
               </div>
             </simple-dialog>
+          `
+        : ''}
+      ${this.fileCompareData
+        ? html`
+            <file-compare
+              .leftPath=${this.fileCompareData.leftPath}
+              .rightPath=${this.fileCompareData.rightPath}
+              @close=${this.closeFileCompare}
+            ></file-compare>
           `
         : ''}
     `
