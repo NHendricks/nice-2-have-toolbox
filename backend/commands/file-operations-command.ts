@@ -736,11 +736,9 @@ export class FileOperationsCommand implements ICommand {
           reason: 'type',
         });
       } else {
-        // Both are files - compare size and modification time
-        if (
-          leftFile.size !== rightFile.size ||
-          leftFile.modified !== rightFile.modified
-        ) {
+        // Both are files - compare size first
+        if (leftFile.size !== rightFile.size) {
+          // Different sizes = definitely different
           different.push({
             path: relPath,
             leftPath: leftFile.fullPath,
@@ -749,10 +747,10 @@ export class FileOperationsCommand implements ICommand {
             rightSize: rightFile.size,
             leftModified: leftFile.modified,
             rightModified: rightFile.modified,
-            reason:
-              leftFile.size !== rightFile.size ? 'size' : 'modification-time',
+            reason: 'size',
           });
-        } else {
+        } else if (leftFile.modified === rightFile.modified) {
+          // Same size and time = identical
           identical.push({
             path: relPath,
             leftPath: leftFile.fullPath,
@@ -761,6 +759,34 @@ export class FileOperationsCommand implements ICommand {
             modified: leftFile.modified,
             isDirectory: false,
           });
+        } else {
+          // Same size but different time - compare content
+          const leftContent = fs.readFileSync(leftFile.fullPath);
+          const rightContent = fs.readFileSync(rightFile.fullPath);
+
+          if (leftContent.equals(rightContent)) {
+            // Content is identical despite different timestamps
+            identical.push({
+              path: relPath,
+              leftPath: leftFile.fullPath,
+              rightPath: rightFile.fullPath,
+              size: leftFile.size,
+              modified: leftFile.modified,
+              isDirectory: false,
+            });
+          } else {
+            // Content is different
+            different.push({
+              path: relPath,
+              leftPath: leftFile.fullPath,
+              rightPath: rightFile.fullPath,
+              leftSize: leftFile.size,
+              rightSize: rightFile.size,
+              leftModified: leftFile.modified,
+              rightModified: rightFile.modified,
+              reason: 'content',
+            });
+          }
         }
       }
     }
