@@ -23,6 +23,7 @@
   "dependencies": {
     "png-to-ico": "^3.0.1",
     "rcedit": "^5.0.2",
-    "rifraf": "^2.0.3"
+    "rifraf": "^2.0.3",
+    "rimraf": "^6.1.2"
   }
 }
