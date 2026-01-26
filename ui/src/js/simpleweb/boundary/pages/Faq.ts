@@ -45,15 +45,21 @@ export class Faq extends LitElement {
         <h1>FAQ</h1>
         <h2>Simplify all of your utility tasks in 1 app</h2>
 
-        <p>Nutze cline in vscode.</p>
+        <p>Use cline in vscode.</p>
         <p>
-          Erstelle einen command im backend Projekt. Cline (KI Claude-Sonnet)
-          wird die vorhandenen Strukturen erkennen und analoge Commands bauen.
+          Create a command in the backend project. Cline (KI Claude-Sonnet) will
+          see the existing structures and build it accordingly.
         </p>
-        <p>Das UI zeigt automatisch alle Tasks an.</p>
-        <p>Teste die Tasks eigentändig über die cmdline-Funktionalität.</p>
-        <p>Lies die readmes und schau in den Code.</p>
-        <p>Falls nötig, lass Dir komplexe UI Seite erstelle über Claude.</p>
+        <p>
+          In the UI use the menu at the top right corner to test your backend
+          services separately. If something is missing extends the help of the
+          backend.
+        </p>
+        <p>Read the readmes and look at the code.</p>
+        <p>
+          Complex UI is cheap to generate using AI, fixing is much more
+          expensive.
+        </p>
       </div>
     `
   }
