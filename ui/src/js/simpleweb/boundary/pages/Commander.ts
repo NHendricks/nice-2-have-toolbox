@@ -19,6 +19,8 @@ interface PaneState {
   items: FileItem[]
   selectedIndices: Set<number>
   focusedIndex: number
+  filter: string
+  filterActive: boolean
 }
 
 export class Commander extends LitElement {
@@ -230,6 +232,37 @@ export class Commander extends LitElement {
       font-size: 0.85rem;
       color: #94a3b8;
       text-align: right;
+    }
+
+    .filter-bar {
+      padding: 0.5rem 1rem;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-input {
+      flex: 1;
+      padding: 0.5rem;
+      background: #0f172a;
+      border: 2px solid #0ea5e9;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      border-radius: 4px;
+    }
+
+    .filter-input:focus {
+      outline: none;
+      border-color: #fbbf24;
+    }
+
+    .filter-label {
+      color: #0ea5e9;
+      font-size: 0.85rem;
+      font-weight: bold;
     }
 
     .function-bar {
@@ -501,6 +534,8 @@ export class Commander extends LitElement {
     items: [],
     selectedIndices: new Set(),
     focusedIndex: 0,
+    filter: '',
+    filterActive: false,
   }
 
   @property({ type: Object })
@@ -509,6 +544,8 @@ export class Commander extends LitElement {
     items: [],
     selectedIndices: new Set(),
     focusedIndex: 0,
+    filter: '',
+    filterActive: false,
   }
 
   @property({ type: String })
@@ -842,6 +879,8 @@ export class Commander extends LitElement {
             items,
             selectedIndices: new Set(),
             focusedIndex: focusedIndex,
+            filter: this.leftPane.filter,
+            filterActive: this.leftPane.filterActive,
           }
           // Save to localStorage
           localStorage.setItem('commander-left-path', data.path)
@@ -851,6 +890,8 @@ export class Commander extends LitElement {
             items,
             selectedIndices: new Set(),
             focusedIndex: focusedIndex,
+            filter: this.rightPane.filter,
+            filterActive: this.rightPane.filterActive,
           }
           // Save to localStorage
           localStorage.setItem('commander-right-path', data.path)
@@ -1189,6 +1230,12 @@ export class Commander extends LitElement {
         this.cancelCommand()
         return
       }
+      // Clear filter if active
+      const pane = this.getActivePane()
+      if (pane.filterActive) {
+        this.updateActivePane({ filter: '', filterActive: false })
+        return
+      }
     }
 
     // Handle ENTER for delete dialog
@@ -1235,7 +1282,7 @@ export class Commander extends LitElement {
 
     const pane = this.getActivePane()
 
-    // Handle Alt+1 and Alt+2 for drive selection
+    // Handle Alt+1 and Alt+2 for drive selection, Alt+F for filter
     if (event.altKey) {
       if (event.key === '1') {
         event.preventDefault()
@@ -1244,6 +1291,22 @@ export class Commander extends LitElement {
       } else if (event.key === '2') {
         event.preventDefault()
         this.handlePathClick('right')
+        return
+      } else if (event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        const pane = this.getActivePane()
+        this.updateActivePane({ filterActive: !pane.filterActive })
+        // Focus the filter input after a short delay
+        if (!pane.filterActive) {
+          setTimeout(() => {
+            const filterInput = this.shadowRoot?.querySelector(
+              '.pane.active .filter-input',
+            ) as HTMLInputElement
+            if (filterInput) {
+              filterInput.focus()
+            }
+          }, 100)
+        }
         return
       }
     }
@@ -1906,7 +1969,11 @@ export class Commander extends LitElement {
             </div>
           </div>
           <div class="help-section">
-            <h3>common</h3>
+            <h3>other</h3>
+            <div class="help-item">
+              <div class="help-key">ALT+f</div>
+              <div class="help-description">filter files</div>
+            </div>
             <div class="help-item">
               <div class="help-key">F1</div>
               <div class="help-description">show help</div>
@@ -2040,6 +2107,14 @@ export class Commander extends LitElement {
   renderPane(side: 'left' | 'right', pane: PaneState) {
     const isActive = this.activePane === side
 
+    // Filter items based on filter text
+    const filteredItems =
+      pane.filterActive && pane.filter
+        ? pane.items.filter((item) =>
+            item.name.toLowerCase().includes(pane.filter.toLowerCase()),
+          )
+        : pane.items
+
     return html`
       <div
         class="pane ${isActive ? 'active' : ''}"
@@ -2054,10 +2129,38 @@ export class Commander extends LitElement {
           }}
         >
           <span class="path-display">${pane.currentPath}</span>
-          <span class="item-count">${pane.items.length} Items</span>
+          <span class="item-count">
+            ${filteredItems.length}${pane.filterActive && pane.filter
+              ? ` / ${pane.items.length}`
+              : ''}
+            Items
+          </span>
         </div>
+
+        ${pane.filterActive
+          ? html`
+              <div class="filter-bar">
+                <span class="filter-label">🔍 Filter:</span>
+                <input
+                  type="text"
+                  class="filter-input"
+                  placeholder="Type to filter files..."
+                  .value=${pane.filter}
+                  @input=${(e: Event) => {
+                    if (this.activePane === side) {
+                      this.updateActivePane({
+                        filter: (e.target as HTMLInputElement).value,
+                      })
+                    }
+                  }}
+                  @click=${(e: Event) => e.stopPropagation()}
+                />
+              </div>
+            `
+          : ''}
+
         <div class="file-list">
-          ${pane.items.map(
+          ${filteredItems.map(
             (item, index) => html`
               <div
                 class="file-item ${pane.focusedIndex === index

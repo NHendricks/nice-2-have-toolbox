@@ -14,6 +14,9 @@
 - add regex filter for compare directory function
 - use smaller font for files
 - add icon to app
+- add file filter using ALT+f
+- switch to english in UI
+- add diff feature in directory compare dialog
 
 ### v1.0.0 (25.01.2026)
 

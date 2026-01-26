@@ -1,5 +1,4 @@
 commander:
-- english
 - fonts / colors
 - ALT+filter for visible files
 - prefs export / import
