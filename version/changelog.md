@@ -2,7 +2,7 @@
 
 ## changelog
 
-### Coming soon
+### v1.1.0 (26.01.2026)
 
 - navigate to parent folder automatically if folder does not exist (any more)
 - execute a command in current directory
