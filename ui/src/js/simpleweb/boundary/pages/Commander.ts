@@ -1386,6 +1386,10 @@ export class Commander extends LitElement {
         event.preventDefault()
         this.handleF8()
         break
+      case 'Delete':
+        event.preventDefault()
+        this.handleF8()
+        break
 
       case 'F9':
         event.preventDefault()
@@ -2115,7 +2119,11 @@ export class Commander extends LitElement {
             <h3>files</h3>
             <div class="help-item">
               <div class="help-key">F3</div>
-              <div class="help-description">file/image</div>
+              <div class="help-description">show file/image</div>
+            </div>
+            <div class="help-item">
+              <div class="help-key">F8 / Delete</div>
+              <div class="help-description">deletes file</div>
             </div>
             <div class="help-item">
               <div class="help-key">← / →</div>
