@@ -35,4 +35,11 @@ export class CommandHandler {
   listCommands(): string[] {
     return this.registry.listCommands();
   }
+
+  /**
+   * Get a command instance by name
+   */
+  getCommand(toolname: string): any {
+    return this.registry.getCommand(toolname);
+  }
 }

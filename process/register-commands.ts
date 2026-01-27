@@ -46,6 +46,31 @@ export function registerCommands(ipcMain: any, version: string) {
         const { CommandHandler } = require(commandHandlerPath);
         const handler = new CommandHandler();
 
+        // Get command instance for progress callback setup
+        const command = handler.getCommand(toolname);
+
+        // If it's a file-operations command with zip operation, set up progress callback
+        if (
+          toolname === 'file-operations' &&
+          params.operation === 'zip' &&
+          command
+        ) {
+          // Set up progress callback to send events to renderer
+          (command as any).setProgressCallback?.(
+            (current: number, total: number, fileName: string) => {
+              console.log(
+                `Sending zip-progress: ${current}/${total} - ${fileName}`,
+              );
+              event.sender?.send('zip-progress', {
+                current,
+                total,
+                fileName,
+                percentage: Math.round((current / total) * 100),
+              });
+            },
+          );
+        }
+
         // Execute command directly
         const result = await handler.execute(toolname, params);
 

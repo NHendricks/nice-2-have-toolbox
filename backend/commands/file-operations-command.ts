@@ -21,6 +21,18 @@ const unlink = promisify(fs.unlink);
 const execPromise = promisify(exec);
 
 export class FileOperationsCommand implements ICommand {
+  private progressCallback?: (
+    current: number,
+    total: number,
+    fileName: string,
+  ) => void;
+
+  setProgressCallback(
+    callback: (current: number, total: number, fileName: string) => void,
+  ) {
+    this.progressCallback = callback;
+  }
+
   async execute(params: any): Promise<any> {
     const {
       operation,
@@ -59,7 +71,11 @@ export class FileOperationsCommand implements ICommand {
             params.recursive || false,
           );
         case 'zip':
-          return await this.zipFiles(params.files, params.zipFilePath);
+          return await this.zipFiles(
+            params.files,
+            params.zipFilePath,
+            this.progressCallback,
+          );
         default:
           return {
             success: false,
@@ -1074,7 +1090,15 @@ export class FileOperationsCommand implements ICommand {
   /**
    * Zip files or folders into a ZIP archive
    */
-  private async zipFiles(files: string[], zipFilePath: string): Promise<any> {
+  private async zipFiles(
+    files: string[],
+    zipFilePath: string,
+    progressCallback?: (
+      current: number,
+      total: number,
+      fileName: string,
+    ) => void,
+  ): Promise<any> {
     if (!files || files.length === 0) {
       throw new Error('files array is required for zip operation');
     }
@@ -1092,8 +1116,10 @@ export class FileOperationsCommand implements ICommand {
         : new AdmZip();
 
       let addedCount = 0;
+      const totalFiles = files.length;
 
-      for (const filePath of files) {
+      for (let i = 0; i < files.length; i++) {
+        const filePath = files[i];
         const absolutePath = path.resolve(filePath);
 
         if (!fs.existsSync(absolutePath)) {
@@ -1104,6 +1130,11 @@ export class FileOperationsCommand implements ICommand {
         const stats = await stat(absolutePath);
         const fileName = path.basename(absolutePath);
 
+        // Report progress
+        if (progressCallback) {
+          progressCallback(i + 1, totalFiles, fileName);
+        }
+
         if (stats.isDirectory()) {
           // Add entire directory
           zip.addLocalFolder(absolutePath, fileName);
@@ -1113,10 +1144,18 @@ export class FileOperationsCommand implements ICommand {
           zip.addLocalFile(absolutePath);
           addedCount++;
         }
+
+        // Small delay to allow UI updates
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       if (addedCount === 0) {
         throw new Error('No valid files or directories to add to ZIP');
+      }
+
+      // Report final progress before writing
+      if (progressCallback) {
+        progressCallback(totalFiles, totalFiles, 'Writing ZIP file...');
       }
 
       // Write the ZIP file

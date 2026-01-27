@@ -619,6 +619,14 @@ export class Commander extends LitElement {
   @property({ type: Object })
   zipDialog: { files: string[]; zipFileName: string } | null = null
 
+  @property({ type: Object })
+  zipProgress: {
+    current: number
+    total: number
+    fileName: string
+    percentage: number
+  } | null = null
+
   fileIcons: Record<string, string> = {
     zip: '📦',
     exe: '🧩',
@@ -677,6 +685,14 @@ export class Commander extends LitElement {
 
     // Add global keyboard listeners
     window.addEventListener('keydown', this.handleGlobalKeydown.bind(this))
+
+    // Add IPC listener for zip progress
+    ;(window as any).electron.ipcRenderer.on('zip-progress', (data: any) => {
+      console.log('Zip progress received:', data)
+      this.zipProgress = data
+      // Force UI update
+      this.requestUpdate()
+    })
   }
 
   loadFavorites() {
@@ -1621,6 +1637,9 @@ export class Commander extends LitElement {
     const zipFilePath = destPane.currentPath + separator + zipFileName
 
     try {
+      // Reset progress
+      this.zipProgress = null
+
       this.setStatus(`Zipping ${files.length} file(s)...`, 'normal')
       console.log('zip params:' + JSON.stringify(files))
 
@@ -1633,6 +1652,9 @@ export class Commander extends LitElement {
           zipFilePath: zipFilePath,
         },
       )
+
+      // Clear progress
+      this.zipProgress = null
 
       if (response.success && response.data) {
         this.setStatus(
@@ -1653,11 +1675,13 @@ export class Commander extends LitElement {
     } catch (error: any) {
       this.setStatus(`Error: ${error.message}`, 'error')
       this.zipDialog = null
+      this.zipProgress = null
     }
   }
 
   cancelZip() {
     this.zipDialog = null
+    this.zipProgress = null
   }
 
   handleF5() {
@@ -3187,22 +3211,24 @@ export class Commander extends LitElement {
     const { files, zipFileName } = this.zipDialog
     const destPane = this.getInactivePane()
 
-    // Auto-focus input field when dialog opens
-    setTimeout(() => {
-      const input = this.shadowRoot?.querySelector(
-        '.zip-input',
-      ) as HTMLInputElement
-      if (input) {
-        input.focus()
-      }
-    }, 100)
+    // Auto-focus input field when dialog opens (only if not in progress)
+    if (!this.zipProgress) {
+      setTimeout(() => {
+        const input = this.shadowRoot?.querySelector(
+          '.zip-input',
+        ) as HTMLInputElement
+        if (input) {
+          input.focus()
+        }
+      }, 100)
+    }
 
     return html`
       <simple-dialog
         .open=${true}
         .title=${'📦 create zip'}
         .width=${'600px'}
-        @dialog-close=${this.cancelZip}
+        @dialog-close=${this.zipProgress ? null : this.cancelZip}
       >
         <div style="padding: 1rem;">
           <div class="input-field">
@@ -3214,6 +3240,7 @@ export class Commander extends LitElement {
               class="zip-input"
               .value=${zipFileName}
               placeholder="Enter ZIP filename..."
+              .disabled=${this.zipProgress !== null}
               @input=${(e: Event) =>
                 this.updateZipFileName((e.target as HTMLInputElement).value)}
               @keydown=${(e: KeyboardEvent) => {
@@ -3229,23 +3256,77 @@ export class Commander extends LitElement {
               }}
             />
           </div>
-          <div style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;">
-            ${files.map((f) => html`<div>• ${f.split(/[/\\]/).pop()}</div>`)}
-          </div>
-          <div
-            style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
-          >
-            💡 Tip: Select files/folders and press F12 to create a ZIP archive
-            in the opposite pane.
-          </div>
+
+          ${this.zipProgress
+            ? html`
+                <div
+                  style="margin-top: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 2px solid #0ea5e9;"
+                >
+                  <div
+                    style="margin-bottom: 0.5rem; color: #0ea5e9; font-weight: bold; font-size: 0.9rem;"
+                  >
+                    ⏳ Zipping... ${this.zipProgress.percentage}%
+                  </div>
+                  <div
+                    style="width: 100%; height: 24px; background: #0f172a; border-radius: 4px; overflow: hidden; margin-bottom: 0.75rem;"
+                  >
+                    <div
+                      style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #06b6d4); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem; width: ${this
+                        .zipProgress.percentage}%;"
+                    >
+                      ${this.zipProgress.percentage}%
+                    </div>
+                  </div>
+                  <div
+                    style="color: #cbd5e1; font-size: 0.85rem; display: flex; justify-content: space-between;"
+                  >
+                    <span
+                      >📁 ${this.zipProgress.current} /
+                      ${this.zipProgress.total}</span
+                    >
+                  </div>
+                  <div
+                    style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                  >
+                    Current: ${this.zipProgress.fileName}
+                  </div>
+                </div>
+              `
+            : html`
+                <div
+                  style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;"
+                >
+                  ${files.map(
+                    (f) => html`<div>• ${f.split(/[/\\]/).pop()}</div>`,
+                  )}
+                </div>
+                <div
+                  style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
+                >
+                  💡 Tip: Select files/folders and press F12 to create a ZIP
+                  archive in the opposite pane.
+                </div>
+              `}
         </div>
         <div slot="footer" class="dialog-buttons">
-          <button class="btn-cancel" @click=${this.cancelZip}>
-            cancel (ESC)
-          </button>
-          <button class="btn-confirm" @click=${this.executeZip}>
-            create ZIP (ENTER)
-          </button>
+          ${!this.zipProgress
+            ? html`
+                <button class="btn-cancel" @click=${this.cancelZip}>
+                  cancel (ESC)
+                </button>
+                <button class="btn-confirm" @click=${this.executeZip}>
+                  create ZIP (ENTER)
+                </button>
+              `
+            : html`
+                <button
+                  class="btn-cancel"
+                  style="opacity: 0.5; cursor: not-allowed;"
+                  disabled
+                >
+                  Please wait...
+                </button>
+              `}
         </div>
       </simple-dialog>
     `
