@@ -616,6 +616,9 @@ export class Commander extends LitElement {
   renameDialog: { filePath: string; oldName: string; newName: string } | null =
     null
 
+  @property({ type: Object })
+  zipDialog: { files: string[]; zipFileName: string } | null = null
+
   fileIcons: Record<string, string> = {
     zip: '📦',
     exe: '🧩',
@@ -1276,6 +1279,10 @@ export class Commander extends LitElement {
         this.cancelRename()
         return
       }
+      if (this.zipDialog) {
+        this.cancelZip()
+        return
+      }
       // Clear filter if active
       const pane = this.getActivePane()
       if (pane.filterActive) {
@@ -1394,6 +1401,11 @@ export class Commander extends LitElement {
       case 'F3':
         event.preventDefault()
         this.handleF3()
+        break
+
+      case 'F4':
+        event.preventDefault()
+        this.handleF4()
         break
 
       case 'F5':
@@ -1536,6 +1548,91 @@ export class Commander extends LitElement {
     if (item && item.isFile) {
       this.viewFile(item.path)
     }
+  }
+
+  handleF4() {
+    const selectedFiles = this.getSelectedFiles()
+    if (selectedFiles.length > 0) {
+      const destPane = this.getInactivePane()
+      // Generate default ZIP filename based on selected file/folder
+      let defaultName: string
+      if (selectedFiles.length === 1) {
+        // Single file/folder: use its name
+        const fileName = selectedFiles[0].split(/[/\\]/).pop() || 'archive'
+        // Remove extension if it has one
+        const nameWithoutExt = fileName.includes('.')
+          ? fileName.substring(0, fileName.lastIndexOf('.'))
+          : fileName
+        defaultName = `${nameWithoutExt}.zip`
+      } else {
+        // Multiple files: use timestamp
+        const now = new Date()
+        const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+        defaultName = `archive_${timestamp}.zip`
+      }
+      this.zipDialog = {
+        files: selectedFiles,
+        zipFileName: defaultName,
+      }
+    } else {
+      this.setStatus('No files selected', 'error')
+    }
+  }
+
+  updateZipFileName(value: string) {
+    if (this.zipDialog) {
+      this.zipDialog = {
+        ...this.zipDialog,
+        zipFileName: value,
+      }
+    }
+  }
+
+  async executeZip() {
+    if (!this.zipDialog || !this.zipDialog.zipFileName.trim()) return
+
+    const { files, zipFileName } = this.zipDialog
+    const destPane = this.getInactivePane()
+    const separator = destPane.currentPath.includes('\\') ? '\\' : '/'
+    const zipFilePath = destPane.currentPath + separator + zipFileName
+
+    try {
+      this.setStatus(`Zipping ${files.length} file(s)...`, 'normal')
+
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'zip',
+          files: files,
+          zipFilePath: zipFilePath,
+        },
+      )
+
+      if (response.success && response.data) {
+        this.setStatus(
+          `Successfully zipped ${response.data.filesAdded} file(s) to ${zipFileName}`,
+          'success',
+        )
+
+        // Refresh inactive pane to show the new ZIP file
+        await this.loadDirectory(
+          this.activePane === 'left' ? 'right' : 'left',
+          destPane.currentPath,
+        )
+      } else {
+        this.setStatus(`Error zipping: ${response.error}`, 'error')
+      }
+
+      this.zipDialog = null
+    } catch (error: any) {
+      this.setStatus(`Error: ${error.message}`, 'error')
+      this.zipDialog = null
+    }
+  }
+
+  cancelZip() {
+    this.zipDialog = null
   }
 
   handleF5() {
@@ -2221,6 +2318,10 @@ export class Commander extends LitElement {
             <span class="function-key-label">F3</span>
             <span class="function-key-action">view</span>
           </div>
+          <div class="function-key" @click=${() => this.handleF4()}>
+            <span class="function-key-label">F4</span>
+            <span class="function-key-action">📦 zip</span>
+          </div>
           <div class="function-key" @click=${() => this.handleF5()}>
             <span class="function-key-label">F5</span>
             <span class="function-key-action">copy</span>
@@ -2262,6 +2363,7 @@ export class Commander extends LitElement {
         ${this.commandDialog ? this.renderCommandDialog() : ''}
         ${this.quickLaunchDialog ? this.renderQuickLaunchDialog() : ''}
         ${this.renameDialog ? this.renderRenameDialog() : ''}
+        ${this.zipDialog ? this.renderZipDialog() : ''}
         ${this.compareDialog
           ? html`<compare-dialog
               .result=${this.compareDialog.result}
@@ -3044,6 +3146,77 @@ export class Commander extends LitElement {
           </button>
           <button class="btn-confirm" @click=${this.executeRename}>
             rename (ENTER)
+          </button>
+        </div>
+      </simple-dialog>
+    `
+  }
+
+  renderZipDialog() {
+    if (!this.zipDialog) return ''
+
+    const { files, zipFileName } = this.zipDialog
+    const destPane = this.getInactivePane()
+
+    // Auto-focus input field when dialog opens
+    setTimeout(() => {
+      const input = this.shadowRoot?.querySelector(
+        '.zip-input',
+      ) as HTMLInputElement
+      if (input) {
+        input.focus()
+        input.select()
+      }
+    }, 100)
+
+    return html`
+      <simple-dialog
+        .open=${true}
+        .title=${'📦 create zip'}
+        .width=${'600px'}
+        @dialog-close=${this.cancelZip}
+      >
+        <div style="padding: 1rem;">
+          <div class="input-field">
+            <label
+              >Zip ${files.length} file(s) to: ${destPane.currentPath}</label
+            >
+            <input
+              type="text"
+              class="zip-input"
+              .value=${zipFileName}
+              placeholder="Enter ZIP filename..."
+              @input=${(e: Event) =>
+                this.updateZipFileName((e.target as HTMLInputElement).value)}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  this.executeZip()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  this.cancelZip()
+                }
+              }}
+            />
+          </div>
+          <div style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;">
+            ${files.map((f) => html`<div>• ${f.split(/[/\\]/).pop()}</div>`)}
+          </div>
+          <div
+            style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
+          >
+            💡 Tip: Select files/folders and press F4 to create a ZIP archive in
+            the opposite pane.
+          </div>
+        </div>
+        <div slot="footer" class="dialog-buttons">
+          <button class="btn-cancel" @click=${this.cancelZip}>
+            cancel (ESC)
+          </button>
+          <button class="btn-confirm" @click=${this.executeZip}>
+            create ZIP (ENTER)
           </button>
         </div>
       </simple-dialog>

@@ -57,6 +57,8 @@ export class FileOperationsCommand implements ICommand {
             params.rightPath,
             params.recursive || false,
           );
+        case 'zip':
+          return await this.zipFiles(params.files, params.zipFilePath);
         default:
           return {
             success: false,
@@ -115,11 +117,23 @@ export class FileOperationsCommand implements ICommand {
     // Import ZipHelper dynamically to avoid circular dependencies
     const { ZipHelper } = await import('./zip-helper.js');
 
-    // Check if this is a ZIP path
+    // Check if this is a ZIP path (with internal path)
     const zipPath = ZipHelper.parsePath(folderPath);
     if (zipPath.isZipPath) {
       // List ZIP contents
       return ZipHelper.listZipContents(zipPath.zipFile, zipPath.internalPath);
+    }
+
+    // Check if the path itself is a ZIP file (for initial navigation)
+    if (
+      folderPath.toLowerCase().endsWith('.zip') &&
+      fs.existsSync(folderPath)
+    ) {
+      const stats = await stat(folderPath);
+      if (stats.isFile()) {
+        // List root contents of the ZIP file
+        return ZipHelper.listZipContents(folderPath, '');
+      }
     }
 
     // Regular directory listing
@@ -1040,6 +1054,73 @@ export class FileOperationsCommand implements ICommand {
         exitCode: error.code,
         timestamp: new Date().toISOString(),
       };
+    }
+  }
+
+  /**
+   * Zip files or folders into a ZIP archive
+   */
+  private async zipFiles(files: string[], zipFilePath: string): Promise<any> {
+    if (!files || files.length === 0) {
+      throw new Error('files array is required for zip operation');
+    }
+    if (!zipFilePath) {
+      throw new Error('zipFilePath is required for zip operation');
+    }
+
+    const { ZipHelper } = await import('./zip-helper.js');
+    const AdmZip = (await import('adm-zip')).default;
+
+    try {
+      // Create or open the ZIP file
+      const zip = fs.existsSync(zipFilePath)
+        ? new AdmZip(zipFilePath)
+        : new AdmZip();
+
+      let addedCount = 0;
+
+      for (const filePath of files) {
+        const absolutePath = path.resolve(filePath);
+
+        if (!fs.existsSync(absolutePath)) {
+          console.warn(`Skipping non-existent path: ${absolutePath}`);
+          continue;
+        }
+
+        const stats = await stat(absolutePath);
+        const fileName = path.basename(absolutePath);
+
+        if (stats.isDirectory()) {
+          // Add entire directory
+          zip.addLocalFolder(absolutePath, fileName);
+          addedCount++;
+        } else if (stats.isFile()) {
+          // Add single file
+          zip.addLocalFile(absolutePath);
+          addedCount++;
+        }
+      }
+
+      if (addedCount === 0) {
+        throw new Error('No valid files or directories to add to ZIP');
+      }
+
+      // Write the ZIP file
+      zip.writeZip(zipFilePath);
+
+      const zipStats = await stat(zipFilePath);
+
+      return {
+        success: true,
+        operation: 'zip',
+        zipFile: zipFilePath,
+        filesAdded: addedCount,
+        totalFiles: files.length,
+        size: zipStats.size,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to create ZIP: ${error.message}`);
     }
   }
 

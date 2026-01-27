@@ -25,10 +25,11 @@ export class ZipHelper {
     // Look for .zip in the path
     const zipMatch = normalized.match(/^(.+\.zip)(\/(.*))?$/i);
 
-    if (zipMatch) {
+    // Only treat as ZIP path if there's an internal path (not just a .zip file)
+    if (zipMatch && zipMatch[3]) {
       return {
         zipFile: zipMatch[1].replace(/\//g, path.sep),
-        internalPath: zipMatch[3] || '',
+        internalPath: zipMatch[3],
         isZipPath: true,
       };
     }
