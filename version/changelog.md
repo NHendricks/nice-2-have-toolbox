@@ -6,6 +6,7 @@
 
 - pos1 und end should navigate to top, end
 - ENTER executes an executable
+- display own icons for files depending on extension
 
 ### v1.1.0 (26.01.2026)
 

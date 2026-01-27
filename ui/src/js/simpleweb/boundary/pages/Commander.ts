@@ -603,6 +603,29 @@ export class Commander extends LitElement {
   @property({ type: Boolean })
   compareWaiting = false
 
+  fileIcons: Record<string, string> = {
+    zip: '📦',
+    exe: '🧩',
+    dmg: '💿',
+    app: '🍎',
+    pdf: '📕',
+    md: '📝',
+    json: '🧱',
+    ts: '🟦',
+    js: '🟨',
+    html: '🌐',
+    css: '🎨',
+    png: '🖼️',
+    jpg: '🖼️',
+    jpeg: '🖼️',
+  }
+
+  getFileIcon(item: FileItem): string {
+    if (item.isDirectory) return '📁'
+    const ext = item.name.split('.').pop()?.toLowerCase()
+    return (ext && this.fileIcons[ext]) ?? '📄'
+  }
+
   async connectedCallback() {
     super.connectedCallback()
 
@@ -2245,7 +2268,7 @@ export class Commander extends LitElement {
                     ? '📁'
                     : item.name.toLowerCase().endsWith('.zip')
                       ? '📦'
-                      : '📄'}</span
+                      : this.getFileIcon(item)}</span
                 >
                 <span class="file-name ${item.isDirectory ? 'directory' : ''}"
                   >${item.name}</span
