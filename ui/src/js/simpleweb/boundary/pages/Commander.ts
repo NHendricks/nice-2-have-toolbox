@@ -603,6 +603,9 @@ export class Commander extends LitElement {
   @property({ type: Boolean })
   compareWaiting = false
 
+  @property({ type: Object })
+  quickLaunchDialog: { command: string } | null = null
+
   fileIcons: Record<string, string> = {
     zip: '📦',
     exe: '🧩',
@@ -1251,6 +1254,10 @@ export class Commander extends LitElement {
         this.cancelCommand()
         return
       }
+      if (this.quickLaunchDialog) {
+        this.cancelQuickLaunch()
+        return
+      }
       // Clear filter if active
       const pane = this.getActivePane()
       if (pane.filterActive) {
@@ -1299,6 +1306,28 @@ export class Commander extends LitElement {
         this.viewPreviousImage()
         return
       }
+    }
+
+    // Check for alphanumeric input to open quick launch
+    // Only if no dialogs are open and no filter is active
+    if (
+      !this.showHelp &&
+      !this.viewerFile &&
+      !this.operationDialog &&
+      !this.deleteDialog &&
+      !this.showDriveSelector &&
+      !this.commandDialog &&
+      !this.quickLaunchDialog &&
+      !this.getActivePane().filterActive &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      event.key.length === 1 &&
+      event.key.match(/[a-zA-Z0-9]/)
+    ) {
+      event.preventDefault()
+      this.openQuickLaunch(event.key)
+      return
     }
 
     const pane = this.getActivePane()
@@ -1835,6 +1864,70 @@ export class Commander extends LitElement {
     this.commandDialog = null
   }
 
+  openQuickLaunch(initialChar: string) {
+    this.quickLaunchDialog = {
+      command: initialChar,
+    }
+  }
+
+  updateQuickLaunchCommand(value: string) {
+    if (this.quickLaunchDialog) {
+      this.quickLaunchDialog = {
+        command: value,
+      }
+    }
+  }
+
+  async executeQuickLaunch() {
+    if (!this.quickLaunchDialog || !this.quickLaunchDialog.command.trim())
+      return
+
+    const { command } = this.quickLaunchDialog
+    const pane = this.getActivePane()
+
+    try {
+      this.setStatus(`Executing: ${command}`, 'normal')
+
+      // Execute command in current directory
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'execute-command',
+          command: command,
+          workingDir: pane.currentPath,
+        },
+      )
+
+      if (response.success && response.data) {
+        // Show output in viewer if there's content
+        if (response.data.output && response.data.output.trim()) {
+          this.viewerFile = {
+            path: `Command: ${command}`,
+            content: response.data.output,
+            size: 0,
+            isImage: false,
+          }
+        }
+        this.setStatus('Command executed successfully', 'success')
+      } else {
+        this.setStatus(`Error: ${response.error || 'Unknown error'}`, 'error')
+      }
+
+      this.quickLaunchDialog = null
+
+      // Refresh active pane in case files changed
+      await this.loadDirectory(this.activePane, pane.currentPath)
+    } catch (error: any) {
+      this.setStatus(`Error: ${error.message}`, 'error')
+      this.quickLaunchDialog = null
+    }
+  }
+
+  cancelQuickLaunch() {
+    this.quickLaunchDialog = null
+  }
+
   async handleCompare() {
     try {
       this.setStatus(
@@ -1972,6 +2065,7 @@ export class Commander extends LitElement {
         ${this.operationDialog ? this.renderOperationDialog() : ''}
         ${this.deleteDialog ? this.renderDeleteDialog() : ''}
         ${this.commandDialog ? this.renderCommandDialog() : ''}
+        ${this.quickLaunchDialog ? this.renderQuickLaunchDialog() : ''}
         ${this.compareDialog
           ? html`<compare-dialog
               .result=${this.compareDialog.result}
@@ -2490,6 +2584,75 @@ export class Commander extends LitElement {
             cancel (ESC)
           </button>
           <button class="btn-confirm" @click=${this.executeCommand}>
+            execute (ENTER)
+          </button>
+        </div>
+      </simple-dialog>
+    `
+  }
+
+  renderQuickLaunchDialog() {
+    if (!this.quickLaunchDialog) return ''
+
+    const { command } = this.quickLaunchDialog
+    const pane = this.getActivePane()
+
+    // Auto-focus input field when dialog opens
+    setTimeout(() => {
+      const input = this.shadowRoot?.querySelector(
+        '.quick-launch-input',
+      ) as HTMLInputElement
+      if (input) {
+        input.focus()
+        // Position cursor at end
+        input.selectionStart = input.selectionEnd = input.value.length
+      }
+    }, 100)
+
+    return html`
+      <simple-dialog
+        .open=${true}
+        .title=${'🚀 quick launch'}
+        .width=${'600px'}
+        @dialog-close=${this.cancelQuickLaunch}
+      >
+        <div style="padding: 1rem;">
+          <div class="input-field">
+            <label>type command to execute in: ${pane.currentPath}</label>
+            <input
+              type="text"
+              class="quick-launch-input"
+              .value=${command}
+              placeholder="Type command and press ENTER..."
+              @input=${(e: Event) =>
+                this.updateQuickLaunchCommand(
+                  (e.target as HTMLInputElement).value,
+                )}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  this.executeQuickLaunch()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  this.cancelQuickLaunch()
+                }
+              }}
+            />
+          </div>
+          <div
+            style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
+          >
+            💡 Tip: Just start typing any command to open this dialog. Press
+            ENTER to execute, ESC to cancel.
+          </div>
+        </div>
+        <div slot="footer" class="dialog-buttons">
+          <button class="btn-cancel" @click=${this.cancelQuickLaunch}>
+            cancel (ESC)
+          </button>
+          <button class="btn-confirm" @click=${this.executeQuickLaunch}>
             execute (ENTER)
           </button>
         </div>

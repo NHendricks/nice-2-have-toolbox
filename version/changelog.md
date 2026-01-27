@@ -7,6 +7,7 @@
 - pos1 und end should navigate to top, end
 - ENTER executes an executable
 - display own icons for files depending on extension
+- typing text will execute commands in cmdline
 
 ### v1.1.0 (26.01.2026)
 
