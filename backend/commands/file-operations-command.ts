@@ -1088,6 +1088,41 @@ export class FileOperationsCommand implements ICommand {
   }
 
   /**
+   * Recursively collect all files in a directory
+   */
+  private async collectFilesRecursively(
+    dirPath: string,
+    basePath: string,
+  ): Promise<Array<{ fullPath: string; relativePath: string }>> {
+    const results: Array<{ fullPath: string; relativePath: string }> = [];
+    const entries = await readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      const relativePath = path.relative(basePath, fullPath);
+
+      try {
+        if (entry.isDirectory()) {
+          // Recurse into subdirectory
+          const subFiles = await this.collectFilesRecursively(
+            fullPath,
+            basePath,
+          );
+          results.push(...subFiles);
+        } else if (entry.isFile()) {
+          // Add file to results
+          results.push({ fullPath, relativePath });
+        }
+      } catch (error: any) {
+        console.warn(`Warning: Unable to access ${fullPath}: ${error.message}`);
+        continue;
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Zip files or folders into a ZIP archive
    */
   private async zipFiles(
@@ -1110,16 +1145,14 @@ export class FileOperationsCommand implements ICommand {
     const AdmZip = (await import('adm-zip')).default;
 
     try {
-      // Create or open the ZIP file
-      const zip = fs.existsSync(zipFilePath)
-        ? new AdmZip(zipFilePath)
-        : new AdmZip();
+      // First, collect all files recursively to know the total count
+      const allFiles: Array<{
+        fullPath: string;
+        zipPath: string;
+        displayName: string;
+      }> = [];
 
-      let addedCount = 0;
-      const totalFiles = files.length;
-
-      for (let i = 0; i < files.length; i++) {
-        const filePath = files[i];
+      for (const filePath of files) {
         const absolutePath = path.resolve(filePath);
 
         if (!fs.existsSync(absolutePath)) {
@@ -1128,29 +1161,70 @@ export class FileOperationsCommand implements ICommand {
         }
 
         const stats = await stat(absolutePath);
-        const fileName = path.basename(absolutePath);
+        const baseName = path.basename(absolutePath);
+
+        if (stats.isDirectory()) {
+          // Collect all files in directory recursively
+          const collectedFiles = await this.collectFilesRecursively(
+            absolutePath,
+            absolutePath,
+          );
+          for (const file of collectedFiles) {
+            allFiles.push({
+              fullPath: file.fullPath,
+              zipPath: path.join(baseName, file.relativePath),
+              displayName: file.relativePath,
+            });
+          }
+        } else if (stats.isFile()) {
+          // Single file
+          allFiles.push({
+            fullPath: absolutePath,
+            zipPath: baseName,
+            displayName: baseName,
+          });
+        }
+      }
+
+      if (allFiles.length === 0) {
+        throw new Error('No valid files or directories to add to ZIP');
+      }
+
+      // Create or open the ZIP file
+      const zip = fs.existsSync(zipFilePath)
+        ? new AdmZip(zipFilePath)
+        : new AdmZip();
+
+      // Now add each file individually with progress reporting
+      const totalFiles = allFiles.length;
+      let addedCount = 0;
+
+      for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
 
         // Report progress
         if (progressCallback) {
-          progressCallback(i + 1, totalFiles, fileName);
+          progressCallback(i + 1, totalFiles, file.displayName);
         }
 
-        if (stats.isDirectory()) {
-          // Add entire directory
-          zip.addLocalFolder(absolutePath, fileName);
+        try {
+          // Read file content and add to zip
+          const fileContent = fs.readFileSync(file.fullPath);
+          zip.addFile(file.zipPath.replace(/\\/g, '/'), fileContent);
           addedCount++;
-        } else if (stats.isFile()) {
-          // Add single file
-          zip.addLocalFile(absolutePath);
-          addedCount++;
+        } catch (error: any) {
+          console.warn(
+            `Warning: Unable to add ${file.fullPath}: ${error.message}`,
+          );
+          continue;
         }
 
         // Small delay to allow UI updates
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 5));
       }
 
       if (addedCount === 0) {
-        throw new Error('No valid files or directories to add to ZIP');
+        throw new Error('No files could be added to ZIP');
       }
 
       // Report final progress before writing
@@ -1168,7 +1242,7 @@ export class FileOperationsCommand implements ICommand {
         operation: 'zip',
         zipFile: zipFilePath,
         filesAdded: addedCount,
-        totalFiles: files.length,
+        totalFiles: allFiles.length,
         size: zipStats.size,
         timestamp: new Date().toISOString(),
       };

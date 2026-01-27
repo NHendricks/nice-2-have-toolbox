@@ -4,6 +4,7 @@
 
 ### upcoming
 
+add progressbar when zipping files
 ...
 
 ### v1.2.0 (27.01.2026)
