@@ -1,6 +1,5 @@
 commander:
 - fonts / colors
-  dir: rgb(117 233 106)
   toolbar-title: rgb(36 199 251)
 - sort by extension (dont show extension in separate column)
 - execute executable
@@ -8,10 +7,7 @@ commander:
 - cmd should be executable directly in input field and enter should spawn cmd and refresh. Open cmd window separately.
 - zip files or folders
 - support \\paths (Windows only) ? Or better map to drive … .
-- ALT+filter for visible files
-- > and < should show left dir in right 
 - cancel all fileops when closing compare dialog
-- Strg+left or Right to Show left Folder in Right and vice versa
 
 other:
 - integrate more cmdline-Tools

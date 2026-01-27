@@ -1470,7 +1470,7 @@ export class Commander extends LitElement {
     }
   }
 
-  handleEnter() {
+  async handleEnter() {
     const pane = this.getActivePane()
     const item = pane.items[pane.focusedIndex]
 
@@ -1478,8 +1478,35 @@ export class Commander extends LitElement {
     const isZipFile =
       item && !item.isDirectory && item.name.toLowerCase().endsWith('.zip')
 
-    if (item && (item.isDirectory || isZipFile)) {
-      this.navigateToDirectory(item.path)
+    if (item.isDirectory || isZipFile) {
+      await this.navigateToDirectory(item.path)
+    } else if (item.isFile) {
+      // Execute the file
+      await this.executeFile(item.path)
+    }
+  }
+
+  async executeFile(filePath: string) {
+    try {
+      this.setStatus(`Executing: ${filePath}`, 'normal')
+
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'execute-file',
+          filePath: filePath,
+        },
+      )
+
+      if (response.success) {
+        this.setStatus(`Executed: ${filePath}`, 'success')
+      } else {
+        this.setStatus(`Error executing: ${response.error}`, 'error')
+      }
+    } catch (error: any) {
+      this.setStatus(`Error: ${error.message}`, 'error')
+      console.error('Execute file error:', error)
     }
   }
 

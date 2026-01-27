@@ -47,6 +47,8 @@ export class FileOperationsCommand implements ICommand {
           return await this.deleteFile(sourcePath);
         case 'execute-command':
           return await this.executeCommand(command, workingDir);
+        case 'execute-file':
+          return await this.executeFile(filePath);
         case 'compare':
           return await this.compareDirectories(
             params.leftPath,
@@ -977,6 +979,58 @@ export class FileOperationsCommand implements ICommand {
         output: output || error.message,
         error: error.message,
         exitCode: error.code,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Execute a file using the system's default application
+   */
+  private async executeFile(filePath: string): Promise<any> {
+    if (!filePath) {
+      throw new Error('filePath is required for execute-file operation');
+    }
+
+    const absolutePath = path.resolve(filePath);
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(`File does not exist: ${absolutePath}`);
+    }
+
+    const stats = await stat(absolutePath);
+    if (!stats.isFile()) {
+      throw new Error(`Path is not a file: ${absolutePath}`);
+    }
+
+    try {
+      // Use 'start' on Windows to open file with default application
+      // Wrap path in quotes to handle spaces
+      const command =
+        process.platform === 'win32'
+          ? `start "" "${absolutePath}"`
+          : process.platform === 'darwin'
+            ? `open "${absolutePath}"`
+            : `xdg-open "${absolutePath}"`;
+
+      await execPromise(command, {
+        timeout: 5000,
+        windowsHide: true,
+      });
+
+      return {
+        success: true,
+        operation: 'execute-file',
+        path: absolutePath,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        operation: 'execute-file',
+        path: absolutePath,
+        error: error.message,
         timestamp: new Date().toISOString(),
       };
     }

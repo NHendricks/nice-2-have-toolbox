@@ -5,6 +5,7 @@
 ### upcoming
 
 - pos1 und end should navigate to top, end
+- ENTER executes an executable
 
 ### v1.1.0 (26.01.2026)
 
