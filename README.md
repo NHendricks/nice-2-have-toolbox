@@ -86,6 +86,12 @@ The executable will be created in the `build-output` directory.
 - **Vite** - Fast build tooling
 - **Node.js** - Backend runtime
 
+## Releases
+
+This release contains prebuilt binaries.
+The application bundles Electron and third-party open-source libraries.
+License information can be found in the LICENSE and THIRD_PARTY_LICENSES.txt files.
+
 ## Author
 
 Nils Hendricks

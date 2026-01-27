@@ -1,0 +1,76 @@
+This application bundles Electron and third-party open-source software.
+The following licenses apply.
+
+------------------------------------------------------------
+Electron
+License: MIT
+Copyright (c) OpenJS Foundation
+https://www.electronjs.org/
+
+Electron bundles Chromium and Node.js.
+Additional licenses can be found in:
+- LICENSES.chromium.html (included with Electron builds)
+------------------------------------------------------------
+
+adm-zip
+License: MIT
+https://www.npmjs.com/package/adm-zip
+
+cross-env
+License: MIT
+https://www.npmjs.com/package/cross-env
+
+diff
+License: BSD-3-Clause
+https://www.npmjs.com/package/diff
+
+electron-devtools-installer
+License: MIT
+https://www.npmjs.com/package/electron-devtools-installer
+
+fs-extra
+License: MIT
+https://www.npmjs.com/package/fs-extra
+
+lit
+License: MIT
+https://www.npmjs.com/package/lit
+
+lit-html
+License: MIT
+https://www.npmjs.com/package/lit-html
+
+node-fetch (v2)
+License: MIT
+https://www.npmjs.com/package/node-fetch
+
+png-to-ico
+License: MIT
+https://www.npmjs.com/package/png-to-ico
+
+rcedit
+License: MIT
+https://www.npmjs.com/package/rcedit
+
+rifraf
+License: MIT
+https://www.npmjs.com/package/rifraf
+
+rimraf
+License: MIT
+https://www.npmjs.com/package/rimraf
+
+vite
+License: MIT
+https://www.npmjs.com/package/vite
+
+vite-plugin-static-copy
+License: MIT
+https://www.npmjs.com/package/vite-plugin-static-copy
+
+@vaadin/router
+License: MIT
+https://www.npmjs.com/package/@vaadin/router
+------------------------------------------------------------
+
+All trademarks and copyrights belong to their respective owners.

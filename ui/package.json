@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "ui for nh-toolbox",
   "type": "module",
+  "author": "",
+  "license": "ISC",
   "keywords": [
     "mobile"
   ],
@@ -15,8 +17,6 @@
     "prettier": "^3.6.2",
     "vite": "^6.2.0"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@vaadin/router": "^2.0.0",
     "diff": "^8.0.3",
