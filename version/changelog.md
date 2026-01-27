@@ -9,6 +9,7 @@
 - display own icons for files depending on extension
 - typing text will execute commands in cmdline
 - delete key should also delete file like F8
+- enable sorting
 
 ### v1.1.0 (26.01.2026)
 

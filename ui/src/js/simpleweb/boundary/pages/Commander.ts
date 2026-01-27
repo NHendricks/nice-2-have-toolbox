@@ -21,6 +21,8 @@ interface PaneState {
   focusedIndex: number
   filter: string
   filterActive: boolean
+  sortBy: 'name' | 'size' | 'modified' | 'extension'
+  sortDirection: 'asc' | 'desc'
 }
 
 export class Commander extends LitElement {
@@ -534,6 +536,8 @@ export class Commander extends LitElement {
     focusedIndex: 0,
     filter: '',
     filterActive: false,
+    sortBy: 'name',
+    sortDirection: 'asc',
   }
 
   @property({ type: Object })
@@ -544,6 +548,8 @@ export class Commander extends LitElement {
     focusedIndex: 0,
     filter: '',
     filterActive: false,
+    sortBy: 'name',
+    sortDirection: 'asc',
   }
 
   @property({ type: String })
@@ -905,6 +911,8 @@ export class Commander extends LitElement {
             focusedIndex: focusedIndex,
             filter: this.leftPane.filter,
             filterActive: this.leftPane.filterActive,
+            sortBy: this.leftPane.sortBy,
+            sortDirection: this.leftPane.sortDirection,
           }
           // Save to localStorage
           localStorage.setItem('commander-left-path', data.path)
@@ -916,6 +924,8 @@ export class Commander extends LitElement {
             focusedIndex: focusedIndex,
             filter: this.rightPane.filter,
             filterActive: this.rightPane.filterActive,
+            sortBy: this.rightPane.sortBy,
+            sortDirection: this.rightPane.sortDirection,
           }
           // Save to localStorage
           localStorage.setItem('commander-right-path', data.path)
@@ -1996,6 +2006,81 @@ export class Commander extends LitElement {
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
+  sortItems(
+    items: FileItem[],
+    sortBy: string,
+    sortDirection: string,
+  ): FileItem[] {
+    // Separate parent directory (..) from other items
+    const parentDir = items.find((item) => item.name === '..')
+    const itemsToSort = items.filter((item) => item.name !== '..')
+
+    const sorted = [...itemsToSort].sort((a, b) => {
+      let comparison = 0
+
+      switch (sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name, undefined, {
+            numeric: true,
+          })
+          break
+        case 'size':
+          comparison = a.size - b.size
+          break
+        case 'modified':
+          comparison =
+            new Date(a.modified).getTime() - new Date(b.modified).getTime()
+          break
+        case 'extension':
+          const extA = a.isDirectory ? '' : a.name.split('.').pop() || ''
+          const extB = b.isDirectory ? '' : b.name.split('.').pop() || ''
+          comparison = extA.localeCompare(extB)
+          if (comparison === 0) {
+            comparison = a.name.localeCompare(b.name, undefined, {
+              numeric: true,
+            })
+          }
+          break
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+
+    // Add parent directory back at the beginning if it exists
+    return parentDir ? [parentDir, ...sorted] : sorted
+  }
+
+  toggleSort(sortBy: 'name' | 'size' | 'modified' | 'extension') {
+    const pane = this.getActivePane()
+
+    if (pane.sortBy === sortBy) {
+      // Toggle direction
+      const newDirection = pane.sortDirection === 'asc' ? 'desc' : 'asc'
+      this.updateActivePane({ sortDirection: newDirection })
+    } else {
+      // Change sort field
+      this.updateActivePane({ sortBy, sortDirection: 'asc' })
+    }
+
+    // Save to localStorage
+    const paneKey =
+      this.activePane === 'left'
+        ? 'commander-left-sort'
+        : 'commander-right-sort'
+    localStorage.setItem(
+      paneKey,
+      JSON.stringify({
+        sortBy: this.getActivePane().sortBy,
+        sortDirection: this.getActivePane().sortDirection,
+      }),
+    )
+
+    this.setStatus(
+      `Sorted by ${sortBy} (${this.getActivePane().sortDirection})`,
+      'success',
+    )
+  }
+
   render() {
     return html`
       <div class="commander-container">
@@ -2304,12 +2389,19 @@ export class Commander extends LitElement {
     const isActive = this.activePane === side
 
     // Filter items based on filter text
-    const filteredItems =
+    let filteredItems =
       pane.filterActive && pane.filter
         ? pane.items.filter((item) =>
             item.name.toLowerCase().includes(pane.filter.toLowerCase()),
           )
         : pane.items
+
+    // Apply sorting
+    filteredItems = this.sortItems(
+      filteredItems,
+      pane.sortBy,
+      pane.sortDirection,
+    )
 
     return html`
       <div
@@ -2331,6 +2423,82 @@ export class Commander extends LitElement {
               : ''}
             Items
           </span>
+        </div>
+
+        <!-- Sort Controls -->
+        <div
+          style="padding: 0.25rem 0.5rem; background: #334155; border-bottom: 1px solid #475569; display: flex; gap: 0.25rem; font-size: 0.75rem;"
+        >
+          <button
+            @click=${(e: Event) => {
+              e.stopPropagation()
+              if (isActive) this.toggleSort('name')
+            }}
+            style="padding: 0.25rem 0.5rem; background: ${pane.sortBy === 'name'
+              ? '#0ea5e9'
+              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+            title="Sort by name"
+          >
+            📝
+            ${pane.sortBy === 'name'
+              ? pane.sortDirection === 'asc'
+                ? '↑'
+                : '↓'
+              : ''}
+          </button>
+          <button
+            @click=${(e: Event) => {
+              e.stopPropagation()
+              if (isActive) this.toggleSort('size')
+            }}
+            style="padding: 0.25rem 0.5rem; background: ${pane.sortBy === 'size'
+              ? '#0ea5e9'
+              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+            title="Sort by size"
+          >
+            📊
+            ${pane.sortBy === 'size'
+              ? pane.sortDirection === 'asc'
+                ? '↑'
+                : '↓'
+              : ''}
+          </button>
+          <button
+            @click=${(e: Event) => {
+              e.stopPropagation()
+              if (isActive) this.toggleSort('modified')
+            }}
+            style="padding: 0.25rem 0.5rem; background: ${pane.sortBy ===
+            'modified'
+              ? '#0ea5e9'
+              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+            title="Sort by modified date"
+          >
+            🕐
+            ${pane.sortBy === 'modified'
+              ? pane.sortDirection === 'asc'
+                ? '↑'
+                : '↓'
+              : ''}
+          </button>
+          <button
+            @click=${(e: Event) => {
+              e.stopPropagation()
+              if (isActive) this.toggleSort('extension')
+            }}
+            style="padding: 0.25rem 0.5rem; background: ${pane.sortBy ===
+            'extension'
+              ? '#0ea5e9'
+              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+            title="Sort by extension"
+          >
+            🏷️
+            ${pane.sortBy === 'extension'
+              ? pane.sortDirection === 'asc'
+                ? '↑'
+                : '↓'
+              : ''}
+          </button>
         </div>
 
         ${pane.filterActive
