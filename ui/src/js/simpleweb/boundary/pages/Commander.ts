@@ -1423,9 +1423,9 @@ export class Commander extends LitElement {
         this.handleF3()
         break
 
-      case 'F4':
+      case 'F12':
         event.preventDefault()
-        this.handleF4()
+        this.handleF12()
         break
 
       case 'F5':
@@ -1570,7 +1570,7 @@ export class Commander extends LitElement {
     }
   }
 
-  handleF4() {
+  handleF12() {
     const selectedFiles = this.getSelectedFiles()
     if (selectedFiles.length > 0) {
       const destPane = this.getInactivePane()
@@ -1580,9 +1580,13 @@ export class Commander extends LitElement {
         // Single file/folder: use its name
         const fileName = selectedFiles[0].split(/[/\\]/).pop() || 'archive'
         // Remove extension if it has one
-        const nameWithoutExt = fileName.includes('.')
+        let nameWithoutExt = fileName.includes('.')
           ? fileName.substring(0, fileName.lastIndexOf('.'))
           : fileName
+        if (!nameWithoutExt) {
+          // like .git
+          nameWithoutExt = fileName
+        }
         defaultName = `${nameWithoutExt}.zip`
       } else {
         // Multiple files: use timestamp
@@ -2338,10 +2342,6 @@ export class Commander extends LitElement {
             <span class="function-key-label">F3</span>
             <span class="function-key-action">view</span>
           </div>
-          <div class="function-key" @click=${() => this.handleF4()}>
-            <span class="function-key-label">F4</span>
-            <span class="function-key-action">📦 zip</span>
-          </div>
           <div class="function-key" @click=${() => this.handleF5()}>
             <span class="function-key-label">F5</span>
             <span class="function-key-action">copy</span>
@@ -2372,6 +2372,10 @@ export class Commander extends LitElement {
           <div class="function-key" @click=${() => this.handleF10()}>
             <span class="function-key-label">F10</span>
             <span class="function-key-action">📋 path</span>
+          </div>
+          <div class="function-key" @click=${() => this.handleF12()}>
+            <span class="function-key-label">F12</span>
+            <span class="function-key-action">📦 zip</span>
           </div>
         </div>
 
@@ -2480,6 +2484,10 @@ export class Commander extends LitElement {
             <div class="help-item">
               <div class="help-key">F7</div>
               <div class="help-description">refresh</div>
+            </div>
+            <div class="help-item">
+              <div class="help-key">F12</div>
+              <div class="help-description">zip files</div>
             </div>
           </div>
           <div class="help-section">
@@ -3226,8 +3234,8 @@ export class Commander extends LitElement {
           <div
             style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
           >
-            💡 Tip: Select files/folders and press F4 to create a ZIP archive in
-            the opposite pane.
+            💡 Tip: Select files/folders and press F12 to create a ZIP archive
+            in the opposite pane.
           </div>
         </div>
         <div slot="footer" class="dialog-buttons">

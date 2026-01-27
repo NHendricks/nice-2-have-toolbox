@@ -4,6 +4,10 @@
 
 ### upcoming
 
+...
+
+### v1.2.0 (27.01.2026)
+
 - pos1 und end should navigate to top, end
 - ENTER executes an executable
 - display own icons for files depending on extension
@@ -11,7 +15,7 @@
 - delete key should also delete file like F8
 - enable sorting
 - rename files using F2
-- zip files or folders
+- zip files or folders (F12)
 - bugfix: Support links
 
 ### v1.1.0 (26.01.2026)
