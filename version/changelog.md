@@ -4,6 +4,8 @@
 
 ### upcoming
 
+### v1.4.0 (28.01.2026)
+
 - add progressbar when zipping files
 - add progressbar when copying files
 - support cancel for file operations (they did not cancel in backend before)
@@ -11,7 +13,7 @@
 - fix tray icon for mac
 - fix no ctrl+1 dialog when only 1 drive is there (mac) so we cant set favorites
 
-### v1.2.0 (27.01.2026)
+### v1.3.0 (27.01.2026)
 
 - pos1 und end should navigate to top, end
 - ENTER executes an executable
