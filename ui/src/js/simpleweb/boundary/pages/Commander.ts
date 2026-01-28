@@ -2676,7 +2676,7 @@ export class Commander extends LitElement {
                       this.toggleFavorite(currentPath)
                     }}
                   >
-                    ☆ Aktuelles Verzeichnis zu Favoriten hinzufügen
+                    ☆ add current directory
                     <br />
                     <span style="font-size: 0.85rem; opacity: 0.8;"
                       >${currentPath}</span
