@@ -58,9 +58,6 @@ export function registerCommands(ipcMain: any, version: string) {
           // Set up progress callback to send events to renderer
           (command as any).setProgressCallback?.(
             (current: number, total: number, fileName: string) => {
-              console.log(
-                `Sending zip-progress: ${current}/${total} - ${fileName}`,
-              );
               event.sender?.send('zip-progress', {
                 current,
                 total,
