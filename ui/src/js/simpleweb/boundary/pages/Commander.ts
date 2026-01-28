@@ -2585,7 +2585,7 @@ export class Commander extends LitElement {
           @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="dialog-header">
-            <span class="dialog-title">💾 Laufwerk & Favoriten wählen</span>
+            <span class="dialog-title">💾 select drive & manage favorites</span>
             <button class="dialog-close" @click=${this.closeDriveSelector}>
               ESC
             </button>
@@ -2636,7 +2636,7 @@ export class Commander extends LitElement {
                   <div
                     style="padding: 0.5rem 0; color: #fbbf24; font-weight: bold; border-bottom: 1px solid #475569; margin-top: 0.5rem;"
                   >
-                    💾 Laufwerke
+                    💾 drives
                   </div>
                 `
               : ''}
