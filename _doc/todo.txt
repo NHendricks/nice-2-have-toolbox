@@ -3,6 +3,11 @@ commander:
 - build asar for better performance abd less files to transport / scan at runtime
 - progress dialog also when copying directory
 - memorize directories and enable backward history navigation
+- enable compare of dir and dir in zip
+  - CompareDialog.ts:398 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'forEach')
+    at CompareDialog.getFilteredItems (CompareDialog.ts:398:28)
+    at CompareDialog.render (CompareDialog.ts:529:32)
+
 - fix icon app mac
 - how does file filter work on mac?
 - remove console outputs when zipping

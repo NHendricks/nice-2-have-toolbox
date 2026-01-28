@@ -696,7 +696,6 @@ export class Commander extends LitElement {
 
     // Add IPC listener for zip progress
     ;(window as any).electron.ipcRenderer.on('zip-progress', (data: any) => {
-      console.log('Zip progress received:', data)
       this.zipProgress = data
       // Force UI update
       this.requestUpdate()
@@ -704,14 +703,10 @@ export class Commander extends LitElement {
 
     // Add IPC listener for copy progress
     ;(window as any).electron.ipcRenderer.on('copy-progress', (data: any) => {
-      console.log('[UI] Copy progress received:', data)
       this.copyProgress = data
-      console.log('[UI] copyProgress property set, requesting update')
       // Force UI update
       this.requestUpdate()
     })
-
-    console.log('[UI] Copy progress listener registered')
   }
 
   loadFavorites() {

@@ -30,7 +30,6 @@ export class FileOperationsCommand implements ICommand {
   setProgressCallback(
     callback: (current: number, total: number, fileName: string) => void,
   ) {
-    console.log('[FileOps] setProgressCallback called, callback:', !!callback);
     this.progressCallback = callback;
   }
 
@@ -372,11 +371,6 @@ export class FileOperationsCommand implements ICommand {
     sourcePath: string,
     destinationPath: string,
   ): Promise<any> {
-    console.log(
-      '[FileOps] copyFile called, progressCallback set:',
-      !!this.progressCallback,
-    );
-
     if (!sourcePath) {
       throw new Error('sourcePath is required for copy operation');
     }
@@ -478,9 +472,6 @@ export class FileOperationsCommand implements ICommand {
         absoluteDestination,
         (fileName: string) => {
           currentFile++;
-          console.log(
-            `[Copy] Progress: ${currentFile}/${totalFiles} - ${fileName}`,
-          );
           if (this.progressCallback) {
             this.progressCallback(currentFile, totalFiles, fileName);
           }
@@ -507,7 +498,6 @@ export class FileOperationsCommand implements ICommand {
 
       // Report progress for single file copy
       if (this.progressCallback) {
-        console.log('[Copy] Sending progress: 0/1');
         this.progressCallback(0, 1, path.basename(absoluteSource));
       }
 
@@ -516,7 +506,6 @@ export class FileOperationsCommand implements ICommand {
 
       // Report completion
       if (this.progressCallback) {
-        console.log('[Copy] Sending progress: 1/1');
         this.progressCallback(1, 1, path.basename(absoluteSource));
       }
 
@@ -565,7 +554,9 @@ export class FileOperationsCommand implements ICommand {
         }
       }
     } catch (error: any) {
-      console.warn(`Warning: Unable to read directory ${source}: ${error.message}`);
+      console.warn(
+        `Warning: Unable to read directory ${source}: ${error.message}`,
+      );
     }
 
     return count;
