@@ -71,12 +71,26 @@ if (fs.existsSync(backendDist)) {
   console.log('   ⚠️  Backend dist not found - run buildBackend first!');
 }
 
-// Copy process node_modules (if needed)
-const backendNodeModules = path.join(rootDir, 'backend', 'node_modules');
-const appBackendNodeModules = path.join(appDir, 'backend', 'node_modules');
-if (fs.existsSync(backendNodeModules)) {
-  fs.copySync(backendNodeModules, appBackendNodeModules);
-  console.log('   ✅ Backend node_modules copied');
+// Copy backend package.json and install production dependencies
+const backendPackageJson = path.join(rootDir, 'backend', 'package.json');
+const appBackendPackageJson = path.join(appDir, 'backend', 'package.json');
+if (fs.existsSync(backendPackageJson)) {
+  fs.copySync(backendPackageJson, appBackendPackageJson);
+  console.log('   ✅ Backend package.json copied');
+
+  console.log('   📦 Installing backend production dependencies...');
+  const { execSync } = await import('child_process');
+  try {
+    execSync('npm install --production --no-audit --no-fund', {
+      cwd: path.join(appDir, 'backend'),
+      stdio: 'inherit',
+    });
+    console.log('   ✅ Backend production dependencies installed');
+  } catch (err) {
+    console.log(
+      `   ⚠️  Failed to install backend dependencies: ${err.message}`,
+    );
+  }
 }
 
 // Copy process
@@ -89,12 +103,26 @@ if (fs.existsSync(processDist)) {
   console.log('   ⚠️  Process dist not found - run buildProcess first!');
 }
 
-// Copy process node_modules (if needed)
-const processNodeModules = path.join(rootDir, 'process', 'node_modules');
-const appProcessNodeModules = path.join(appDir, 'process', 'node_modules');
-if (fs.existsSync(processNodeModules)) {
-  fs.copySync(processNodeModules, appProcessNodeModules);
-  console.log('   ✅ Process node_modules copied');
+// Copy process package.json and install production dependencies
+const processPackageJson = path.join(rootDir, 'process', 'package.json');
+const appProcessPackageJson = path.join(appDir, 'process', 'package.json');
+if (fs.existsSync(processPackageJson)) {
+  fs.copySync(processPackageJson, appProcessPackageJson);
+  console.log('   ✅ Process package.json copied');
+
+  console.log('   📦 Installing process production dependencies...');
+  const { execSync } = await import('child_process');
+  try {
+    execSync('npm install --production --no-audit --no-fund', {
+      cwd: path.join(appDir, 'process'),
+      stdio: 'inherit',
+    });
+    console.log('   ✅ Process production dependencies installed');
+  } catch (err) {
+    console.log(
+      `   ⚠️  Failed to install process dependencies: ${err.message}`,
+    );
+  }
 }
 
 // Copy UI

@@ -70,20 +70,27 @@ async function build() {
     console.log('   ⚠️  Backend dist not found - run buildBackend first!');
   }
 
-  // Copy backend node_modules (ohne node_modules/electron)
-  const backendNodeModules = path.join(rootDir, 'backend', 'node_modules');
-  const appbackendNodeModules = path.join(appDir, 'backend', 'node_modules');
+  // Copy backend package.json and install production dependencies
+  const backendPackageJson = path.join(rootDir, 'backend', 'package.json');
+  const appBackendPackageJson = path.join(appDir, 'backend', 'package.json');
 
-  if (fs.existsSync(backendNodeModules)) {
-    fs.copySync(backendNodeModules, appbackendNodeModules, {
-      filter: (src) => {
-        // electron-Ordner ausschließen
-        return !src.includes(
-          `${path.sep}node_modules${path.sep}electron${path.sep}`,
-        );
-      },
-    });
-    console.log('   ✅ backend node_modules copied');
+  if (fs.existsSync(backendPackageJson)) {
+    fs.copySync(backendPackageJson, appBackendPackageJson);
+    console.log('   ✅ Backend package.json copied');
+
+    console.log('   📦 Installing backend production dependencies...');
+    const { execSync } = await import('child_process');
+    try {
+      execSync('npm install --production --no-audit --no-fund', {
+        cwd: path.join(appDir, 'backend'),
+        stdio: 'inherit',
+      });
+      console.log('   ✅ Backend production dependencies installed');
+    } catch (err) {
+      console.log(
+        `   ⚠️  Failed to install backend dependencies: ${err.message}`,
+      );
+    }
   }
 
   // Copy process
@@ -96,20 +103,27 @@ async function build() {
     console.log('   ⚠️  Process dist not found - run buildProcess first!');
   }
 
-  // Copy process node_modules (ohne node_modules/electron)
-  const processNodeModules = path.join(rootDir, 'process', 'node_modules');
-  const appProcessNodeModules = path.join(appDir, 'process', 'node_modules');
+  // Copy process package.json and install production dependencies
+  const processPackageJson = path.join(rootDir, 'process', 'package.json');
+  const appProcessPackageJson = path.join(appDir, 'process', 'package.json');
 
-  if (fs.existsSync(processNodeModules)) {
-    fs.copySync(processNodeModules, appProcessNodeModules, {
-      filter: (src) => {
-        // electron-Ordner ausschließen
-        return !src.includes(
-          `${path.sep}node_modules${path.sep}electron${path.sep}`,
-        );
-      },
-    });
-    console.log('   ✅ Process node_modules copied (ohne electron)');
+  if (fs.existsSync(processPackageJson)) {
+    fs.copySync(processPackageJson, appProcessPackageJson);
+    console.log('   ✅ Process package.json copied');
+
+    console.log('   📦 Installing process production dependencies...');
+    const { execSync } = await import('child_process');
+    try {
+      execSync('npm install --production --no-audit --no-fund', {
+        cwd: path.join(appDir, 'process'),
+        stdio: 'inherit',
+      });
+      console.log('   ✅ Process production dependencies installed');
+    } catch (err) {
+      console.log(
+        `   ⚠️  Failed to install process dependencies: ${err.message}`,
+      );
+    }
   }
 
   // Copy UI
