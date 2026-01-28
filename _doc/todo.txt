@@ -1,6 +1,4 @@
 commander:
-- build asar for better performance abd less files to transport / scan at runtime
-  (open: test mac)
 - fix no ctrl+1 dialog when only 1 drive is there (mac) so we cant set favorites
 - progress dialog also when copying directory
 - memorize directories and enable backward history navigation
