@@ -2,6 +2,12 @@
 
 This **Nice2Have Toolbox** is a modular Electron-based utility application with an extensible command-line backend and interactive UI.
 
+## install
+
+see https://github.com/NHendricks/nh-toolbox/releases
+
+The binaries are unsigned. So on Mac you might get an error message when you start it. Then go to Mac settings - security and allow nh-toolbox to be executed.
+
 **Changelog** see https://github.com/NHendricks/nh-toolbox/blob/main/version/changelog.md
 
 ## Motivation

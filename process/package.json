@@ -13,10 +13,10 @@
   "license": "MIT",
   "description": "",
   "dependencies": {
-    "cross-env": "^10.1.0",
     "node-fetch": "^2.7.0"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "@types/node-fetch": "^2.6.12",
     "electron": "35.7.0",
     "electron-devtools-installer": "^4.0.0",

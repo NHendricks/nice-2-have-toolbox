@@ -19,7 +19,7 @@ const appDir = path.join(rootDir, 'target/app-content');
 const versionFile = path.join(rootDir, 'version', 'version.txt');
 
 async function build() {
-  console.log('🚀 Starting manual Electron build (without ASAR)...\n');
+  console.log('🚀 Starting manual Electron build with ASAR packaging...\n');
 
   // Step 1: Clean and prepare directories
   console.log('📁 Step 1: Preparing directories...');
@@ -128,46 +128,37 @@ async function build() {
   fs.copySync(packageJson, appPackageJson);
   console.log('   ✅ package.json copied');
 
-  // Step 4: Copy app folder directly (no ASAR)
-  console.log('\n📂 Step 4: Copying app folder to resources...');
+  // Step 4: Create ASAR archive
+  console.log('\n📦 Step 4: Creating ASAR archive...');
   const resourcesDir = path.join(outputDir, 'resources');
-  const appFolderPath = path.join(resourcesDir, 'app');
+  const asarPath = path.join(resourcesDir, 'app.asar');
 
   // Remove old app folder if exists
-  if (fs.existsSync(appFolderPath)) {
-    fs.removeSync(appFolderPath);
+  const oldAppFolder = path.join(resourcesDir, 'app');
+  if (fs.existsSync(oldAppFolder)) {
+    fs.removeSync(oldAppFolder);
     console.log('   🗑️  Removed old app folder');
   }
 
-  // Remove app.asar if exists (cleanup from old build)
-  const oldAsarPath = path.join(resourcesDir, 'app.asar');
-  if (fs.existsSync(oldAsarPath)) {
-    fs.removeSync(oldAsarPath);
+  // Remove old app.asar if exists
+  if (fs.existsSync(asarPath)) {
+    fs.removeSync(asarPath);
     console.log('   🗑️  Removed old app.asar');
   }
 
-  // Copy app-content to resources/app
-  fs.copySync(appDir, appFolderPath);
-  console.log('   ✅ App folder copied successfully!');
+  // Create ASAR archive
+  try {
+    const asar = await import('@electron/asar');
+    await asar.createPackage(appDir, asarPath);
+    console.log('   ✅ ASAR archive created successfully!');
 
-  // Calculate size
-  const calculateDirSize = (dirPath) => {
-    let size = 0;
-    const files = fs.readdirSync(dirPath, { withFileTypes: true });
-
-    for (const file of files) {
-      const filePath = path.join(dirPath, file.name);
-      if (file.isDirectory()) {
-        size += calculateDirSize(filePath);
-      } else {
-        size += fs.statSync(filePath).size;
-      }
-    }
-    return size;
-  };
-
-  const appSize = calculateDirSize(appFolderPath);
-  console.log(`   📊 Size: ${(appSize / 1024 / 1024).toFixed(2)} MB`);
+    // Calculate ASAR size
+    const asarSize = fs.statSync(asarPath).size;
+    console.log(`   📊 ASAR Size: ${(asarSize / 1024 / 1024).toFixed(2)} MB`);
+  } catch (err) {
+    console.log(`   ❌ Failed to create ASAR: ${err.message}`);
+    throw err;
+  }
 
   // Step 5: Copy version.txt and icon to resources
   console.log('\n📄 Step 5: Copying version.txt and icon to resources...');
@@ -239,14 +230,12 @@ async function build() {
   // Step 8: Summary
   console.log('\n✅ Build completed successfully!\n');
   console.log('📂 Output directory:', outputDir);
-  console.log('📦 App folder location:', appFolderPath);
+  console.log('📦 ASAR archive location:', asarPath);
   console.log('📄 version.txt location:', targetVersionFile);
   console.log('🎨 Icon file:', iconPath);
   console.log('\n🚀 Run the app:');
   console.log(`   ${path.join(outputDir, 'nh-toolbox.exe')}`);
-  console.log(
-    '\n💡 Note: App runs without ASAR packaging (direct file access)',
-  );
+  console.log('\n💡 Note: App packaged with ASAR for production deployment');
 }
 
 // Run the build

@@ -18,7 +18,9 @@ const outputDir = path.join(rootDir, 'target/build-output');
 const appDir = path.join(rootDir, 'target/app-content');
 const versionFile = path.join(rootDir, 'version', 'version.txt');
 
-console.log('🚀 Starting manual Electron build for Mac (without ASAR)...\n');
+console.log(
+  '🚀 Starting manual Electron build for Mac with ASAR packaging...\n',
+);
 
 // Step 1: Clean and prepare directories
 console.log('📁 Step 1: Preparing directories...');
@@ -111,48 +113,39 @@ const appPackageJson = path.join(appDir, 'package.json');
 fs.copySync(packageJson, appPackageJson);
 console.log('   ✅ package.json copied');
 
-// Step 4: Copy app folder directly (no ASAR)
-console.log('\n📂 Step 4: Copying app folder to resources...');
+// Step 4: Create ASAR archive
+console.log('\n📦 Step 4: Creating ASAR archive...');
 // On Mac, the resources directory is inside the app bundle
 const electronAppPath = path.join(outputDir, 'Electron.app');
 const resourcesDir = path.join(electronAppPath, 'Contents', 'Resources');
-const appFolderPath = path.join(resourcesDir, 'app');
+const asarPath = path.join(resourcesDir, 'app.asar');
 
 // Remove old app folder if exists
-if (fs.existsSync(appFolderPath)) {
-  fs.removeSync(appFolderPath);
+const oldAppFolder = path.join(resourcesDir, 'app');
+if (fs.existsSync(oldAppFolder)) {
+  fs.removeSync(oldAppFolder);
   console.log('   🗑️  Removed old app folder');
 }
 
-// Remove app.asar if exists (cleanup from old build)
-const oldAsarPath = path.join(resourcesDir, 'app.asar');
-if (fs.existsSync(oldAsarPath)) {
-  fs.removeSync(oldAsarPath);
+// Remove old app.asar if exists
+if (fs.existsSync(asarPath)) {
+  fs.removeSync(asarPath);
   console.log('   🗑️  Removed old app.asar');
 }
 
-// Copy ccontent to resources/app
-fs.copySync(appDir, appFolderPath);
-console.log('   ✅ App folder copied successfully!');
+// Create ASAR archive
+try {
+  const asar = await import('@electron/asar');
+  await asar.createPackage(appDir, asarPath);
+  console.log('   ✅ ASAR archive created successfully!');
 
-// Calculate size
-const calculateDirSize = (dirPath) => {
-  let size = 0;
-  const files = fs.readdirSync(dirPath, { withFileTypes: true });
-
-  for (const file of files) {
-    const filePath = path.join(dirPath, file.name);
-    if (file.isDirectory()) {
-      size += calculateDirSize(filePath);
-    } else {
-      size += fs.statSync(filePath).size;
-    }
-  }
-  return size;
-};
-
-const appSize = calculateDirSize(appFolderPath);
-console.log(`   📊 Size: ${(appSize / 1024 / 1024).toFixed(2)} MB`);
+  // Calculate ASAR size
+  const asarSize = fs.statSync(asarPath).size;
+  console.log(`   📊 ASAR Size: ${(asarSize / 1024 / 1024).toFixed(2)} MB`);
+} catch (err) {
+  console.log(`   ❌ Failed to create ASAR: ${err.message}`);
+  throw err;
+}
 
 // Step 5: Rename Electron.app to nh-toolbox.app (do this before version.txt)
 console.log('\n🏷️  Step 5: Renaming Electron.app to nh-toolbox.app...');
@@ -246,8 +239,9 @@ if (fs.existsSync(infoPlistPath)) {
 console.log('\n✅ Build completed successfully!\n');
 console.log('📂 Output directory:', outputDir);
 console.log('📦 App bundle location:', nhToolsAppPath);
+console.log('📦 ASAR archive location:', asarPath);
 console.log('📄 version.txt location:', targetVersionFile);
 console.log('\n🚀 Run the app:');
 console.log(`   open ${nhToolsAppPath}`);
 console.log('   or double-click nh-toolbox.app in Finder');
-console.log('\n💡 Note: App runs without ASAR packaging (direct file access)');
+console.log('\n💡 Note: App packaged with ASAR for production deployment');

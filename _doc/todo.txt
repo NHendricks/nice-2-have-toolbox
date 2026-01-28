@@ -1,7 +1,7 @@
 commander:
-- cancel all fileops when closing compare dialog
-- fix no ctrl+1 dialog when only 1 drive is there (mac) so we cant set favorites
 - build asar for better performance abd less files to transport / scan at runtime
+- remove unused node_modules (dev only). Therefore do not copy node_modules but copy the package.json and call npm i --prod for the projects
+- fix no ctrl+1 dialog when only 1 drive is there (mac) so we cant set favorites
 - progress dialog also when copying directory
 - memorize directories and enable backward history navigation
 - enable compare of dir and dir in zip
