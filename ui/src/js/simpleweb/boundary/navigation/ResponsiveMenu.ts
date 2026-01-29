@@ -83,12 +83,19 @@ export class ResponsiveMenu extends LitElement {
       transform: scale(1.05);
     }
 
-    /* Reduce opacity when force-portrait is active */
+    :host([force-portrait]) .burger-btn:hover {
+      transition: all var(--transition-speed);
+      opacity: 1;
+    }
+
+    /* force-portrait default opacity */
     :host([force-portrait]) .burger-btn {
+      transition: opacity 2s ease;
       opacity: 0.1;
     }
 
-    :host([force-portrait]) .burger-btn:hover {
+    /* TEMPORARY override when force-portrait just activated */
+    :host([force-portrait]) .burger-btn.force-visible {
       opacity: 1;
     }
 
@@ -610,6 +617,22 @@ export class ResponsiveMenu extends LitElement {
     })
   }
 
+  private triggerForcePortraitOpacityHint() {
+    const btn = this.renderRoot.querySelector(
+      '.burger-btn',
+    ) as HTMLElement | null
+
+    if (!btn) return
+
+    // sofort sichtbar
+    btn.classList.add('force-visible')
+
+    // nach 0.5s wieder zurück
+    setTimeout(() => {
+      btn.classList.remove('force-visible')
+    }, 500)
+  }
+
   private applyPageSettings() {
     const currentPath = window.location.pathname
     const pageSettings = this.config.pageSettings?.[currentPath]
@@ -617,7 +640,15 @@ export class ResponsiveMenu extends LitElement {
     if (pageSettings) {
       // Apply forcePortrait setting
       if (pageSettings.forcePortrait !== undefined) {
+        const wasForced = this.forcePortrait
         this.forcePortrait = pageSettings.forcePortrait
+
+        // nur beim AKTIVIEREN
+        if (!wasForced && this.forcePortrait) {
+          this.updateComplete.then(() => {
+            this.triggerForcePortraitOpacityHint()
+          })
+        }
       }
 
       // Apply body class
