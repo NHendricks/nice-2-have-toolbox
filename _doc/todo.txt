@@ -1,15 +1,26 @@
 fix zoom ctrl + +
 
-data search dialog (like my proficash search dialog but more general approach)
-- auto recognize encoding
+text replaces
+- find and replace in dir and subdirs
+
+text fnder
 - camt.053
+- csv support
+- support criteria filters (for finance clusters)
+- regex search with examples (as dropdown with help)
+- auto recognize encoding
 - help in dialog
 - analyze after selecting file
 - own format definition
 - wait feedback while analyzing
 - filters optional popup 
 
+
+imdb finder
+- find imdb rating quickly by typeing film name 
+
 commander:
+- regex enhance with examples (dropdown and help)
 - build win and mac app with github action ...
 - memorize directories and enable backward history navigation
 - enable compare of dir and dir in zip
