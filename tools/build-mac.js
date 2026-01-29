@@ -186,8 +186,8 @@ if (fs.existsSync(electronAppPath)) {
   console.log('   ⚠️  Electron.app not found!');
 }
 
-// Step 6: Copy version.txt
-console.log('\n📄 Step 6: Copying version.txt...');
+// Step 6: Copy version.txt and licenses
+console.log('\n📄 Step 6: Copying version.txt and licenses...');
 const targetResourcesDir = path.join(nhToolsAppPath, 'Contents', 'Resources');
 const targetVersionFile = path.join(targetResourcesDir, 'version.txt');
 
@@ -196,6 +196,29 @@ if (fs.existsSync(versionFile)) {
   console.log('   ✅ version.txt copied to Resources');
 } else {
   console.log('   ⚠️  version.txt not found at source!');
+}
+
+// Copy LICENSE
+const licenseFile = path.join(rootDir, 'LICENSE');
+const targetLicenseFile = path.join(targetResourcesDir, 'LICENSE');
+if (fs.existsSync(licenseFile)) {
+  fs.copySync(licenseFile, targetLicenseFile);
+  console.log('   ✅ LICENSE copied to Resources');
+} else {
+  console.log('   ⚠️  LICENSE not found!');
+}
+
+// Copy THIRD_PARTY_LICENSES.txt
+const thirdPartyLicenseFile = path.join(rootDir, 'THIRD_PARTY_LICENSES.txt');
+const targetThirdPartyLicenseFile = path.join(
+  targetResourcesDir,
+  'THIRD_PARTY_LICENSES.txt',
+);
+if (fs.existsSync(thirdPartyLicenseFile)) {
+  fs.copySync(thirdPartyLicenseFile, targetThirdPartyLicenseFile);
+  console.log('   ✅ THIRD_PARTY_LICENSES.txt copied to Resources');
+} else {
+  console.log('   ⚠️  THIRD_PARTY_LICENSES.txt not found!');
 }
 
 // Step 7: Rename the executable inside MacOS folder

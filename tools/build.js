@@ -174,8 +174,10 @@ async function build() {
     throw err;
   }
 
-  // Step 5: Copy version.txt and icon to resources
-  console.log('\n📄 Step 5: Copying version.txt and icon to resources...');
+  // Step 5: Copy version.txt, licenses, and icon to resources
+  console.log(
+    '\n📄 Step 5: Copying version.txt, licenses, and icon to resources...',
+  );
   const targetVersionFile = path.join(resourcesDir, 'version.txt');
 
   if (fs.existsSync(versionFile)) {
@@ -184,6 +186,29 @@ async function build() {
     console.log(`   ✅ version.txt copied (Version: ${version})`);
   } else {
     console.log('   ⚠️  version.txt not found!');
+  }
+
+  // Copy LICENSE
+  const licenseFile = path.join(rootDir, 'LICENSE');
+  const targetLicenseFile = path.join(resourcesDir, 'LICENSE');
+  if (fs.existsSync(licenseFile)) {
+    fs.copySync(licenseFile, targetLicenseFile);
+    console.log('   ✅ LICENSE copied');
+  } else {
+    console.log('   ⚠️  LICENSE not found!');
+  }
+
+  // Copy THIRD_PARTY_LICENSES.txt
+  const thirdPartyLicenseFile = path.join(rootDir, 'THIRD_PARTY_LICENSES.txt');
+  const targetThirdPartyLicenseFile = path.join(
+    resourcesDir,
+    'THIRD_PARTY_LICENSES.txt',
+  );
+  if (fs.existsSync(thirdPartyLicenseFile)) {
+    fs.copySync(thirdPartyLicenseFile, targetThirdPartyLicenseFile);
+    console.log('   ✅ THIRD_PARTY_LICENSES.txt copied');
+  } else {
+    console.log('   ⚠️  THIRD_PARTY_LICENSES.txt not found!');
   }
 
   // Copy icon.ico to resources (for window icon)
