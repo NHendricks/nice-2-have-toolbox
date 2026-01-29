@@ -1,5 +1,15 @@
+fix zoom ctrl + +
+
+data search dialog (like my proficash search dialog but more general approach)
+- auto recognize encoding
+- camt.053
+- help in dialog
+- analyze after selecting file
+- own format definition
+- wait feedback while analyzing
+- filters optional popup 
+
 commander:
-- fix no ctrl+1 dialog when only 1 drive is there (mac) so we cant set favorites
 - build win and mac app with github action ...
 - memorize directories and enable backward history navigation
 - enable compare of dir and dir in zip
@@ -18,7 +28,6 @@ commander:
 other:
 - build app for linux
 - integrate more cmdline-Tools
-  - data search dialog (like my proficash search dialog but more general approach)
   - dirsorter for jpegs
   - mp3metatagsetter for mp3s
 - music player (IPOD-like see www.nilshendricks.de>widgets)

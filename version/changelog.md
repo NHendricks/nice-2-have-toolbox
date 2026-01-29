@@ -4,6 +4,9 @@
 
 ### upcoming
 
+- fix zooming ctrl+ and ctrl- for german keyboard layout
+- add customizes electron menu
+
 ### v1.4.0 (28.01.2026)
 
 - add progressbar when zipping files

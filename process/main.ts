@@ -11,6 +11,7 @@ const {
   clipboard,
   Tray,
   Menu,
+  dialog,
 } = require('electron');
 const path = require('path');
 const installExtension = require('electron-devtools-installer').default;
@@ -126,6 +127,31 @@ async function createWindow() {
 
   const win = new BrowserWindow(windowOptions);
 
+  // Register keyboard shortcuts for zoom (especially for German keyboard layouts)
+  win.webContents.on('before-input-event', (event: any, input: any) => {
+    // Zoom in: Ctrl+Plus (numpad), Ctrl+Shift+Plus, Ctrl+=
+    if (input.control && !input.alt && !input.meta) {
+      if (
+        input.key === '+' ||
+        input.key === '=' ||
+        input.code === 'NumpadAdd'
+      ) {
+        event.preventDefault();
+        win.webContents.setZoomLevel(win.webContents.getZoomLevel() + 0.5);
+      }
+      // Zoom out: Ctrl+Minus
+      else if (input.key === '-' || input.code === 'NumpadSubtract') {
+        event.preventDefault();
+        win.webContents.setZoomLevel(win.webContents.getZoomLevel() - 0.5);
+      }
+      // Reset zoom: Ctrl+0
+      else if (input.key === '0' || input.code === 'Numpad0') {
+        event.preventDefault();
+        win.webContents.setZoomLevel(0);
+      }
+    }
+  });
+
   // Handle window close - only on macOS hide instead of quit
   win.on('close', (event: any) => {
     if (process.platform === 'darwin' && !isQuitting) {
@@ -179,7 +205,108 @@ ipcMain.handle('clipboard-read-text', () => {
   }
 });
 
+// File dialog IPC handler
+ipcMain.handle('show-open-dialog', async (_event: any, options: any) => {
+  try {
+    const result = await dialog.showOpenDialog(options);
+    if (result.canceled) {
+      return { success: true, canceled: true };
+    }
+    return { success: true, canceled: false, filePaths: result.filePaths };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Create application menu with zoom functionality
+function createApplicationMenu() {
+  const isMac = process.platform === 'darwin';
+
+  const template: any[] = [
+    // App menu (macOS only)
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' },
+              { type: 'separator' },
+              { role: 'services' },
+              { type: 'separator' },
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              { type: 'separator' },
+              { role: 'quit' },
+            ],
+          },
+        ]
+      : []),
+
+    // Edit menu
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        ...(isMac
+          ? [
+              { role: 'pasteAndMatchStyle' },
+              { role: 'delete' },
+              { role: 'selectAll' },
+            ]
+          : [{ role: 'delete' }, { type: 'separator' }, { role: 'selectAll' }]),
+      ],
+    },
+
+    // View menu
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        {
+          label: 'Zoom In',
+          role: 'zoomIn',
+          accelerator: 'CommandOrControl+=',
+        },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+
+    // Window menu
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac
+          ? [
+              { type: 'separator' },
+              { role: 'front' },
+              { type: 'separator' },
+              { role: 'window' },
+            ]
+          : [{ role: 'close' }]),
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 app.whenReady().then(() => {
+  createApplicationMenu(); // Create application menu with zoom support
   createTray(); // Will only create tray on macOS
   createWindow();
 });
