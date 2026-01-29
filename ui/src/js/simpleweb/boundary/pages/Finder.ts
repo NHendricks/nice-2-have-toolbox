@@ -400,9 +400,6 @@ export class Finder extends LitElement {
   @property({ type: String })
   selectedFile = ''
 
-  @property({ type: String })
-  selectedFormat = 'feste Satzlänge 768'
-
   @property({ type: Object })
   filters: FilterState = {
     account: '',
@@ -433,7 +430,10 @@ export class Finder extends LitElement {
         {
           properties: ['openFile'],
           filters: [
-            { name: 'Text Files', extensions: ['txt', 'TXT'] },
+            {
+              name: 'Bank Statement Files',
+              extensions: ['xml', 'XML', 'txt', 'TXT', 'csv', 'CSV'],
+            },
             { name: 'All Files', extensions: ['*'] },
           ],
         },
@@ -504,13 +504,12 @@ export class Finder extends LitElement {
     this.setStatus('Analyzing file...', 'info')
 
     try {
-      // Call backend proficash command to parse the file
+      // Call backend proficash command to parse the file (format auto-detected)
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'proficash',
         {
           filePath: this.selectedFile,
-          format: this.selectedFormat,
         },
       )
 
@@ -601,42 +600,26 @@ export class Finder extends LitElement {
         <div class="config-section">
           <div class="section-title">📁 File Configuration</div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="file-select">Selected File</label>
-              <div style="display: flex; gap: 0.5rem;">
-                <input
-                  type="text"
-                  id="file-select"
-                  .value=${this.selectedFile}
-                  placeholder="No file selected..."
-                  readonly
-                  style="flex: 1;"
-                />
-                <button
-                  class="btn btn-secondary"
-                  @click=${this.handleFileSelect}
-                  style="padding: 0.75rem 1rem;"
-                >
-                  Browse...
-                </button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="format-select">Export Format</label>
-              <select
-                id="format-select"
-                .value=${this.selectedFormat}
-                @change=${(e: Event) =>
-                  (this.selectedFormat = (e.target as HTMLSelectElement).value)}
+          <div class="form-group">
+            <label for="file-select"
+              >Selected File (Format Auto-Detected)</label
+            >
+            <div style="display: flex; gap: 0.5rem;">
+              <input
+                type="text"
+                id="file-select"
+                .value=${this.selectedFile}
+                placeholder="No file selected... (Supports: CAMT.053 XML, fixed-length TXT)"
+                readonly
+                style="flex: 1;"
+              />
+              <button
+                class="btn btn-secondary"
+                @click=${this.handleFileSelect}
+                style="padding: 0.75rem 1rem;"
               >
-                <option value="feste Satzlänge 768">
-                  Feste Satzlänge 768 (Default)
-                </option>
-                <option value="csv">CSV Format</option>
-                <option value="custom">Custom Format</option>
-              </select>
+                Browse...
+              </button>
             </div>
           </div>
         </div>

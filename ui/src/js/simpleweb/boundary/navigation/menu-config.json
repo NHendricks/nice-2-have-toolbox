@@ -5,8 +5,8 @@
       "path": "/"
     },
     {
-      "label": "Backend",
-      "path": "/backend"
+      "label": "Finder",
+      "path": "/finder"
     },
     {
       "label": "FAQ",

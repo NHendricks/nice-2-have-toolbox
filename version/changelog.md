@@ -6,6 +6,7 @@
 
 - fix zooming ctrl+ and ctrl- for german keyboard layout
 - add customizes electron menu
+- add finder app to toolbox (supports camt0.53-xml and legacy 768 chars format)
 
 ### v1.4.0 (28.01.2026)
 
