@@ -21,20 +21,40 @@ interface MenuConfig {
   pageSettings?: Record<string, PageSettings>
 }
 
+// Helper function to get initial page settings before component instantiation
+function getInitialPageSettings(): PageSettings | undefined {
+  const config = menuConfig as MenuConfig
+  // Default to "/" for initial load
+  return config.pageSettings?.['/']
+}
+
 @customElement('responsive-menu')
 export class ResponsiveMenu extends LitElement {
+  // Initialize with settings from config to avoid flash
+  private static initialSettings = getInitialPageSettings()
+
   @state() private isMenuOpen = false
-  @state() private isPortrait = window.matchMedia('(orientation: portrait)')
-    .matches
+  @state() private isPortrait =
+    ResponsiveMenu.initialSettings?.forcePortrait ||
+    window.matchMedia('(orientation: portrait)').matches
   @state() private isScrolled = false
   @state() private openSubmenu: string | null = null
   @state() private isActionsOverlayOpen = false
   @property({ type: Boolean, reflect: true, attribute: 'force-portrait' })
-  public forcePortrait = false
+  public forcePortrait = ResponsiveMenu.initialSettings?.forcePortrait ?? false
 
   private scrollHandler?: () => void
   private resizeHandler?: () => void
   private config: MenuConfig = menuConfig as MenuConfig
+
+  constructor() {
+    super()
+    // Apply initial body class immediately to prevent flash
+    const initialSettings = ResponsiveMenu.initialSettings
+    if (initialSettings?.addBodyClass) {
+      document.body.classList.add(initialSettings.addBodyClass)
+    }
+  }
 
   static styles = css`
     :host {
@@ -588,15 +608,13 @@ export class ResponsiveMenu extends LitElement {
   connectedCallback() {
     super.connectedCallback()
 
-    // Apply page settings for current route - use a small delay to let router initialize
+    // Apply page settings for current route
     const initialPath = this.getCurrentRoutePath()
-    console.log('[ResponsiveMenu] Initial path detected:', initialPath)
     this.applyPageSettings(initialPath)
 
     // Also try again after a short delay in case router hasn't initialized yet
     setTimeout(() => {
       const delayedPath = this.getCurrentRoutePath()
-      console.log('[ResponsiveMenu] Delayed path check:', delayedPath)
       this.applyPageSettings(delayedPath)
     }, 100)
 
@@ -625,7 +643,6 @@ export class ResponsiveMenu extends LitElement {
       const customEvent = e as CustomEvent
       const pathname =
         customEvent.detail?.location?.pathname || this.getCurrentRoutePath()
-      console.log('[ResponsiveMenu] Route changed to:', pathname)
       this.applyPageSettings(pathname)
     })
   }
@@ -646,15 +663,6 @@ export class ResponsiveMenu extends LitElement {
     // For file:// protocol, the pathname is the file path, so we need to detect this
     const pathname = window.location.pathname
     const protocol = window.location.protocol
-
-    console.log(
-      '[ResponsiveMenu] getCurrentRoutePath - protocol:',
-      protocol,
-      'pathname:',
-      pathname,
-      'hash:',
-      window.location.hash,
-    )
 
     // If using file:// protocol, default to '/' since router uses hash or internal state
     if (protocol === 'file:') {
@@ -691,16 +699,7 @@ export class ResponsiveMenu extends LitElement {
 
   private applyPageSettings(routePath?: string) {
     const currentPath = routePath || this.getCurrentRoutePath()
-    console.log(
-      '[ResponsiveMenu] applyPageSettings called with path:',
-      currentPath,
-    )
-    console.log(
-      '[ResponsiveMenu] Available pageSettings:',
-      this.config.pageSettings,
-    )
     const pageSettings = this.config.pageSettings?.[currentPath]
-    console.log('[ResponsiveMenu] Found pageSettings:', pageSettings)
 
     if (pageSettings) {
       // Apply forcePortrait setting
@@ -758,7 +757,6 @@ export class ResponsiveMenu extends LitElement {
   }
 
   private handleNavigation(path: string) {
-    console.log('Navigate to:', path)
     this.isMenuOpen = false
     this.openSubmenu = null
     this.isActionsOverlayOpen = false
