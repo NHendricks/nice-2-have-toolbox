@@ -3,9 +3,13 @@ commander:
 - memorize directories and enable backward history navigation
 - show current file process when compare in ui, open dialog directly then
 - change filter behaviour in compare dialog (more intuitive)
+- drag and drop support for files and folders
+- in drive dialog support keyboard navigation
+- support zips in zips
+- progress bar when opening zip
+- better font
 
 - how does file filter work on mac?
-- remove console outputs when zipping
 - fonts / colors
   toolbar-title: rgb(36 199 251)
   ...

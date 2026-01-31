@@ -4,6 +4,8 @@
 
 ### upcoming
 
+- in drive dialog support keyboard navigation
+
 ### v1.5.0 (31.01.2026)
 
 - fix zooming ctrl+ and ctrl- for german keyboard layout

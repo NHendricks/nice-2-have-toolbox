@@ -1255,21 +1255,29 @@ export class Commander extends LitElement {
       return
     }
 
-    // If any dialog is open, only allow ESC and ENTER (which dialogs handle themselves)
-    // This prevents keyboard shortcuts from interfering while typing in dialogs
-    const anyDialogOpen =
-      this.showHelp ||
-      this.viewerFile ||
-      this.operationDialog ||
-      this.deleteDialog ||
-      this.showDriveSelector ||
-      this.commandDialog ||
-      this.quickLaunchDialog ||
-      this.renameDialog ||
-      this.zipDialog ||
-      this.compareDialog
-
-    if (anyDialogOpen && event.key !== 'Escape' && event.key !== 'Enter') {
+    // Handle keyboard navigation in drive selector FIRST (before anyDialogOpen check)
+    if (this.showDriveSelector) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        this.closeDriveSelector()
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        this.moveDriveSelectorFocus(-1)
+        return
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        this.moveDriveSelectorFocus(1)
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        this.selectFocusedDrive()
+        return
+      }
+      // Block other keys while drive selector is open
       return
     }
 
@@ -1290,10 +1298,6 @@ export class Commander extends LitElement {
       }
       if (this.deleteDialog) {
         this.cancelDelete()
-        return
-      }
-      if (this.showDriveSelector) {
-        this.closeDriveSelector()
         return
       }
       if (this.commandDialog) {
@@ -1324,27 +1328,6 @@ export class Commander extends LitElement {
     if (event.key === 'Enter' && this.deleteDialog) {
       event.preventDefault()
       this.executeDelete()
-      return
-    }
-
-    // Handle keyboard navigation in drive selector
-    if (this.showDriveSelector) {
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        this.moveDriveSelectorFocus(-1)
-        return
-      }
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        this.moveDriveSelectorFocus(1)
-        return
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        this.selectFocusedDrive()
-        return
-      }
-      // ESC is already handled above
       return
     }
 
