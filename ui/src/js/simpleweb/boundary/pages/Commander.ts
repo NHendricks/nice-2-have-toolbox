@@ -706,6 +706,16 @@ export class Commander extends LitElement {
       // Force UI update
       this.requestUpdate()
     })
+
+    // Add IPC listener for compare progress
+    ;(window as any).electron.ipcRenderer.on(
+      'compare-progress',
+      (data: any) => {
+        this.compareProgress = data
+        // Force UI update
+        this.requestUpdate()
+      },
+    )
   }
 
   loadFavorites() {
@@ -2449,6 +2459,7 @@ export class Commander extends LitElement {
               .result=${this.compareDialog.result}
               .recursive=${this.compareDialog.recursive}
               .isWaiting=${this.compareWaiting}
+              .progress=${this.compareProgress}
               @close=${this.closeCompare}
               @toggle-recursive=${this.toggleCompareRecursive}
               @recompare=${this.handleCompare}

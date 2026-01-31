@@ -328,6 +328,14 @@ export class CompareDialog extends LitElement {
   @property({ type: Boolean })
   isWaiting = false
 
+  @property({ type: Object })
+  progress: {
+    current: number
+    total: number
+    fileName: string
+    percentage: number
+  } | null = null
+
   @property({ type: Boolean })
   hideIdentical = false
 
@@ -547,6 +555,33 @@ export class CompareDialog extends LitElement {
                     Comparing
                     directories${this.recursive ? ' (recursive)' : ''}...
                   </div>
+                  ${this.progress
+                    ? html`
+                        <div
+                          style="margin-top: 1rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 2px solid #0ea5e9; min-width: 300px;"
+                        >
+                          <div
+                            style="width: 100%; height: 20px; background: #0f172a; border-radius: 4px; overflow: hidden; margin-bottom: 0.75rem;"
+                          >
+                            <div
+                              style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #06b6d4); transition: width 0.3s ease; width: ${this
+                                .progress.percentage}%;"
+                            ></div>
+                          </div>
+                          <div
+                            style="color: #cbd5e1; font-size: 0.85rem; text-align: center;"
+                          >
+                            📁 ${this.progress.current} / ${this.progress.total}
+                            files
+                          </div>
+                          <div
+                            style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px;"
+                          >
+                            ${this.progress.fileName}
+                          </div>
+                        </div>
+                      `
+                    : ''}
                 </div>
               `
             : ''}

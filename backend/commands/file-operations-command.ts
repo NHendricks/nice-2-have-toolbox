@@ -951,8 +951,16 @@ export class FileOperationsCommand implements ICommand {
     const different: any[] = [];
     const identical: any[] = [];
 
-    // Check files in left
+    // Check files in left with progress reporting
+    const totalFiles = leftMap.size + rightMap.size;
+    let currentFile = 0;
+
     for (const [relPath, leftFile] of leftMap) {
+      currentFile++;
+      if (progressCallback) {
+        progressCallback(currentFile, totalFiles, relPath);
+      }
+
       const rightFile = rightMap.get(relPath);
 
       if (!rightFile) {
