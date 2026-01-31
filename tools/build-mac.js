@@ -1,3 +1,4 @@
+import archiver from 'archiver';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -297,8 +298,37 @@ if (fs.existsSync(infoPlistPath)) {
   console.log('   ⚠️  Info.plist not found!');
 }
 
+// Step 8: Create ZIP archive
+const distDir = path.join(rootDir, 'target', 'dist');
+const zipPath = path.join(distDir, 'nh-toolbox-mac.zip'); // rename per OS if needed
+console.log('\n🗜️  Step 8: Creating ZIP archive...');
+
+// Ensure dist directory exists
+fs.mkdirSync(distDir, { recursive: true });
+
+const output = fs.createWriteStream(zipPath);
+const archive = archiver('zip', { zlib: { level: 9 } });
+
+archive.pipe(output);
+
+// Zip the entire Electron output directory
+archive.directory(outputDir, false);
+
+await archive.finalize();
+
+await new Promise((resolve, reject) => {
+  output.on('close', resolve);
+  archive.on('error', reject);
+});
+
+const zipSize = fs.statSync(zipPath).size;
+console.log(
+  `   ✅ ZIP created: ${zipPath} (${(zipSize / 1024 / 1024).toFixed(2)} MB)`,
+);
+
 // Step 10: Summary
 console.log('\n✅ Build completed successfully!\n');
+console.log('🗜️  ZIP archive:', zipPath);
 console.log('📂 Output directory:', outputDir);
 console.log('📦 App bundle location:', nhToolsAppPath);
 console.log('📦 ASAR archive location:', asarPath);
