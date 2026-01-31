@@ -4,9 +4,11 @@
 
 ### upcoming
 
+### v1.5.0 (31.01.2026)
+
 - fix zooming ctrl+ and ctrl- for german keyboard layout
-- add customizes electron menu
-- add finder app to toolbox (supports banking camt0.53-xml and legacy 768 chars formats) - use menu in top right corner to navigate to app
+- add customized electron menu
+- add moneyfinder app to toolbox (supports banking camt0.53-xml and legacy 768 chars formats)
 - add feature to compare a directory with a directory in zip file
 
 ### v1.4.0 (28.01.2026)
