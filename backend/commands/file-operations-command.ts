@@ -851,6 +851,7 @@ export class FileOperationsCommand implements ICommand {
 
   /**
    * Compare two directories and return differences
+   * Supports comparing regular directory (left) with ZIP directory (right)
    */
   private async compareDirectories(
     leftPath: string,
@@ -864,25 +865,24 @@ export class FileOperationsCommand implements ICommand {
       throw new Error('rightPath is required for compare operation');
     }
 
-    const absoluteLeft = path.resolve(leftPath);
-    const absoluteRight = path.resolve(rightPath);
+    const { ZipHelper } = await import('./zip-helper.js');
 
-    // Check if both directories exist
+    // Check if right path is a ZIP path
+    const rightZipPath = ZipHelper.parsePath(rightPath);
+    const isRightZip =
+      rightZipPath.isZipPath ||
+      (rightPath.toLowerCase().endsWith('.zip') && fs.existsSync(rightPath));
+
+    const absoluteLeft = path.resolve(leftPath);
+
+    // Check if left directory exists
     if (!fs.existsSync(absoluteLeft)) {
       throw new Error(`Left directory does not exist: ${absoluteLeft}`);
     }
-    if (!fs.existsSync(absoluteRight)) {
-      throw new Error(`Right directory does not exist: ${absoluteRight}`);
-    }
 
     const leftStats = await stat(absoluteLeft);
-    const rightStats = await stat(absoluteRight);
-
     if (!leftStats.isDirectory()) {
       throw new Error(`Left path is not a directory: ${absoluteLeft}`);
-    }
-    if (!rightStats.isDirectory()) {
-      throw new Error(`Right path is not a directory: ${absoluteRight}`);
     }
 
     // Get file lists from both directories
@@ -890,13 +890,54 @@ export class FileOperationsCommand implements ICommand {
       ? await this.getFilesRecursive(absoluteLeft, absoluteLeft)
       : await this.getFilesInDirectory(absoluteLeft);
 
-    const rightFiles = recursive
-      ? await this.getFilesRecursive(absoluteRight, absoluteRight)
-      : await this.getFilesInDirectory(absoluteRight);
+    let rightFiles: Array<{
+      relativePath: string;
+      fullPath: string;
+      size: number;
+      modified: string;
+      isDirectory: boolean;
+    }>;
+    let absoluteRight: string;
 
-    // Create maps for easy comparison
-    const leftMap = new Map(leftFiles.map((f) => [f.relativePath, f]));
-    const rightMap = new Map(rightFiles.map((f) => [f.relativePath, f]));
+    if (isRightZip) {
+      // Get files from ZIP
+      const zipFile = rightZipPath.isZipPath ? rightZipPath.zipFile : rightPath;
+      const internalPath = rightZipPath.isZipPath
+        ? rightZipPath.internalPath
+        : '';
+      absoluteRight = rightZipPath.isZipPath ? rightPath : zipFile;
+
+      rightFiles = recursive
+        ? await this.getFilesFromZipRecursive(zipFile, internalPath)
+        : await this.getFilesFromZipDirectory(zipFile, internalPath);
+    } else {
+      // Regular directory
+      absoluteRight = path.resolve(rightPath);
+
+      if (!fs.existsSync(absoluteRight)) {
+        throw new Error(`Right directory does not exist: ${absoluteRight}`);
+      }
+
+      const rightStats = await stat(absoluteRight);
+      if (!rightStats.isDirectory()) {
+        throw new Error(`Right path is not a directory: ${absoluteRight}`);
+      }
+
+      rightFiles = recursive
+        ? await this.getFilesRecursive(absoluteRight, absoluteRight)
+        : await this.getFilesInDirectory(absoluteRight);
+    }
+
+    // Normalize all relative paths to use forward slashes for consistent comparison
+    const normalizePath = (p: string) => p.replace(/\\/g, '/');
+
+    // Create maps for easy comparison (using normalized paths as keys)
+    const leftMap = new Map(
+      leftFiles.map((f) => [normalizePath(f.relativePath), f]),
+    );
+    const rightMap = new Map(
+      rightFiles.map((f) => [normalizePath(f.relativePath), f]),
+    );
 
     // Find differences
     const onlyInLeft: any[] = [];
@@ -966,7 +1007,19 @@ export class FileOperationsCommand implements ICommand {
         } else {
           // Same size but different time - compare content
           const leftContent = fs.readFileSync(leftFile.fullPath);
-          const rightContent = fs.readFileSync(rightFile.fullPath);
+
+          // Read right content - either from ZIP or filesystem
+          let rightContent: Buffer;
+          if (isRightZip) {
+            const rightZip = ZipHelper.parsePath(rightFile.fullPath);
+            rightContent = ZipHelper.readFromZip(
+              rightZip.zipFile,
+              rightZip.internalPath,
+              true,
+            ) as Buffer;
+          } else {
+            rightContent = fs.readFileSync(rightFile.fullPath);
+          }
 
           if (leftContent.equals(rightContent)) {
             // Content is identical despite different timestamps
@@ -1028,6 +1081,134 @@ export class FileOperationsCommand implements ICommand {
       identical: identical,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Get files from a ZIP directory (non-recursive)
+   */
+  private async getFilesFromZipDirectory(
+    zipFilePath: string,
+    internalPath: string,
+  ): Promise<
+    Array<{
+      relativePath: string;
+      fullPath: string;
+      size: number;
+      modified: string;
+      isDirectory: boolean;
+    }>
+  > {
+    const { ZipHelper } = await import('./zip-helper.js');
+    const result = ZipHelper.listZipContents(zipFilePath, internalPath);
+
+    const files: Array<{
+      relativePath: string;
+      fullPath: string;
+      size: number;
+      modified: string;
+      isDirectory: boolean;
+    }> = [];
+
+    // Add directories
+    for (const dir of result.directories) {
+      files.push({
+        relativePath: dir.name,
+        fullPath: dir.path,
+        size: 0,
+        modified: dir.modified,
+        isDirectory: true,
+      });
+    }
+
+    // Add files
+    for (const file of result.files) {
+      files.push({
+        relativePath: file.name,
+        fullPath: file.path,
+        size: file.size,
+        modified: file.modified,
+        isDirectory: false,
+      });
+    }
+
+    return files;
+  }
+
+  /**
+   * Get files from a ZIP directory recursively
+   */
+  private async getFilesFromZipRecursive(
+    zipFilePath: string,
+    internalPath: string,
+  ): Promise<
+    Array<{
+      relativePath: string;
+      fullPath: string;
+      size: number;
+      modified: string;
+      isDirectory: boolean;
+    }>
+  > {
+    const { ZipHelper } = await import('./zip-helper.js');
+    const AdmZip = (await import('adm-zip')).default;
+
+    if (!fs.existsSync(zipFilePath)) {
+      throw new Error(`ZIP file does not exist: ${zipFilePath}`);
+    }
+
+    const zip = new AdmZip(zipFilePath);
+    const entries = zip.getEntries();
+
+    const files: Array<{
+      relativePath: string;
+      fullPath: string;
+      size: number;
+      modified: string;
+      isDirectory: boolean;
+    }> = [];
+
+    // Normalize internal path
+    const normalizedInternal = internalPath
+      ? internalPath.replace(/\\/g, '/').replace(/\/$/, '')
+      : '';
+    const prefix = normalizedInternal ? normalizedInternal + '/' : '';
+
+    for (const entry of entries) {
+      const entryPath = entry.entryName.replace(/\\/g, '/');
+
+      // Skip if not in current folder
+      if (normalizedInternal && !entryPath.startsWith(prefix)) {
+        continue;
+      }
+
+      // Get relative path from current folder
+      const relativePath = normalizedInternal
+        ? entryPath.substring(prefix.length)
+        : entryPath;
+
+      // Skip if empty (we're at the current folder itself)
+      if (!relativePath) {
+        continue;
+      }
+
+      // Remove trailing slash for directories
+      const cleanRelativePath = relativePath.replace(/\/$/, '');
+      if (!cleanRelativePath) continue;
+
+      const fullInternalPath = normalizedInternal
+        ? `${normalizedInternal}/${cleanRelativePath}`
+        : cleanRelativePath;
+
+      files.push({
+        relativePath: cleanRelativePath,
+        fullPath: `${zipFilePath}/${fullInternalPath}`,
+        size: entry.header.size,
+        modified: entry.header.time.toISOString(),
+        isDirectory: entry.isDirectory,
+      });
+    }
+
+    return files;
   }
 
   /**

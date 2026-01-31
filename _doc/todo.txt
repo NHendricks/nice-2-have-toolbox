@@ -1,11 +1,6 @@
 commander:
 - regex enhance with examples (dropdown and help)
-- build win and mac app with github action ...
 - memorize directories and enable backward history navigation
-- enable compare of dir and dir in zip
-  - CompareDialog.ts:398 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'forEach')
-    at CompareDialog.getFilteredItems (CompareDialog.ts:398:28)
-    at CompareDialog.render (CompareDialog.ts:529:32)
 
 - how does file filter work on mac?
 - remove console outputs when zipping
