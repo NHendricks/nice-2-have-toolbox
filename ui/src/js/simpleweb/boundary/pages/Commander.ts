@@ -167,6 +167,14 @@ export class Commander extends LitElement {
     selectedCount: number
   } | null = null
 
+  @property({ type: Object })
+  openWithDialog: {
+    fileName: string
+    filePath: string
+    applications: Array<{ name: string; command: string; isDefault: boolean }>
+    loading: boolean
+  } | null = null
+
   async connectedCallback() {
     super.connectedCallback()
 
@@ -1547,6 +1555,9 @@ export class Commander extends LitElement {
       case 'view':
         this.handleF3()
         break
+      case 'open-with':
+        this.handleOpenWith()
+        break
       case 'rename':
         this.handleF2()
         break
@@ -1570,6 +1581,90 @@ export class Commander extends LitElement {
         break
       default:
         this.setStatus(`Action not implemented: ${action}`, 'error')
+    }
+  }
+
+  async handleOpenWith() {
+    const pane = this.getActivePane()
+    const item = pane.items[pane.focusedIndex]
+
+    if (!item || item.name === '..' || item.isDirectory) {
+      this.setStatus('Please select a file to open', 'error')
+      return
+    }
+
+    // Show dialog with loading state
+    this.openWithDialog = {
+      fileName: item.name,
+      filePath: item.path,
+      applications: [],
+      loading: true,
+    }
+
+    try {
+      // Query backend for file associations
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'get-file-associations',
+          filePath: item.path,
+        },
+      )
+
+      if (response.success && response.data) {
+        this.openWithDialog = {
+          fileName: item.name,
+          filePath: item.path,
+          applications: response.data.applications || [],
+          loading: false,
+        }
+
+        if (response.data.applications.length === 0) {
+          this.setStatus('No applications found for this file type', 'normal')
+        }
+      } else {
+        this.setStatus(`Error loading applications: ${response.error}`, 'error')
+        this.openWithDialog = null
+      }
+    } catch (error: any) {
+      this.setStatus(`Error: ${error.message}`, 'error')
+      this.openWithDialog = null
+    }
+  }
+
+  closeOpenWith() {
+    this.openWithDialog = null
+  }
+
+  async executeOpenWith(applicationCommand: string) {
+    if (!this.openWithDialog) return
+
+    const { filePath, fileName } = this.openWithDialog
+
+    try {
+      this.setStatus(`Opening ${fileName}...`, 'normal')
+
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'open-with-app',
+          filePath: filePath,
+          applicationCommand: applicationCommand,
+        },
+      )
+
+      if (response.success) {
+        this.setStatus(`Opened ${fileName}`, 'success')
+      } else {
+        this.setStatus(`Error: ${response.error}`, 'error')
+      }
+
+      this.openWithDialog = null
+    } catch (error: any) {
+      this.setStatus(`Error: ${error.message}`, 'error')
+      this.openWithDialog = null
     }
   }
 
@@ -1821,6 +1916,16 @@ export class Commander extends LitElement {
               @action=${(e: CustomEvent) =>
                 this.handleContextMenuAction(e.detail)}
             ></context-menu-dialog>`
+          : ''}
+        ${this.openWithDialog
+          ? html`<open-with-dialog
+              .fileName=${this.openWithDialog.fileName}
+              .filePath=${this.openWithDialog.filePath}
+              .applications=${this.openWithDialog.applications}
+              .loading=${this.openWithDialog.loading}
+              @close=${this.closeOpenWith}
+              @select=${(e: CustomEvent) => this.executeOpenWith(e.detail)}
+            ></open-with-dialog>`
           : ''}
       </div>
     `

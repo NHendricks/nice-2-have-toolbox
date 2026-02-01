@@ -87,6 +87,10 @@ export class FileOperationsCommand implements ICommand {
             params.zipFilePath,
             this.progressCallback,
           );
+        case 'get-file-associations':
+          return await this.getFileAssociations(filePath);
+        case 'open-with-app':
+          return await this.openWithApp(filePath, params.applicationCommand);
         default:
           return {
             success: false,
@@ -1849,6 +1853,266 @@ export class FileOperationsCommand implements ICommand {
         success: false,
         operation: 'execute-file',
         path: absolutePath,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Get file associations for a given file (Windows registry query)
+   */
+  private async getFileAssociations(filePath: string): Promise<any> {
+    if (!filePath) {
+      throw new Error(
+        'filePath is required for get-file-associations operation',
+      );
+    }
+
+    const absolutePath = path.resolve(filePath);
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(`File does not exist: ${absolutePath}`);
+    }
+
+    const ext = path.extname(absolutePath).toLowerCase();
+
+    if (!ext) {
+      return {
+        success: true,
+        operation: 'get-file-associations',
+        filePath: absolutePath,
+        extension: '',
+        applications: [],
+      };
+    }
+
+    const applications: Array<{
+      name: string;
+      command: string;
+      isDefault: boolean;
+    }> = [];
+
+    try {
+      // On Windows, query registry for file associations
+      if (process.platform === 'win32') {
+        // Query file type from extension
+        try {
+          const { stdout: fileTypeOutput } = await execPromise(
+            `reg query HKCR\\${ext} /ve`,
+            { encoding: 'utf8' },
+          );
+
+          const fileTypeMatch = fileTypeOutput.match(/REG_SZ\s+(.+)/);
+          const fileType = fileTypeMatch ? fileTypeMatch[1].trim() : null;
+
+          if (fileType) {
+            // Query shell commands for this file type
+            try {
+              const { stdout: shellOutput } = await execPromise(
+                `reg query HKCR\\${fileType}\\shell`,
+                { encoding: 'utf8' },
+              );
+
+              // Parse shell verbs (Open, Edit, etc.)
+              const verbMatches = shellOutput.matchAll(
+                /HKEY_CLASSES_ROOT\\[^\\]+\\shell\\(.+)/g,
+              );
+
+              for (const match of verbMatches) {
+                const verb = match[1];
+
+                try {
+                  // Get the command for this verb
+                  const { stdout: commandOutput } = await execPromise(
+                    `reg query "HKCR\\${fileType}\\shell\\${verb}\\command" /ve`,
+                    { encoding: 'utf8' },
+                  );
+
+                  const commandMatch = commandOutput.match(/REG_SZ\s+(.+)/);
+                  if (commandMatch) {
+                    const command = commandMatch[1].trim();
+                    applications.push({
+                      name: verb.charAt(0).toUpperCase() + verb.slice(1),
+                      command: command,
+                      isDefault: verb.toLowerCase() === 'open',
+                    });
+                  }
+                } catch (error) {
+                  // Skip if command query fails
+                  continue;
+                }
+              }
+            } catch (error) {
+              // No shell commands found
+            }
+          }
+        } catch (error) {
+          // Extension not registered
+        }
+
+        // Add common fallback applications based on file type
+        const fallbacks = this.getCommonApplications(ext);
+        for (const fallback of fallbacks) {
+          // Check if application exists
+          try {
+            await execPromise(`where "${fallback.exe}"`, { encoding: 'utf8' });
+
+            // Don't add if already in list
+            if (
+              !applications.some((app) =>
+                app.command.toLowerCase().includes(fallback.exe.toLowerCase()),
+              )
+            ) {
+              applications.push({
+                name: fallback.name,
+                command: `"${fallback.exe}" "%1"`,
+                isDefault: false,
+              });
+            }
+          } catch (error) {
+            // Application not found in PATH
+          }
+        }
+      }
+
+      return {
+        success: true,
+        operation: 'get-file-associations',
+        filePath: absolutePath,
+        extension: ext,
+        applications: applications,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        operation: 'get-file-associations',
+        filePath: absolutePath,
+        extension: ext,
+        error: error.message,
+        applications: [],
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Get common applications for specific file extensions
+   */
+  private getCommonApplications(
+    ext: string,
+  ): Array<{ name: string; exe: string }> {
+    const commonApps: { [key: string]: Array<{ name: string; exe: string }> } =
+      {
+        '.txt': [
+          { name: 'Notepad', exe: 'notepad.exe' },
+          { name: 'Visual Studio Code', exe: 'code' },
+          { name: 'Notepad++', exe: 'notepad++.exe' },
+        ],
+        '.log': [
+          { name: 'Notepad', exe: 'notepad.exe' },
+          { name: 'Visual Studio Code', exe: 'code' },
+        ],
+        '.json': [
+          { name: 'Visual Studio Code', exe: 'code' },
+          { name: 'Notepad++', exe: 'notepad++.exe' },
+        ],
+        '.xml': [
+          { name: 'Visual Studio Code', exe: 'code' },
+          { name: 'Notepad++', exe: 'notepad++.exe' },
+        ],
+        '.js': [
+          { name: 'Visual Studio Code', exe: 'code' },
+          { name: 'Notepad++', exe: 'notepad++.exe' },
+        ],
+        '.ts': [{ name: 'Visual Studio Code', exe: 'code' }],
+        '.html': [
+          { name: 'Visual Studio Code', exe: 'code' },
+          { name: 'Notepad++', exe: 'notepad++.exe' },
+          { name: 'Microsoft Edge', exe: 'msedge.exe' },
+        ],
+        '.css': [
+          { name: 'Visual Studio Code', exe: 'code' },
+          { name: 'Notepad++', exe: 'notepad++.exe' },
+        ],
+        '.jpg': [
+          { name: 'Paint', exe: 'mspaint.exe' },
+          { name: 'Microsoft Photos', exe: 'ms-photos:' },
+        ],
+        '.jpeg': [
+          { name: 'Paint', exe: 'mspaint.exe' },
+          { name: 'Microsoft Photos', exe: 'ms-photos:' },
+        ],
+        '.png': [
+          { name: 'Paint', exe: 'mspaint.exe' },
+          { name: 'Microsoft Photos', exe: 'ms-photos:' },
+        ],
+        '.gif': [{ name: 'Microsoft Photos', exe: 'ms-photos:' }],
+        '.pdf': [{ name: 'Microsoft Edge', exe: 'msedge.exe' }],
+        '.zip': [{ name: '7-Zip', exe: '7z.exe' }],
+        '.rar': [{ name: '7-Zip', exe: '7z.exe' }],
+      };
+
+    return commonApps[ext] || [];
+  }
+
+  /**
+   * Open a file with a specific application
+   */
+  private async openWithApp(
+    filePath: string,
+    applicationCommand: string,
+  ): Promise<any> {
+    if (!filePath) {
+      throw new Error('filePath is required for open-with-app operation');
+    }
+    if (!applicationCommand) {
+      throw new Error(
+        'applicationCommand is required for open-with-app operation',
+      );
+    }
+
+    const absolutePath = path.resolve(filePath);
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(`File does not exist: ${absolutePath}`);
+    }
+
+    try {
+      // Replace %1 or "%1" with the actual file path (quoted)
+      let command = applicationCommand
+        .replace(/"%1"/g, `"${absolutePath}"`)
+        .replace(/%1/g, `"${absolutePath}"`);
+
+      // If no %1 placeholder, append the file path
+      if (!applicationCommand.includes('%1')) {
+        command = `${command} "${absolutePath}"`;
+      }
+
+      console.log(`[OpenWithApp] Executing: ${command}`);
+
+      // Execute the command
+      await execPromise(command, {
+        timeout: 5000,
+        windowsHide: true,
+      });
+
+      return {
+        success: true,
+        operation: 'open-with-app',
+        path: absolutePath,
+        application: applicationCommand,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        operation: 'open-with-app',
+        path: absolutePath,
+        application: applicationCommand,
         error: error.message,
         timestamp: new Date().toISOString(),
       };

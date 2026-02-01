@@ -194,6 +194,13 @@ export class ContextMenuDialog extends LitElement {
     })
 
     items.push({
+      label: 'Open With...',
+      icon: '🚀',
+      action: 'open-with',
+      enabled: this.selectedCount <= 1 && !this.isDirectory,
+    })
+
+    items.push({
       label: 'Rename',
       icon: '✏️',
       action: 'rename',

@@ -53,6 +53,9 @@ export function addContextMenuMethods(commander: Commander) {
       case 'view':
         this.handleF3()
         break
+      case 'open-with':
+        this.handleOpenWith()
+        break
       case 'rename':
         this.handleF2()
         break
