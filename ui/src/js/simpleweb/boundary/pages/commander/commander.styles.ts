@@ -75,7 +75,7 @@ export const commanderStyles = css`
   }
 
   .pane.active .pane-header {
-    background: #0e5ae9;
+    background: #0ea5e9;
     color: #fff;
   }
 
@@ -202,7 +202,7 @@ export const commanderStyles = css`
   }
 
   .file-name.directory {
-    color: rgb(117 233 106);
+    color: #0cb343;
   }
 
   .file-size {

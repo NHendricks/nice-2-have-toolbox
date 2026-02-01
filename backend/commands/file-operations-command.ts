@@ -1279,45 +1279,52 @@ export class FileOperationsCommand implements ICommand {
             rightModified: rightFile.modified,
             reason: 'size',
           });
-        } else if (leftFile.modified === rightFile.modified) {
-          // Same size and time = identical
-          identical.push({
-            path: relPath,
-            leftPath: leftFile.fullPath,
-            rightPath: rightFile.fullPath,
-            size: leftFile.size,
-            modified: leftFile.modified,
-            isDirectory: false,
-          });
         } else {
-          // Same size but different time - compare content
-          const leftContent = fs.readFileSync(leftFile.fullPath);
+          // Same size - always do binary compare (don't trust timestamps alone)
+          // This handles size=0 files correctly and catches cases where
+          // timestamps are preserved during copies but content differs
+          try {
+            const leftContent = fs.readFileSync(leftFile.fullPath);
 
-          // Read right content - either from ZIP or filesystem
-          let rightContent: Buffer;
-          if (isRightZip) {
-            const rightZip = ZipHelper.parsePath(rightFile.fullPath);
-            rightContent = ZipHelper.readFromZip(
-              rightZip.zipFile,
-              rightZip.internalPath,
-              true,
-            ) as Buffer;
-          } else {
-            rightContent = fs.readFileSync(rightFile.fullPath);
-          }
+            // Read right content - either from ZIP or filesystem
+            let rightContent: Buffer;
+            if (isRightZip) {
+              const rightZip = ZipHelper.parsePath(rightFile.fullPath);
+              rightContent = ZipHelper.readFromZip(
+                rightZip.zipFile,
+                rightZip.internalPath,
+                true,
+              ) as Buffer;
+            } else {
+              rightContent = fs.readFileSync(rightFile.fullPath);
+            }
 
-          if (leftContent.equals(rightContent)) {
-            // Content is identical despite different timestamps
-            identical.push({
-              path: relPath,
-              leftPath: leftFile.fullPath,
-              rightPath: rightFile.fullPath,
-              size: leftFile.size,
-              modified: leftFile.modified,
-              isDirectory: false,
-            });
-          } else {
-            // Content is different
+            if (leftContent.equals(rightContent)) {
+              // Content is identical
+              identical.push({
+                path: relPath,
+                leftPath: leftFile.fullPath,
+                rightPath: rightFile.fullPath,
+                size: leftFile.size,
+                modified: leftFile.modified,
+                isDirectory: false,
+              });
+            } else {
+              // Content is different
+              different.push({
+                path: relPath,
+                leftPath: leftFile.fullPath,
+                rightPath: rightFile.fullPath,
+                leftSize: leftFile.size,
+                rightSize: rightFile.size,
+                leftModified: leftFile.modified,
+                rightModified: rightFile.modified,
+                reason: 'content',
+              });
+            }
+          } catch (readError: any) {
+            // Could not read file for binary comparison (e.g., ASAR, locked, permission denied)
+            // Mark as different since we can't verify content
             different.push({
               path: relPath,
               leftPath: leftFile.fullPath,
@@ -1326,7 +1333,7 @@ export class FileOperationsCommand implements ICommand {
               rightSize: rightFile.size,
               leftModified: leftFile.modified,
               rightModified: rightFile.modified,
-              reason: 'content',
+              reason: 'unreadable',
             });
           }
         }

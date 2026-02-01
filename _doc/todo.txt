@@ -1,18 +1,9 @@
 commander:
-- progress bar when opening zip
 - find files by text or name (in ctrl+f dialog, enable rekurse search here)
 - regex enhance with examples (dropdown and help)
 - change filter behaviour in compare dialog (more intuitive)
 - new logo
-- drag and drop support for files and folders
-- native context menu opener
 - warn for overwrite
-- connect network d
-- how does file filter work on mac? may improve functionality
-- fonts / colors
-  toolbar-title: rgb(36 199 251)
-  ...
-- prefs export / import
 - support \\paths (Windows only) ? Or better map to drive … .
 
 other:

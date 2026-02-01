@@ -2063,7 +2063,7 @@ export class Commander extends LitElement {
             class="function-key-top"
             @click=${() => this.handleCompare()}
             style="min-width: 100px; background: ${this.compareRecursive
-              ? '#0ea5e9'
+              ? ''
               : '#475569'};"
             title="compare"
           >
