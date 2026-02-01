@@ -488,11 +488,28 @@ export class FileOperationsCommand implements ICommand {
     // Case 1: Copy FROM ZIP to regular file system
     if (sourceZip.isZipPath && !destZip.isZipPath) {
       const destPath = path.resolve(destinationPath);
-      ZipHelper.extractFromZip(
-        sourceZip.zipFile,
-        sourceZip.internalPath,
-        destPath,
-      );
+
+      // Handle nested source ZIP
+      if (sourceZip.isNestedZip) {
+        const resolved = (ZipHelper as any).resolveNestedZipPath(sourceZip);
+        try {
+          ZipHelper.extractFromZip(
+            resolved.finalZipPath,
+            resolved.finalInternalPath,
+            destPath,
+          );
+          (ZipHelper as any).cleanupTempPaths(resolved.tempPaths);
+        } catch (error) {
+          (ZipHelper as any).cleanupTempPaths(resolved.tempPaths);
+          throw error;
+        }
+      } else {
+        ZipHelper.extractFromZip(
+          sourceZip.zipFile,
+          sourceZip.internalPath,
+          destPath,
+        );
+      }
 
       const stats = await stat(destPath);
       return {
