@@ -1584,6 +1584,56 @@ export class Commander extends LitElement {
     }
   }
 
+  loadCustomApplications(extension: string): Array<{
+    name: string
+    command: string
+    isDefault: boolean
+  }> {
+    const saved = localStorage.getItem('commander-custom-apps')
+    if (!saved) return []
+
+    try {
+      const customApps = JSON.parse(saved)
+      return customApps[extension] || []
+    } catch (error) {
+      console.error('Failed to load custom applications:', error)
+      return []
+    }
+  }
+
+  saveCustomApplication(extension: string, appPath: string, appName: string) {
+    const saved = localStorage.getItem('commander-custom-apps')
+    let customApps: any = {}
+
+    if (saved) {
+      try {
+        customApps = JSON.parse(saved)
+      } catch (error) {
+        console.error('Failed to parse custom applications:', error)
+      }
+    }
+
+    if (!customApps[extension]) {
+      customApps[extension] = []
+    }
+
+    // Check if this app is already saved
+    const command = `"${appPath}" "%1"`
+    const existing = customApps[extension].find(
+      (app: any) => app.command === command,
+    )
+
+    if (!existing) {
+      customApps[extension].push({
+        name: appName,
+        command: command,
+        isDefault: false,
+      })
+
+      localStorage.setItem('commander-custom-apps', JSON.stringify(customApps))
+    }
+  }
+
   async handleOpenWith() {
     const pane = this.getActivePane()
     const item = pane.items[pane.focusedIndex]
@@ -1592,6 +1642,10 @@ export class Commander extends LitElement {
       this.setStatus('Please select a file to open', 'error')
       return
     }
+
+    const extension = item.name.includes('.')
+      ? '.' + item.name.split('.').pop()?.toLowerCase()
+      : ''
 
     // Show dialog with loading state
     this.openWithDialog = {
@@ -1613,14 +1667,20 @@ export class Commander extends LitElement {
       )
 
       if (response.success && response.data) {
+        // Load custom applications for this extension
+        const customApps = this.loadCustomApplications(extension)
+
+        // Merge custom apps with discovered apps
+        const allApps = [...customApps, ...(response.data.applications || [])]
+
         this.openWithDialog = {
           fileName: item.name,
           filePath: item.path,
-          applications: response.data.applications || [],
+          applications: allApps,
           loading: false,
         }
 
-        if (response.data.applications.length === 0) {
+        if (allApps.length === 0) {
           this.setStatus('No applications found for this file type', 'normal')
         }
       } else {
@@ -1666,6 +1726,22 @@ export class Commander extends LitElement {
       this.setStatus(`Error: ${error.message}`, 'error')
       this.openWithDialog = null
     }
+  }
+
+  async handleCustomAppSelect(detail: { path: string; name: string }) {
+    if (!this.openWithDialog) return
+
+    const { filePath, fileName } = this.openWithDialog
+    const extension = fileName.includes('.')
+      ? '.' + fileName.split('.').pop()?.toLowerCase()
+      : ''
+
+    // Save the custom application for future use
+    this.saveCustomApplication(extension, detail.path, detail.name)
+
+    // Build the command and execute
+    const command = `"${detail.path}" "%1"`
+    await this.executeOpenWith(command)
   }
 
   formatFileSize(bytes: number): string {
@@ -1925,6 +2001,8 @@ export class Commander extends LitElement {
               .loading=${this.openWithDialog.loading}
               @close=${this.closeOpenWith}
               @select=${(e: CustomEvent) => this.executeOpenWith(e.detail)}
+              @select-custom=${(e: CustomEvent) =>
+                this.handleCustomAppSelect(e.detail)}
             ></open-with-dialog>`
           : ''}
       </div>

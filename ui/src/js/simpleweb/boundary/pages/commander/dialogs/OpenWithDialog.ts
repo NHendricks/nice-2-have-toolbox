@@ -230,6 +230,40 @@ export class OpenWithDialog extends LitElement {
     }
   `
 
+  async handleBrowseForApp() {
+    try {
+      // Use Electron dialog to browse for executable
+      const result = await (window as any).electron.ipcRenderer.invoke(
+        'show-open-dialog',
+        {
+          properties: ['openFile'],
+          filters: [
+            { name: 'Executables', extensions: ['exe', 'bat', 'cmd'] },
+            { name: 'All Files', extensions: ['*'] },
+          ],
+        },
+      )
+
+      if (result && !result.canceled && result.filePaths.length > 0) {
+        const appPath = result.filePaths[0]
+        const appName = appPath.split(/[/\\]/).pop() || 'Custom Application'
+
+        // Dispatch event to save and use this application
+        this.dispatchEvent(
+          new CustomEvent('select-custom', {
+            detail: { path: appPath, name: appName },
+            bubbles: true,
+            composed: true,
+          }),
+        )
+
+        this.handleClose()
+      }
+    } catch (error) {
+      console.error('Error browsing for application:', error)
+    }
+  }
+
   handleSelectApp(command: string) {
     this.dispatchEvent(
       new CustomEvent('select', {
@@ -263,33 +297,50 @@ export class OpenWithDialog extends LitElement {
           <div class="dialog-content">
             ${this.loading
               ? html`<div class="loading">Loading applications...</div>`
-              : this.applications.length === 0
-                ? html`<div class="no-apps">
-                    No applications found for this file type.
-                  </div>`
-                : this.applications.map(
-                    (app, index) => html`
-                      <div
-                        class="app-item ${index === this.focusedIndex
-                          ? 'focused'
-                          : ''}"
-                        @click=${() => this.handleSelectApp(app.command)}
-                      >
-                        <span class="app-item-icon">
-                          ${app.isDefault ? '⭐' : '📦'}
-                        </span>
-                        <div class="app-item-content">
-                          <div class="app-item-name">
-                            ${app.name}
-                            ${app.isDefault
-                              ? html`<span class="default-badge">Default</span>`
-                              : ''}
+              : html`
+                  ${this.applications.length === 0
+                    ? html`<div class="no-apps">
+                        No applications found for this file type.
+                      </div>`
+                    : this.applications.map(
+                        (app, index) => html`
+                          <div
+                            class="app-item ${index === this.focusedIndex
+                              ? 'focused'
+                              : ''}"
+                            @click=${() => this.handleSelectApp(app.command)}
+                          >
+                            <span class="app-item-icon">
+                              ${app.isDefault ? '⭐' : '📦'}
+                            </span>
+                            <div class="app-item-content">
+                              <div class="app-item-name">
+                                ${app.name}
+                                ${app.isDefault
+                                  ? html`<span class="default-badge"
+                                      >Default</span
+                                    >`
+                                  : ''}
+                              </div>
+                              <div class="app-item-command">${app.command}</div>
+                            </div>
                           </div>
-                          <div class="app-item-command">${app.command}</div>
-                        </div>
+                        `,
+                      )}
+                  <div
+                    class="app-item"
+                    @click=${this.handleBrowseForApp}
+                    style="border-top: 1px solid #475569; margin-top: 0.5rem; padding-top: 0.75rem;"
+                  >
+                    <span class="app-item-icon">📁</span>
+                    <div class="app-item-content">
+                      <div class="app-item-name">Browse for application...</div>
+                      <div class="app-item-command">
+                        Select a custom application
                       </div>
-                    `,
-                  )}
+                    </div>
+                  </div>
+                `}
           </div>
 
           <div class="dialog-footer">

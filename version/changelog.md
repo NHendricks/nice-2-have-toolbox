@@ -8,7 +8,8 @@
 - memorize directories and enable backward history navigation
 - support nested zips
 - add context menu using SHIFT+F10
-- add open with dialog for open with native apps
+- add open with dialog for open with native installed apps
+  - enable selecting individual apps also
 
 ### v1.5.0 (31.01.2026)
 
