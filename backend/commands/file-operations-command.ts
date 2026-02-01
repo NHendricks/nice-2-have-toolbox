@@ -148,7 +148,79 @@ export class FileOperationsCommand implements ICommand {
     // Check if this is a ZIP path (with internal path)
     const zipPath = ZipHelper.parsePath(folderPath);
     if (zipPath.isZipPath) {
-      // List ZIP contents
+      // Handle nested ZIP if needed
+      if (zipPath.isNestedZip) {
+        console.log('[ListFiles] Nested ZIP detected:', {
+          folderPath,
+          zipFile: zipPath.zipFile,
+          internalPath: zipPath.internalPath,
+          nestedZips: zipPath.nestedZips,
+        });
+
+        const resolved = (ZipHelper as any).resolveNestedZipPath(zipPath);
+        console.log('[ListFiles] Resolved nested ZIP:', {
+          finalZipPath: resolved.finalZipPath,
+          finalInternalPath: resolved.finalInternalPath,
+          tempPaths: resolved.tempPaths,
+        });
+
+        try {
+          const result = ZipHelper.listZipContents(
+            resolved.finalZipPath,
+            resolved.finalInternalPath,
+          );
+
+          console.log('[ListFiles] Raw result from listZipContents:', {
+            path: result.path,
+            filesCount: result.files.length,
+            dirsCount: result.directories.length,
+            sampleFilePath: result.files[0]?.path,
+            sampleDirPath: result.directories[0]?.path,
+          });
+
+          // Replace temp paths with original user paths
+          result.path = folderPath;
+
+          // Fix file and directory paths to use original path
+          // Normalize to forward slashes for consistency
+          const normalizedFolder = folderPath.replace(/\\/g, '/');
+          const pathPrefix = normalizedFolder.endsWith('/')
+            ? normalizedFolder
+            : normalizedFolder + '/';
+
+          console.log('[ListFiles] Path prefix:', pathPrefix);
+
+          for (const file of result.files) {
+            // Extract just the filename from the temp path
+            // The temp path is like: tempDir/inner.zip/file.txt
+            // We want to get just file.txt
+            const parts = file.path.split('/');
+            const fileName = parts[parts.length - 1];
+            file.path = pathPrefix + fileName;
+          }
+          for (const dir of result.directories) {
+            // Extract just the directory name from the temp path
+            const parts = dir.path.split('/');
+            const dirName = parts[parts.length - 1];
+            dir.path = pathPrefix + dirName;
+          }
+
+          console.log('[ListFiles] Fixed paths:', {
+            sampleFilePath: result.files[0]?.path,
+            sampleDirPath: result.directories[0]?.path,
+          });
+
+          // Clean up temp files after listing
+          (ZipHelper as any).cleanupTempPaths(resolved.tempPaths);
+          return result;
+        } catch (error) {
+          console.error('[ListFiles] Error in nested ZIP handling:', error);
+          // Clean up on error
+          (ZipHelper as any).cleanupTempPaths(resolved.tempPaths);
+          throw error;
+        }
+      }
+      // Regular ZIP (not nested)
       return ZipHelper.listZipContents(zipPath.zipFile, zipPath.internalPath);
     }
 
@@ -271,50 +343,69 @@ export class FileOperationsCommand implements ICommand {
     // Check if this is a ZIP path
     const zipPath = ZipHelper.parsePath(filePath);
     if (zipPath.isZipPath) {
-      // Read from ZIP
-      const isImage = this.isImageFile(zipPath.internalPath);
+      // Handle nested ZIP if needed
+      let actualZipFile = zipPath.zipFile;
+      let actualInternalPath = zipPath.internalPath;
+      let tempPaths: string[] = [];
 
-      if (isImage) {
-        const buffer = ZipHelper.readFromZip(
-          zipPath.zipFile,
-          zipPath.internalPath,
-          true,
-        ) as Buffer;
-        const base64 = buffer.toString('base64');
-        const ext = path.extname(zipPath.internalPath).toLowerCase();
+      if (zipPath.isNestedZip) {
+        const resolved = (ZipHelper as any).resolveNestedZipPath(zipPath);
+        actualZipFile = resolved.finalZipPath;
+        actualInternalPath = resolved.finalInternalPath;
+        tempPaths = resolved.tempPaths;
+      }
 
-        let mimeType = 'image/jpeg';
-        if (ext === '.png') mimeType = 'image/png';
-        else if (ext === '.gif') mimeType = 'image/gif';
-        else if (ext === '.bmp') mimeType = 'image/bmp';
-        else if (ext === '.webp') mimeType = 'image/webp';
-        else if (ext === '.svg') mimeType = 'image/svg+xml';
-        else if (ext === '.ico') mimeType = 'image/x-icon';
+      try {
+        // Read from ZIP
+        const isImage = this.isImageFile(actualInternalPath);
 
-        return {
-          success: true,
-          operation: 'read',
-          path: filePath,
-          content: `data:${mimeType};base64,${base64}`,
-          size: buffer.length,
-          modified: new Date().toISOString(),
-          isImage: true,
-        };
-      } else {
-        const content = ZipHelper.readFromZip(
-          zipPath.zipFile,
-          zipPath.internalPath,
-          false,
-        ) as string;
-        return {
-          success: true,
-          operation: 'read',
-          path: filePath,
-          content: content,
-          size: content.length,
-          modified: new Date().toISOString(),
-          isImage: false,
-        };
+        if (isImage) {
+          const buffer = ZipHelper.readFromZip(
+            actualZipFile,
+            actualInternalPath,
+            true,
+          ) as Buffer;
+          const base64 = buffer.toString('base64');
+          const ext = path.extname(actualInternalPath).toLowerCase();
+
+          let mimeType = 'image/jpeg';
+          if (ext === '.png') mimeType = 'image/png';
+          else if (ext === '.gif') mimeType = 'image/gif';
+          else if (ext === '.bmp') mimeType = 'image/bmp';
+          else if (ext === '.webp') mimeType = 'image/webp';
+          else if (ext === '.svg') mimeType = 'image/svg+xml';
+          else if (ext === '.ico') mimeType = 'image/x-icon';
+
+          return {
+            success: true,
+            operation: 'read',
+            path: filePath,
+            content: `data:${mimeType};base64,${base64}`,
+            size: buffer.length,
+            modified: new Date().toISOString(),
+            isImage: true,
+          };
+        } else {
+          const content = ZipHelper.readFromZip(
+            actualZipFile,
+            actualInternalPath,
+            false,
+          ) as string;
+          return {
+            success: true,
+            operation: 'read',
+            path: filePath,
+            content: content,
+            size: content.length,
+            modified: new Date().toISOString(),
+            isImage: false,
+          };
+        }
+      } finally {
+        // Clean up temp files
+        if (tempPaths.length > 0) {
+          (ZipHelper as any).cleanupTempPaths(tempPaths);
+        }
       }
     }
 

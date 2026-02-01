@@ -5,39 +5,86 @@
 
 import AdmZip from 'adm-zip';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 export interface ZipPath {
   zipFile: string;
   internalPath: string;
   isZipPath: boolean;
+  nestedZips: string[]; // Array of nested ZIP files in order
+  isNestedZip: boolean;
 }
 
 export class ZipHelper {
   /**
-   * Parse a path that might contain a ZIP file reference
+   * Parse a path that might contain a ZIP file reference (including nested ZIPs)
    * e.g., "D:\archive.zip/folder/file.txt" -> { zipFile: "D:\archive.zip", internalPath: "folder/file.txt" }
+   * e.g., "D:\outer.zip/inner.zip/file.txt" -> nested ZIP path
    */
   static parsePath(fullPath: string): ZipPath {
     // Normalize to forward slashes for easier parsing
     const normalized = fullPath.replace(/\\/g, '/');
 
-    // Look for .zip in the path
-    const zipMatch = normalized.match(/^(.+\.zip)(\/(.*))?$/i);
+    // Look for .zip in the path - find ALL .zip occurrences
+    const zipMatches: string[] = [];
+    const parts = normalized.split('/');
 
-    // Only treat as ZIP path if there's an internal path (not just a .zip file)
-    if (zipMatch && zipMatch[3]) {
+    let currentPath = '';
+    for (let i = 0; i < parts.length; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+      if (parts[i].toLowerCase().endsWith('.zip')) {
+        zipMatches.push(currentPath);
+      }
+    }
+
+    if (zipMatches.length === 0) {
+      // No ZIP in path
       return {
-        zipFile: zipMatch[1].replace(/\//g, path.sep),
-        internalPath: zipMatch[3],
-        isZipPath: true,
+        zipFile: '',
+        internalPath: '',
+        isZipPath: false,
+        nestedZips: [],
+        isNestedZip: false,
       };
     }
 
+    // Use the first (outermost) ZIP as the main zipFile
+    const outerZipFile = zipMatches[0].replace(/\//g, path.sep);
+    const remainingPath = normalized.substring(zipMatches[0].length + 1) || '';
+
+    // Only treat as ZIP path if there's something after the ZIP file
+    if (!remainingPath) {
+      // Just pointing to a ZIP file, not into it
+      return {
+        zipFile: '',
+        internalPath: '',
+        isZipPath: false,
+        nestedZips: [],
+        isNestedZip: false,
+      };
+    }
+
+    if (zipMatches.length > 1) {
+      // Nested ZIP detected
+      return {
+        zipFile: outerZipFile,
+        internalPath: remainingPath,
+        isZipPath: true,
+        nestedZips: zipMatches
+          .slice(1)
+          .map((z) => z.substring(zipMatches[0].length + 1)),
+        isNestedZip: true,
+      };
+    }
+
+    // Single ZIP with internal path
     return {
-      zipFile: '',
-      internalPath: '',
-      isZipPath: false,
+      zipFile: outerZipFile,
+      internalPath: remainingPath,
+      isZipPath: true,
+      nestedZips: [],
+      isNestedZip: false,
     };
   }
 
@@ -49,7 +96,111 @@ export class ZipHelper {
   }
 
   /**
-   * List contents of a ZIP file or folder within ZIP
+   * Extract nested ZIP to temp directory and return the temp path
+   */
+  private static extractNestedZipToTemp(
+    outerZipPath: string,
+    nestedZipPath: string,
+  ): string {
+    const tempDir = path.join(os.tmpdir(), `nested-zip-${Date.now()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const tempZipPath = path.join(tempDir, path.basename(nestedZipPath));
+
+    // Extract the nested ZIP file from the outer ZIP
+    this.extractFromZip(outerZipPath, nestedZipPath, tempZipPath);
+
+    return tempZipPath;
+  }
+
+  /**
+   * Handle nested ZIP path by extracting intermediate ZIPs to temp locations
+   */
+  private static resolveNestedZipPath(zipPath: ZipPath): {
+    finalZipPath: string;
+    finalInternalPath: string;
+    tempPaths: string[];
+  } {
+    console.log('[resolveNestedZipPath] Starting resolution:', zipPath);
+
+    if (!zipPath.isNestedZip) {
+      return {
+        finalZipPath: zipPath.zipFile,
+        finalInternalPath: zipPath.internalPath,
+        tempPaths: [],
+      };
+    }
+
+    const tempPaths: string[] = [];
+    let currentZipPath = zipPath.zipFile;
+
+    // Extract each nested ZIP in sequence
+    for (let i = 0; i < zipPath.nestedZips.length; i++) {
+      const nestedZip = zipPath.nestedZips[i];
+      console.log(
+        `[resolveNestedZipPath] Extracting nested ZIP ${i + 1}/${zipPath.nestedZips.length}:`,
+        {
+          from: currentZipPath,
+          zipName: nestedZip,
+        },
+      );
+
+      try {
+        const tempZipPath = this.extractNestedZipToTemp(
+          currentZipPath,
+          nestedZip,
+        );
+        console.log('[resolveNestedZipPath] Extracted to temp:', tempZipPath);
+        tempPaths.push(path.dirname(tempZipPath));
+        currentZipPath = tempZipPath;
+      } catch (error) {
+        console.error('[resolveNestedZipPath] Extraction failed:', error);
+        throw error;
+      }
+    }
+
+    // The remaining internal path after all the nested ZIPs
+    // If internalPath is just the last nested ZIP name, we want empty string (root)
+    const lastNestedZip = zipPath.nestedZips[zipPath.nestedZips.length - 1];
+    let finalInternalPath = '';
+
+    if (zipPath.internalPath.length > lastNestedZip.length) {
+      // There's more path after the last nested ZIP
+      finalInternalPath = zipPath.internalPath.substring(
+        lastNestedZip.length + 1,
+      );
+    }
+
+    console.log('[resolveNestedZipPath] Resolved:', {
+      finalZipPath: currentZipPath,
+      finalInternalPath,
+      tempPaths,
+    });
+
+    return {
+      finalZipPath: currentZipPath,
+      finalInternalPath: finalInternalPath,
+      tempPaths: tempPaths,
+    };
+  }
+
+  /**
+   * Clean up temp directories
+   */
+  private static cleanupTempPaths(tempPaths: string[]): void {
+    for (const tempPath of tempPaths) {
+      try {
+        if (fs.existsSync(tempPath)) {
+          fs.rmSync(tempPath, { recursive: true, force: true });
+        }
+      } catch (error) {
+        console.warn(`Failed to cleanup temp path ${tempPath}:`, error);
+      }
+    }
+  }
+
+  /**
+   * List contents of a ZIP file or folder within ZIP (supports nested ZIPs)
    */
   static listZipContents(zipFilePath: string, internalPath: string = ''): any {
     if (!fs.existsSync(zipFilePath)) {
@@ -98,17 +249,35 @@ export class ZipHelper {
         : name;
 
       if (isDirectChild && !entry.isDirectory) {
-        // Direct file
-        files.push({
-          name: name,
-          path: `${zipFilePath}/${fullInternalPath}`,
-          size: entry.header.size,
-          created: entry.header.time.toISOString(),
-          modified: entry.header.time.toISOString(),
-          isDirectory: false,
-          isFile: true,
-          isZipEntry: true,
-        });
+        // Direct file - check if it's a ZIP file
+        const isZipFile = name.toLowerCase().endsWith('.zip');
+
+        if (isZipFile) {
+          // Treat nested ZIP as a directory so it can be navigated
+          seenDirs.add(name);
+          directories.push({
+            name: name,
+            path: `${zipFilePath}/${fullInternalPath}`,
+            size: entry.header.size,
+            created: entry.header.time.toISOString(),
+            modified: entry.header.time.toISOString(),
+            isDirectory: true,
+            isFile: false,
+            isZipEntry: true,
+          });
+        } else {
+          // Regular file
+          files.push({
+            name: name,
+            path: `${zipFilePath}/${fullInternalPath}`,
+            size: entry.header.size,
+            created: entry.header.time.toISOString(),
+            modified: entry.header.time.toISOString(),
+            isDirectory: false,
+            isFile: true,
+            isZipEntry: true,
+          });
+        }
       } else if (!seenDirs.has(name)) {
         // Directory (either direct subdirectory or implied by deeper files)
         seenDirs.add(name);

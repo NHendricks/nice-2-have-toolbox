@@ -1,12 +1,13 @@
 commander:
-- better font
+- support zips in zips
+- progress bar when opening zip
 - find files by text or name (in ctrl+f dialog, enable rekurse search here)
 - regex enhance with examples (dropdown and help)
 - change filter behaviour in compare dialog (more intuitive)
-- support zips in zips
-- progress bar when opening zip
 - new logo
 - drag and drop support for files and folders
+- native context menu opener
+- warn for overwrite
 
 - how does file filter work on mac?
 - fonts / colors
