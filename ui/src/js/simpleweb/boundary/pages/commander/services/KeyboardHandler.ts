@@ -15,23 +15,28 @@ export class KeyboardHandler {
    * Main keyboard event handler
    */
   handleKeydown = (event: KeyboardEvent): void => {
-    // Ignore if typing in an input field
-    if (this.isInputField(event.target)) {
-      return
-    }
-
-    // Handle drive selector navigation first
-    if (this.handleDriveSelectorKeys(event)) {
-      return
-    }
-
-    // Handle ESC for dialogs
+    // Handle ESC key first (works even in input fields)
     if (this.handleEscapeKey(event)) {
       return
     }
 
-    // Handle ENTER for delete dialog
+    // Handle ENTER for delete dialog (works even in input fields)
     if (this.handleDeleteEnterKey(event)) {
+      return
+    }
+
+    // Ignore other keys if typing in an input field (but allow ESC and ENTER above)
+    if (this.isInputField(event.target)) {
+      // Allow ENTER to bubble up in input fields so dialogs can handle form submission
+      if (event.key === 'Enter') {
+        return
+      }
+      // Block all other keys when in input fields
+      return
+    }
+
+    // Handle drive selector navigation
+    if (this.handleDriveSelectorKeys(event)) {
       return
     }
 
@@ -348,11 +353,17 @@ export class KeyboardHandler {
 
       // Enter key
       case 'Enter':
-        // Don't handle Enter if a dialog is open
+        // Don't handle Enter if certain dialogs are open (they handle it themselves)
+        if (this.commander.showHelp || this.commander.showDriveSelector) {
+          return
+        }
+        // Let operation, command, rename, and zip dialogs handle ENTER themselves
         if (
           this.commander.operationDialog ||
-          this.commander.showHelp ||
-          this.commander.showDriveSelector
+          this.commander.commandDialog ||
+          this.commander.renameDialog ||
+          this.commander.zipDialog ||
+          this.commander.quickLaunchDialog
         ) {
           return
         }
