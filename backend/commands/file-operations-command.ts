@@ -5,6 +5,7 @@
 
 import { exec } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 import { CommandParameter, ICommand } from './command-interface.js';
@@ -648,7 +649,7 @@ export class FileOperationsCommand implements ICommand {
     if (sourceZip.isZipPath && destZip.isZipPath) {
       // Create temp file
       const tempPath = path.join(
-        require('os').tmpdir(),
+        os.tmpdir(),
         `temp_${Date.now()}_${path.basename(sourceZip.internalPath)}`,
       );
       ZipHelper.extractFromZip(
@@ -2069,7 +2070,6 @@ export class FileOperationsCommand implements ICommand {
     }
 
     try {
-      const os = require('os');
       const homeDir = os.homedir();
       const settingsDir = path.join(homeDir, '.nh-toolbox');
       const settingsPath = path.join(settingsDir, 'settings.json');
