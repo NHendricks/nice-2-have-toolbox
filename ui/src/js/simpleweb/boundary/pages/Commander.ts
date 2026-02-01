@@ -1,532 +1,28 @@
-import { LitElement, css, html } from 'lit'
+import { LitElement, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import '../components/CompareDialog'
 import '../components/SimpleDialog'
 import '../navigation/ResponsiveMenu'
 
-interface FileItem {
-  name: string
-  path: string
-  size: number
-  created: Date
-  modified: Date
-  isDirectory: boolean
-  isFile: boolean
-}
+// Import from refactored modules
+import { commanderStyles } from './commander/commander.styles.js'
+import type { FileItem, PaneState } from './commander/commander.types.js'
+import { FILE_ICONS } from './commander/utils/file-utils.js'
 
-interface PaneState {
-  currentPath: string
-  items: FileItem[]
-  selectedIndices: Set<number>
-  focusedIndex: number
-  filter: string
-  filterActive: boolean
-  sortBy: 'name' | 'size' | 'modified' | 'extension'
-  sortDirection: 'asc' | 'desc'
-}
+// Import dialog components
+import './commander/dialogs/index.js'
 
 export class Commander extends LitElement {
-  static styles = css`
-    :host {
-      display: block;
-      font-family: 'Courier New', monospace;
-      color: #fff;
-      background: #000;
-      width: 100%;
-      height: 100vh;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-
-    .commander-container {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      height: 100vh;
-      box-sizing: border-box;
-    }
-
-    .toolbar {
-      background: #1e293b;
-      padding: 0.5rem 1rem;
-      border-bottom: 2px solid #334155;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    .toolbar-title {
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-
-    .panes-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2px;
-      background: #334155;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    .pane {
-      background: #0f172a;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .pane.active {
-      background: #1e293b;
-    }
-
-    .pane-header {
-      background: #475569;
-      padding: 0.5rem 1rem;
-      font-weight: bold;
-      color: #fbbf24;
-      border-bottom: 1px solid #64748b;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-    }
-
-    .pane-header:hover {
-      background: #5a6f86;
-    }
-
-    .pane.active .pane-header {
-      background: #0e5ae9;
-      color: #fff;
-    }
-
-    .pane.active .pane-header:hover {
-      background: #0284c7;
-    }
-
-    .path-display {
-      font-size: 0.9rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* Drive Selector */
-    .drive-selector {
-      width: 400px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .drive-list {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    .drive-item {
-      padding: 1rem;
-      background: #0f172a;
-      border: 2px solid #475569;
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      transition: all 0.2s;
-    }
-
-    .drive-item:hover {
-      background: #1e293b;
-      border-color: #0ea5e9;
-      transform: translateX(4px);
-    }
-
-    .drive-item.focused {
-      background: #1e293b;
-      border-color: #0ea5e9;
-      outline: 2px solid #0ea5e9;
-      transform: translateX(4px);
-    }
-
-    .drive-icon {
-      font-size: 2rem;
-    }
-
-    .drive-info {
-      flex: 1;
-    }
-
-    .drive-label {
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: #fbbf24;
-    }
-
-    .drive-path {
-      font-size: 0.85rem;
-      color: #94a3b8;
-    }
-
-    .item-count {
-      font-size: 0.85rem;
-      opacity: 0.9;
-    }
-
-    .file-list {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 0.5rem;
-    }
-
-    .file-item {
-      padding: 0rem 0rem;
-      cursor: pointer;
-      display: grid;
-      grid-template-columns: 20px 1fr auto;
-      gap: 0.8rem;
-      align-items: center;
-      border-radius: 4px;
-      white-space: nowrap;
-      font-size: 0.8rem;
-    }
-
-    .file-item:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .file-item.focused {
-      background: #475569;
-      outline: 2px solid #0ea5e9;
-    }
-
-    .file-item.selected {
-      color: #fbbf24;
-    }
-
-    .file-item.selected.focused {
-      color: #fbbf24;
-    }
-
-    .file-item.selected .file-name,
-    .file-item.selected.focused .file-name {
-      color: #fbbf24;
-    }
-
-    .file-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .file-name.directory {
-      /* color: #fbbf24; */
-      color: rgb(117 233 106);
-    }
-
-    .file-size {
-      font-size: 0.85rem;
-      color: #94a3b8;
-      text-align: right;
-    }
-
-    .filter-bar {
-      padding: 0.5rem 1rem;
-      background: #1e293b;
-      border-bottom: 1px solid #334155;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .filter-input {
-      flex: 1;
-      padding: 0.5rem;
-      background: #0f172a;
-      border: 2px solid #0ea5e9;
-      color: #fff;
-      font-family: 'Courier New', monospace;
-      font-size: 0.9rem;
-      border-radius: 4px;
-    }
-
-    .filter-input:focus {
-      outline: none;
-      border-color: #fbbf24;
-    }
-
-    .filter-label {
-      color: #0ea5e9;
-      font-size: 0.85rem;
-      font-weight: bold;
-    }
-
-    .function-bar {
-      background: #1e293b;
-      border-top: 2px solid #334155;
-      padding: 0.5rem;
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      justify-content: space-between;
-    }
-
-    .function-key,
-    .function-key-top {
-      flex: 1;
-      background: #475569;
-      border: 1px solid #64748b;
-      padding: 0.05rem;
-      text-align: center;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s;
-      max-width: 7em;
-    }
-
-    .function-key-top {
-      margin-right: 4em;
-    }
-    .function-key:hover {
-      background: #0ea5e9;
-      transform: translateY(-2px);
-    }
-
-    .function-key-label {
-      display: block;
-      font-size: 0.75rem;
-      color: #94a3b8;
-      margin-bottom: 0.2rem;
-    }
-
-    .function-key-action {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: bold;
-      color: #fff;
-    }
-
-    .status-bar {
-      background: #334155;
-      padding: 0.5rem 1rem;
-      border-top: 1px solid #475569;
-      font-size: 0.85rem;
-      color: #cbd5e1;
-    }
-
-    .status-bar.success {
-      background: #059669;
-    }
-
-    .status-bar.error {
-      background: #dc2626;
-    }
-
-    /* File Viewer Dialog */
-    .dialog-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .dialog {
-      background: #1e293b;
-      border: 2px solid #0ea5e9;
-      border-radius: 8px;
-      width: 90%;
-      height: 80%;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .dialog-header {
-      background: #0ea5e9;
-      padding: 1rem;
-      font-weight: bold;
-      color: #fff;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .dialog-title {
-      font-size: 1.1rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .dialog-close {
-      background: #dc2626;
-      border: none;
-      color: #fff;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .dialog-close:hover {
-      background: #b91c1c;
-    }
-
-    .dialog-content {
-      flex: 1;
-      overflow: auto;
-      padding: 1rem;
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: 'Courier New', monospace;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-
-    .dialog-content.image-viewer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      background: #000;
-    }
-
-    .dialog-content.image-viewer img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-    }
-
-    .dialog-footer {
-      background: #334155;
-      padding: 0.5rem 1rem;
-      font-size: 0.85rem;
-      color: #94a3b8;
-    }
-
-    /* Help Dialog */
-    .help-dialog {
-      width: 700px;
-      max-height: 80vh;
-    }
-
-    .help-content {
-      padding: 1.5rem;
-      overflow-y: auto;
-    }
-
-    .help-section {
-      margin-bottom: 1.5rem;
-    }
-
-    .help-section h3 {
-      color: #fbbf24;
-      margin: 0 0 0.75rem 0;
-      font-size: 1.1rem;
-      border-bottom: 2px solid #475569;
-      padding-bottom: 0.5rem;
-    }
-
-    .help-item {
-      display: grid;
-      grid-template-columns: 150px 1fr;
-      gap: 1rem;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #334155;
-    }
-
-    .help-key {
-      color: #0ea5e9;
-      font-weight: bold;
-      font-family: 'Courier New', monospace;
-    }
-
-    .help-description {
-      color: #cbd5e1;
-    }
-
-    /* Copy/Move Dialog */
-    .input-dialog {
-      width: 600px;
-      height: auto;
-    }
-
-    .input-field {
-      margin: 1rem;
-    }
-
-    .input-field label {
-      display: block;
-      margin-bottom: 0.5rem;
-      color: #cbd5e1;
-    }
-
-    .input-field input {
-      width: 100%;
-      padding: 0.75rem;
-      background: #0f172a;
-      border: 2px solid #475569;
-      color: #fff;
-      font-family: 'Courier New', monospace;
-      font-size: 1rem;
-      border-radius: 4px;
-    }
-
-    .input-field input:focus {
-      outline: none;
-      border-color: #0ea5e9;
-    }
-
-    .dialog-buttons {
-      display: flex;
-      gap: 1rem;
-      padding: 1rem;
-      justify-content: flex-end;
-    }
-
-    .dialog-buttons button {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 0.9rem;
-    }
-
-    .btn-confirm {
-      background: #059669;
-      color: #fff;
-    }
-
-    .btn-confirm:hover {
-      background: #047857;
-    }
-
-    .btn-cancel {
-      background: #475569;
-      color: #fff;
-    }
-
-    .btn-cancel:hover {
-      background: #64748b;
-    }
-
-    @media (max-width: 768px) {
-      .panes-container {
-        grid-template-columns: 1fr;
-      }
-    }
-  `
+  static styles = commanderStyles
+
+  // Use imported FILE_ICONS
+  fileIcons = FILE_ICONS
+
+  getFileIcon(item: FileItem): string {
+    if (item.isDirectory) return '📁'
+    const ext = item.name.split('.').pop()?.toLowerCase()
+    return (ext && this.fileIcons[ext]) ?? '📄'
+  }
 
   @property({ type: Object })
   leftPane: PaneState = {
@@ -656,29 +152,6 @@ export class Commander extends LitElement {
   @property({ type: Number })
   rightHistoryIndex = -1
 
-  fileIcons: Record<string, string> = {
-    zip: '📦',
-    exe: '🧩',
-    dmg: '💿',
-    app: '🍎',
-    pdf: '📕',
-    md: '📝',
-    json: '🧱',
-    ts: '🟦',
-    js: '🟨',
-    html: '🌐',
-    css: '🎨',
-    png: '🖼️',
-    jpg: '🖼️',
-    jpeg: '🖼️',
-  }
-
-  getFileIcon(item: FileItem): string {
-    if (item.isDirectory) return '📁'
-    const ext = item.name.split('.').pop()?.toLowerCase()
-    return (ext && this.fileIcons[ext]) ?? '📄'
-  }
-
   async connectedCallback() {
     super.connectedCallback()
 
@@ -770,13 +243,9 @@ export class Commander extends LitElement {
 
   async loadDrives() {
     try {
-      const response = await (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'file-operations',
-        {
-          operation: 'drives',
-        },
-      )
+      const response = await (
+        await import('./commander/services/FileService.js')
+      ).FileService.loadDrives()
 
       if (response.success && response.data) {
         this.availableDrives = response.data.drives
@@ -877,37 +346,15 @@ export class Commander extends LitElement {
       this.setStatus('Loading directory...', 'normal')
       console.log(`Loading directory for ${pane}: ${path}`)
 
-      const response = await (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'file-operations',
-        {
-          operation: 'list',
-          folderPath: path,
-        },
+      const { FileService } = await import(
+        './commander/services/FileService.js'
       )
+      const response = await FileService.loadDirectory(path)
 
       console.log('Response:', response)
 
       if (response.success && response.data) {
         const data = response.data
-
-        // Check if the data itself indicates an error
-        if (data.success === false) {
-          // Directory doesn't exist - go up one level and retry
-          console.log('Directory does not exist, going up one level...')
-          const parentPath = this.getParentPath(path)
-
-          // If we're already at the root or parent is the same as current, stop
-          if (parentPath === path) {
-            this.setStatus(`Error: No valid directory found`, 'error')
-            console.error('Already at root, cannot go higher')
-            return
-          }
-
-          // Recursively try the parent directory
-          await this.loadDirectory(pane, parentPath, previousPath)
-          return
-        }
         const items: FileItem[] = []
 
         // Add parent directory entry if not at root
@@ -1271,14 +718,10 @@ export class Commander extends LitElement {
     try {
       this.setStatus('Loading file...', 'normal')
 
-      const response = await (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'file-operations',
-        {
-          operation: 'read',
-          filePath: filePath,
-        },
+      const { FileService } = await import(
+        './commander/services/FileService.js'
       )
+      const response = await FileService.readFile(filePath)
 
       if (response.success && response.data) {
         this.viewerFile = {
@@ -1846,14 +1289,10 @@ export class Commander extends LitElement {
     try {
       this.setStatus(`Executing: ${filePath}`, 'normal')
 
-      const response = await (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'file-operations',
-        {
-          operation: 'execute-file',
-          filePath: filePath,
-        },
+      const { FileService } = await import(
+        './commander/services/FileService.js'
       )
+      const response = await FileService.executeFile(filePath)
 
       if (response.success) {
         this.setStatus(`Executed: ${filePath}`, 'success')
@@ -2080,17 +1519,14 @@ export class Commander extends LitElement {
       this.setStatus(`Deleting ${files.length} file(s)...`, 'normal')
 
       let successCount = 0
+      const { FileService } = await import(
+        './commander/services/FileService.js'
+      )
+
       for (const file of files) {
         const fileName = file.split(/[/\\]/).pop() || 'file'
 
-        const response = await (window as any).electron.ipcRenderer.invoke(
-          'cli-execute',
-          'file-operations',
-          {
-            operation: 'delete',
-            sourcePath: file,
-          },
-        )
+        const response = await FileService.delete(file)
 
         if (response.success) {
           successCount++
@@ -2564,13 +2000,70 @@ export class Commander extends LitElement {
 
         <div class="status-bar ${this.statusType}">${this.statusMessage}</div>
 
-        ${this.viewerFile ? this.renderViewer() : ''}
-        ${this.operationDialog ? this.renderOperationDialog() : ''}
-        ${this.deleteDialog ? this.renderDeleteDialog() : ''}
-        ${this.commandDialog ? this.renderCommandDialog() : ''}
-        ${this.quickLaunchDialog ? this.renderQuickLaunchDialog() : ''}
-        ${this.renameDialog ? this.renderRenameDialog() : ''}
-        ${this.zipDialog ? this.renderZipDialog() : ''}
+        ${this.viewerFile
+          ? html`<viewer-dialog
+              .file=${this.viewerFile}
+              @close=${this.closeViewer}
+            ></viewer-dialog>`
+          : ''}
+        ${this.operationDialog
+          ? html`<operation-dialog
+              .data=${this.operationDialog}
+              .progress=${this.copyProgress}
+              @close=${this.cancelOperation}
+              @execute=${this.executeOperation}
+              @update-destination=${(e: CustomEvent) =>
+                this.updateDestination(e.detail)}
+            ></operation-dialog>`
+          : ''}
+        ${this.deleteDialog
+          ? html`<delete-dialog
+              .files=${this.deleteDialog.files}
+              @close=${this.cancelDelete}
+              @execute=${this.executeDelete}
+            ></delete-dialog>`
+          : ''}
+        ${this.commandDialog
+          ? html`<command-dialog
+              .command=${this.commandDialog.command}
+              .workingDir=${this.commandDialog.workingDir}
+              @close=${this.cancelCommand}
+              @execute=${this.executeCommand}
+              @update-command=${(e: CustomEvent) =>
+                this.updateCommand(e.detail)}
+            ></command-dialog>`
+          : ''}
+        ${this.quickLaunchDialog
+          ? html`<quick-launch-dialog
+              .command=${this.quickLaunchDialog.command}
+              .workingDir=${this.getActivePane().currentPath}
+              @close=${this.cancelQuickLaunch}
+              @execute=${this.executeQuickLaunch}
+              @update-command=${(e: CustomEvent) =>
+                this.updateQuickLaunchCommand(e.detail)}
+            ></quick-launch-dialog>`
+          : ''}
+        ${this.renameDialog
+          ? html`<rename-dialog
+              .oldName=${this.renameDialog.oldName}
+              .newName=${this.renameDialog.newName}
+              @close=${this.cancelRename}
+              @execute=${this.executeRename}
+              @update-name=${(e: CustomEvent) => this.updateRename(e.detail)}
+            ></rename-dialog>`
+          : ''}
+        ${this.zipDialog
+          ? html`<zip-dialog
+              .files=${this.zipDialog.files}
+              .zipFileName=${this.zipDialog.zipFileName}
+              .destPath=${this.getInactivePane().currentPath}
+              .progress=${this.zipProgress}
+              @close=${this.cancelZip}
+              @execute=${this.executeZip}
+              @update-filename=${(e: CustomEvent) =>
+                this.updateZipFileName(e.detail)}
+            ></zip-dialog>`
+          : ''}
         ${this.compareDialog
           ? html`<compare-dialog
               .result=${this.compareDialog.result}
@@ -2582,230 +2075,24 @@ export class Commander extends LitElement {
               @recompare=${this.handleCompare}
             ></compare-dialog>`
           : ''}
-        ${this.showDriveSelector ? this.renderDriveSelector() : ''}
-        ${this.showHelp ? this.renderHelp() : ''}
-      </div>
-    `
-  }
-
-  renderHelp() {
-    return html`
-      <simple-dialog
-        .open=${this.showHelp}
-        .title=${'❓ shortcuts'}
-        .width=${'700px'}
-        .maxHeight=${'80vh'}
-        @dialog-close=${this.closeHelp}
-      >
-        <div class="help-content">
-          <div class="help-section">
-            <h3>navigate</h3>
-            <div class="help-item">
-              <div class="help-key">↑ / ↓</div>
-              <div class="help-description">move focus</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">Enter</div>
-              <div class="help-description">open directory</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">Tab</div>
-              <div class="help-description">switch panels</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">Alt+1 / Alt+2</div>
-              <div class="help-description">select drive</div>
-            </div>
-          </div>
-          <div class="help-section">
-            <h3>files</h3>
-            <div class="help-item">
-              <div class="help-key">F2</div>
-              <div class="help-description">rename file/folder</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">F3</div>
-              <div class="help-description">show file/image</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">F8 / Delete</div>
-              <div class="help-description">deletes file</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">← / →</div>
-              <div class="help-description">navigate</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">double click</div>
-              <div class="help-description">open file / folder</div>
-            </div>
-          </div>
-          <div class="help-section">
-            <h3>select</h3>
-            <div class="help-item">
-              <div class="help-key">ctrl+click</div>
-              <div class="help-description">(de)select</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">ctrl+↑ / ctrl+↓</div>
-              <div class="help-description">(de)select</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">ctrl+space</div>
-              <div class="help-description">(de)select)</div>
-            </div>
-          </div>
-          <div class="help-section">
-            <h3>functions</h3>
-            <div class="help-item">
-              <div class="help-key">F5</div>
-              <div class="help-description">copy</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">F6</div>
-              <div class="help-description">move</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">F7</div>
-              <div class="help-description">refresh</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">F12</div>
-              <div class="help-description">zip files</div>
-            </div>
-          </div>
-          <div class="help-section">
-            <h3>other</h3>
-            <div class="help-item">
-              <div class="help-key">ALT+f</div>
-              <div class="help-description">filter files</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">F1</div>
-              <div class="help-description">show help</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">ESC</div>
-              <div class="help-description">close</div>
-            </div>
-          </div>
-        </div>
-      </simple-dialog>
-    `
-  }
-
-  renderDriveSelector() {
-    const currentPath = this.getActivePane().currentPath
-    const isCurrentFavorite = this.isFavorite(currentPath)
-
-    return html`
-      <div class="dialog-overlay" @click=${this.closeDriveSelector}>
-        <div
-          class="dialog drive-selector"
-          @click=${(e: Event) => e.stopPropagation()}
-        >
-          <div class="dialog-header">
-            <span class="dialog-title">💾 select drive & manage favorites</span>
-            <button class="dialog-close" @click=${this.closeDriveSelector}>
-              ESC
-            </button>
-          </div>
-
-          <div class="drive-list">
-            <!-- Favorites Section -->
-            ${this.favoritePaths.length > 0
-              ? html`
-                  <div
-                    style="padding: 0.5rem 0; color: #fbbf24; font-weight: bold; border-bottom: 1px solid #475569;"
-                  >
-                    ⭐ Favoriten
-                  </div>
-                  ${this.favoritePaths.map(
-                    (favPath, index) => html`
-                      <div
-                        class="drive-item ${this.driveSelectorFocusedIndex ===
-                        index
-                          ? 'focused'
-                          : ''}"
-                        style="position: relative;"
-                      >
-                        <span class="drive-icon">⭐</span>
-                        <div
-                          class="drive-info"
-                          @click=${() => this.selectDrive(favPath)}
-                          style="cursor: pointer;"
-                        >
-                          <div class="drive-label">
-                            ${favPath.split(/[/\\]/).pop() || favPath}
-                          </div>
-                          <div class="drive-path">${favPath}</div>
-                        </div>
-                        <button
-                          @click=${(e: Event) => {
-                            e.stopPropagation()
-                            this.toggleFavorite(favPath)
-                          }}
-                          style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 1.2rem;"
-                          title="Aus Favoriten entfernen"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    `,
-                  )}
-                  <div
-                    style="padding: 0.5rem 0; color: #fbbf24; font-weight: bold; border-bottom: 1px solid #475569; margin-top: 0.5rem;"
-                  >
-                    💾 drives
-                  </div>
-                `
-              : ''}
-
-            <!-- Drives Section -->
-            ${this.availableDrives.map(
-              (drive, index) => html`
-                <div
-                  class="drive-item ${this.driveSelectorFocusedIndex ===
-                  this.favoritePaths.length + index
-                    ? 'focused'
-                    : ''}"
-                  @click=${() => this.selectDrive(drive.path)}
-                >
-                  <span class="drive-icon">💾</span>
-                  <div class="drive-info">
-                    <div class="drive-label">${drive.label}</div>
-                    <div class="drive-path">${drive.path}</div>
-                  </div>
-                </div>
-              `,
-            )}
-          </div>
-
-          <!-- Add Favorite Button at Bottom -->
-          ${!isCurrentFavorite
-            ? html`
-                <div
-                  class="dialog-footer"
-                  style="padding: 1rem; border-top: 2px solid #475569;"
-                >
-                  <button
-                    class="btn-confirm"
-                    style="width: 100%; padding: 0.75rem;"
-                    @click=${(e: Event) => {
-                      e.stopPropagation()
-                      this.toggleFavorite(currentPath)
-                    }}
-                  >
-                    ☆ add current directory
-                    <br />
-                    <span style="font-size: 0.85rem; opacity: 0.8;"
-                      >${currentPath}</span
-                    >
-                  </button>
-                </div>
-              `
-            : ''}
-        </div>
+        ${this.showDriveSelector
+          ? html`<drive-selector-dialog
+              .drives=${this.availableDrives}
+              .favorites=${this.favoritePaths}
+              .currentPath=${this.getActivePane().currentPath}
+              .focusedIndex=${this.driveSelectorFocusedIndex}
+              @close=${this.closeDriveSelector}
+              @select=${(e: CustomEvent) => this.selectDrive(e.detail)}
+              @toggle-favorite=${(e: CustomEvent) =>
+                this.toggleFavorite(e.detail)}
+            ></drive-selector-dialog>`
+          : ''}
+        ${this.showHelp
+          ? html`<help-dialog
+              .open=${this.showHelp}
+              @close=${this.closeHelp}
+            ></help-dialog>`
+          : ''}
       </div>
     `
   }
@@ -3012,532 +2299,6 @@ export class Commander extends LitElement {
           )}
         </div>
       </div>
-    `
-  }
-
-  renderViewer() {
-    if (!this.viewerFile) return ''
-
-    return html`
-      <div class="dialog-overlay" @click=${this.closeViewer}>
-        <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
-          <div class="dialog-header">
-            <span class="dialog-title">${this.viewerFile.path}</span>
-            <button class="dialog-close" @click=${this.closeViewer}>ESC</button>
-          </div>
-          <div
-            class="dialog-content ${this.viewerFile.isImage
-              ? 'image-viewer'
-              : ''}"
-          >
-            ${this.viewerFile.isImage
-              ? html`<img
-                  src="${this.viewerFile.content}"
-                  alt="Image preview"
-                />`
-              : this.viewerFile.content}
-          </div>
-          <div class="dialog-footer">
-            ${this.viewerFile.isImage
-              ? `Bild: ${this.viewerFile.path.split(/[/\\]/).pop()}`
-              : `Größe: ${this.formatFileSize(this.viewerFile.size)}`}
-            | press ESC to close
-          </div>
-        </div>
-      </div>
-    `
-  }
-
-  renderOperationDialog() {
-    if (!this.operationDialog) return ''
-
-    const { type, files, destination } = this.operationDialog
-    const operation = type === 'copy' ? 'copy' : 'move'
-
-    // Auto-focus input field when dialog opens (only if not in progress)
-    if (!this.copyProgress) {
-      setTimeout(() => {
-        const input = this.shadowRoot?.querySelector(
-          '.input-field input',
-        ) as HTMLInputElement
-        if (input) {
-          input.focus()
-          input.select()
-        }
-      }, 100)
-    }
-
-    return html`
-      <simple-dialog
-        .open=${true}
-        .title=${operation}
-        .width=${'600px'}
-        @dialog-close=${this.copyProgress ? null : this.cancelOperation}
-      >
-        <div style="padding: 1rem;">
-          <div class="input-field">
-            <label
-              >${type === 'copy' ? 'copy' : 'move'} ${files.length} files
-              to:</label
-            >
-            <input
-              type="text"
-              .value=${destination}
-              .disabled=${this.copyProgress !== null}
-              @input=${(e: Event) =>
-                this.updateDestination((e.target as HTMLInputElement).value)}
-              @keydown=${(e: KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.executeOperation()
-                } else if (e.key === 'Escape') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.cancelOperation()
-                }
-              }}
-            />
-          </div>
-
-          ${this.copyProgress
-            ? html`
-                <div
-                  style="margin-top: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 2px solid #0ea5e9;"
-                >
-                  <div
-                    style="margin-bottom: 0.5rem; color: #0ea5e9; font-weight: bold; font-size: 0.9rem;"
-                  >
-                    ⏳ ${type === 'copy' ? 'Copying' : 'Moving'}...
-                    ${this.copyProgress.percentage}%
-                  </div>
-                  <div
-                    style="width: 100%; height: 24px; background: #0f172a; border-radius: 4px; overflow: hidden; margin-bottom: 0.75rem;"
-                  >
-                    <div
-                      style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #06b6d4); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem; width: ${this
-                        .copyProgress.percentage}%;"
-                    >
-                      ${this.copyProgress.percentage}%
-                    </div>
-                  </div>
-                  <div
-                    style="color: #cbd5e1; font-size: 0.85rem; display: flex; justify-content: space-between;"
-                  >
-                    <span
-                      >📁 ${this.copyProgress.current} /
-                      ${this.copyProgress.total}</span
-                    >
-                  </div>
-                  <div
-                    style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                  >
-                    Current: ${this.copyProgress.fileName}
-                  </div>
-                </div>
-              `
-            : html`
-                <div
-                  style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;"
-                >
-                  ${files.map(
-                    (f) => html`<div>• ${f.split(/[/\\]/).pop()}</div>`,
-                  )}
-                </div>
-              `}
-        </div>
-        <div slot="footer" class="dialog-buttons">
-          ${!this.copyProgress
-            ? html`
-                <button class="btn-cancel" @click=${this.cancelOperation}>
-                  cancel (ESC)
-                </button>
-                <button class="btn-confirm" @click=${this.executeOperation}>
-                  ${operation} (ENTER)
-                </button>
-              `
-            : ''}
-        </div>
-      </simple-dialog>
-    `
-  }
-
-  renderDeleteDialog() {
-    if (!this.deleteDialog) return ''
-
-    const { files } = this.deleteDialog
-
-    // Auto-focus the delete button when dialog opens
-    setTimeout(() => {
-      const deleteBtn = this.shadowRoot?.querySelector(
-        '.btn-confirm',
-      ) as HTMLButtonElement
-      if (deleteBtn) {
-        deleteBtn.focus()
-      }
-    }, 100)
-
-    return html`
-      <simple-dialog
-        .open=${true}
-        .title=${'🗑️ confirm'}
-        .width=${'600px'}
-        @dialog-close=${this.cancelDelete}
-      >
-        <div style="padding: 1rem;">
-          <div style="margin-bottom: 1rem; color: #fbbf24; font-weight: bold;">
-            ⚠️ really delete ${files.length} files?
-          </div>
-          <div style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;">
-            ${files.map((f) => html`<div>• ${f.split(/[/\\]/).pop()}</div>`)}
-          </div>
-        </div>
-        <div slot="footer" class="dialog-buttons">
-          <button
-            class="btn-cancel"
-            @click=${this.cancelDelete}
-            @keydown=${(e: KeyboardEvent) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                this.cancelDelete()
-              }
-            }}
-          >
-            cancel (ESC)
-          </button>
-          <button
-            class="btn-confirm"
-            @click=${this.executeDelete}
-            @keydown=${(e: KeyboardEvent) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                this.executeDelete()
-              }
-            }}
-            style="background: #dc2626;"
-          >
-            confirm (ENTER)
-          </button>
-        </div>
-      </simple-dialog>
-    `
-  }
-
-  renderCommandDialog() {
-    if (!this.commandDialog) return ''
-
-    const { command, workingDir } = this.commandDialog
-
-    // Auto-focus input field when dialog opens
-    setTimeout(() => {
-      const input = this.shadowRoot?.querySelector(
-        '.input-field input',
-      ) as HTMLInputElement
-      if (input) {
-        input.focus()
-      }
-    }, 100)
-
-    return html`
-      <simple-dialog
-        .open=${true}
-        .title=${'⚡ execute'}
-        .width=${'600px'}
-        @dialog-close=${this.cancelCommand}
-      >
-        <div style="padding: 1rem;">
-          <div class="input-field">
-            <label>execute in: ${workingDir}</label>
-            <input
-              type="text"
-              .value=${command}
-              placeholder="z.B. dir, ls, git status..."
-              @input=${(e: Event) =>
-                this.updateCommand((e.target as HTMLInputElement).value)}
-              @keydown=${(e: KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.executeCommand()
-                } else if (e.key === 'Escape') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.cancelCommand()
-                }
-              }}
-            />
-          </div>
-        </div>
-        <div slot="footer" class="dialog-buttons">
-          <button class="btn-cancel" @click=${this.cancelCommand}>
-            cancel (ESC)
-          </button>
-          <button class="btn-confirm" @click=${this.executeCommand}>
-            execute (ENTER)
-          </button>
-        </div>
-      </simple-dialog>
-    `
-  }
-
-  renderQuickLaunchDialog() {
-    if (!this.quickLaunchDialog) return ''
-
-    const { command } = this.quickLaunchDialog
-    const pane = this.getActivePane()
-
-    // Auto-focus input field when dialog opens
-    setTimeout(() => {
-      const input = this.shadowRoot?.querySelector(
-        '.quick-launch-input',
-      ) as HTMLInputElement
-      if (input) {
-        input.focus()
-        // Position cursor at end
-        input.selectionStart = input.selectionEnd = input.value.length
-      }
-    }, 100)
-
-    return html`
-      <simple-dialog
-        .open=${true}
-        .title=${'🚀 quick launch'}
-        .width=${'600px'}
-        @dialog-close=${this.cancelQuickLaunch}
-      >
-        <div style="padding: 1rem;">
-          <div class="input-field">
-            <label>type command to execute in: ${pane.currentPath}</label>
-            <input
-              type="text"
-              class="quick-launch-input"
-              .value=${command}
-              placeholder="Type command and press ENTER..."
-              @input=${(e: Event) =>
-                this.updateQuickLaunchCommand(
-                  (e.target as HTMLInputElement).value,
-                )}
-              @keydown=${(e: KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.executeQuickLaunch()
-                } else if (e.key === 'Escape') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.cancelQuickLaunch()
-                }
-              }}
-            />
-          </div>
-          <div
-            style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
-          >
-            💡 Tip: Just start typing any command to open this dialog. Press
-            ENTER to execute, ESC to cancel.
-          </div>
-        </div>
-        <div slot="footer" class="dialog-buttons">
-          <button class="btn-cancel" @click=${this.cancelQuickLaunch}>
-            cancel (ESC)
-          </button>
-          <button class="btn-confirm" @click=${this.executeQuickLaunch}>
-            execute (ENTER)
-          </button>
-        </div>
-      </simple-dialog>
-    `
-  }
-
-  renderRenameDialog() {
-    if (!this.renameDialog) return ''
-
-    const { oldName, newName } = this.renameDialog
-
-    // Auto-focus input field when dialog opens
-    setTimeout(() => {
-      const input = this.shadowRoot?.querySelector(
-        '.rename-input',
-      ) as HTMLInputElement
-      if (input) {
-        input.focus()
-        input.select()
-      }
-    }, 100)
-
-    return html`
-      <simple-dialog
-        .open=${true}
-        .title=${'✏️ rename'}
-        .width=${'600px'}
-        @dialog-close=${this.cancelRename}
-      >
-        <div style="padding: 1rem;">
-          <div class="input-field">
-            <label>Rename "${oldName}" to:</label>
-            <input
-              type="text"
-              class="rename-input"
-              .value=${newName}
-              placeholder="Enter new name..."
-              @input=${(e: Event) =>
-                this.updateRename((e.target as HTMLInputElement).value)}
-              @keydown=${(e: KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.executeRename()
-                } else if (e.key === 'Escape') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.cancelRename()
-                }
-              }}
-            />
-          </div>
-          <div
-            style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
-          >
-            💡 Tip: Press F2 on any file or folder to rename it. Press ENTER to
-            confirm, ESC to cancel.
-          </div>
-        </div>
-        <div slot="footer" class="dialog-buttons">
-          <button class="btn-cancel" @click=${this.cancelRename}>
-            cancel (ESC)
-          </button>
-          <button class="btn-confirm" @click=${this.executeRename}>
-            rename (ENTER)
-          </button>
-        </div>
-      </simple-dialog>
-    `
-  }
-
-  renderZipDialog() {
-    if (!this.zipDialog) return ''
-
-    const { files, zipFileName } = this.zipDialog
-    const destPane = this.getInactivePane()
-
-    // Auto-focus input field when dialog opens (only if not in progress)
-    if (!this.zipProgress) {
-      setTimeout(() => {
-        const input = this.shadowRoot?.querySelector(
-          '.zip-input',
-        ) as HTMLInputElement
-        if (input) {
-          input.focus()
-        }
-      }, 100)
-    }
-
-    return html`
-      <simple-dialog
-        .open=${true}
-        .title=${'📦 create zip'}
-        .width=${'600px'}
-        @dialog-close=${this.zipProgress ? null : this.cancelZip}
-      >
-        <div style="padding: 1rem;">
-          <div class="input-field">
-            <label
-              >Zip ${files.length} file(s) to: ${destPane.currentPath}</label
-            >
-            <input
-              type="text"
-              class="zip-input"
-              .value=${zipFileName}
-              placeholder="Enter ZIP filename..."
-              .disabled=${this.zipProgress !== null}
-              @input=${(e: Event) =>
-                this.updateZipFileName((e.target as HTMLInputElement).value)}
-              @keydown=${(e: KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.executeZip()
-                } else if (e.key === 'Escape') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  this.cancelZip()
-                }
-              }}
-            />
-          </div>
-
-          ${this.zipProgress
-            ? html`
-                <div
-                  style="margin-top: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 2px solid #0ea5e9;"
-                >
-                  <div
-                    style="margin-bottom: 0.5rem; color: #0ea5e9; font-weight: bold; font-size: 0.9rem;"
-                  >
-                    ⏳ Zipping... ${this.zipProgress.percentage}%
-                  </div>
-                  <div
-                    style="width: 100%; height: 24px; background: #0f172a; border-radius: 4px; overflow: hidden; margin-bottom: 0.75rem;"
-                  >
-                    <div
-                      style="height: 100%; background: linear-gradient(90deg, #0ea5e9, #06b6d4); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem; width: ${this
-                        .zipProgress.percentage}%;"
-                    >
-                      ${this.zipProgress.percentage}%
-                    </div>
-                  </div>
-                  <div
-                    style="color: #cbd5e1; font-size: 0.85rem; display: flex; justify-content: space-between;"
-                  >
-                    <span
-                      >📁 ${this.zipProgress.current} /
-                      ${this.zipProgress.total}</span
-                    >
-                  </div>
-                  <div
-                    style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                  >
-                    Current: ${this.zipProgress.fileName}
-                  </div>
-                </div>
-              `
-            : html`
-                <div
-                  style="margin-top: 1rem; color: #94a3b8; font-size: 0.9rem;"
-                >
-                  ${files.map(
-                    (f) => html`<div>• ${f.split(/[/\\]/).pop()}</div>`,
-                  )}
-                </div>
-                <div
-                  style="margin-top: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 4px; color: #94a3b8; font-size: 0.85rem;"
-                >
-                  💡 Tip: Select files/folders and press F12 to create a ZIP
-                  archive in the opposite pane.
-                </div>
-              `}
-        </div>
-        <div slot="footer" class="dialog-buttons">
-          ${!this.zipProgress
-            ? html`
-                <button class="btn-cancel" @click=${this.cancelZip}>
-                  cancel (ESC)
-                </button>
-                <button class="btn-confirm" @click=${this.executeZip}>
-                  create ZIP (ENTER)
-                </button>
-              `
-            : html`
-                <button
-                  class="btn-cancel"
-                  style="opacity: 0.5; cursor: not-allowed;"
-                  disabled
-                >
-                  Please wait...
-                </button>
-              `}
-        </div>
-      </simple-dialog>
     `
   }
 }
