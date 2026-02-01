@@ -1,13 +1,41 @@
 commander:
 - refactor commander.ts (very expensive action !!!)
+### Next Steps to Complete Full Refactoring
+
+To complete the refactoring and achieve the 72% size reduction:
+
+1. __Integrate NavigationUtils__ (~120 lines saved)
+
+   - Replace `getParentPath()` with `NavigationUtils.getParentPath()`
+   - Replace `isImageFile()` with `NavigationUtils.isImageFile()`
+   - Replace `viewNextImage()`/`viewPreviousImage()` with utility methods
+
+2. __Integrate PaneManager__ (~50 lines saved)
+
+   - Replace `getActivePane()`, `getInactivePane()`, `updateActivePane()`
+   - Initialize paneManager in connectedCallback()
+
+3. __Extract KeyboardHandler__ (~300 lines saved)
+
+   - Move `handleGlobalKeydown()` to separate handler class
+   - Use command pattern for key mappings
+
+4. __Extract FileOperationHandlers__ (~200 lines saved)
+
+   - Move F-key handlers to separate module
+   - Extract execute methods (zip, operation, delete, etc.)
+
+__Estimated final size:__ 400-500 lines (from 1800 = 72% reduction)
+
+
+- better font
+- find files by text or name (in ctrl+f dialog, enable rekurse search here)
 - regex enhance with examples (dropdown and help)
 - change filter behaviour in compare dialog (more intuitive)
-- drag and drop support for files and folders
 - support zips in zips
 - progress bar when opening zip
-- better font
 - new logo
-- find files by text or name (in ctrl+f dialog, enable rekurse search here)
+- drag and drop support for files and folders
 
 - how does file filter work on mac?
 - fonts / colors

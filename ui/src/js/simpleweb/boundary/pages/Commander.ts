@@ -1,12 +1,13 @@
 import { LitElement, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import '../components/CompareDialog'
-import '../components/SimpleDialog'
-import '../navigation/ResponsiveMenu'
 
 // Import from refactored modules
 import { commanderStyles } from './commander/commander.styles.js'
 import type { FileItem, PaneState } from './commander/commander.types.js'
+import { HistoryService } from './commander/services/HistoryService.js'
+import { KeyboardHandler } from './commander/services/KeyboardHandler.js'
+import { PaneManager } from './commander/services/PaneManager.js'
 import { FILE_ICONS } from './commander/utils/file-utils.js'
 
 // Import dialog components
@@ -14,6 +15,11 @@ import './commander/dialogs/index.js'
 
 export class Commander extends LitElement {
   static styles = commanderStyles
+
+  // Service instances
+  private historyService = new HistoryService()
+  private paneManager!: PaneManager
+  private keyboardHandler!: KeyboardHandler
 
   // Use imported FILE_ICONS
   fileIcons = FILE_ICONS
@@ -155,16 +161,26 @@ export class Commander extends LitElement {
   async connectedCallback() {
     super.connectedCallback()
 
-    // Load paths from localStorage
-    const savedLeftPath = localStorage.getItem('commander-left-path')
-    const savedRightPath = localStorage.getItem('commander-right-path')
+    // Initialize PaneManager with current pane states
+    this.paneManager = new PaneManager(this.leftPane, this.rightPane)
 
-    if (savedLeftPath) {
-      this.leftPane.currentPath = savedLeftPath
+    // Load paths from localStorage using PaneManager
+    const savedPaths = this.paneManager.loadPanePaths()
+
+    if (savedPaths.left) {
+      this.leftPane.currentPath = savedPaths.left
     }
-    if (savedRightPath) {
-      this.rightPane.currentPath = savedRightPath
+    if (savedPaths.right) {
+      this.rightPane.currentPath = savedPaths.right
     }
+
+    // Update PaneManager with loaded paths
+    this.paneManager.setPane('left', this.leftPane)
+    this.paneManager.setPane('right', this.rightPane)
+
+    // Initialize KeyboardHandler
+    this.keyboardHandler = new KeyboardHandler(this)
+    this.keyboardHandler.attach()
 
     // Load initial directories
     await this.loadDirectory('left', this.leftPane.currentPath)
@@ -175,9 +191,6 @@ export class Commander extends LitElement {
 
     // Load favorite paths from localStorage
     this.loadFavorites()
-
-    // Add global keyboard listeners
-    window.addEventListener('keydown', this.handleGlobalKeydown.bind(this))
 
     // Add IPC listener for zip progress
     ;(window as any).electron.ipcRenderer.on('zip-progress', (data: any) => {
@@ -334,7 +347,10 @@ export class Commander extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback()
 
-    window.removeEventListener('keydown', this.handleGlobalKeydown.bind(this))
+    // Detach keyboard handler
+    if (this.keyboardHandler) {
+      this.keyboardHandler.detach()
+    }
   }
 
   async loadDirectory(
@@ -410,8 +426,9 @@ export class Commander extends LitElement {
             sortBy: this.leftPane.sortBy,
             sortDirection: this.leftPane.sortDirection,
           }
-          // Save to localStorage
-          localStorage.setItem('commander-left-path', data.path)
+          // Update PaneManager and save to localStorage
+          this.paneManager.setPane('left', this.leftPane)
+          this.paneManager.savePanePaths()
         } else {
           this.rightPane = {
             currentPath: data.path,
@@ -423,8 +440,9 @@ export class Commander extends LitElement {
             sortBy: this.rightPane.sortBy,
             sortDirection: this.rightPane.sortDirection,
           }
-          // Save to localStorage
-          localStorage.setItem('commander-right-path', data.path)
+          // Update PaneManager and save to localStorage
+          this.paneManager.setPane('right', this.rightPane)
+          this.paneManager.savePanePaths()
         }
 
         // Display status with safety checks
@@ -536,18 +554,29 @@ export class Commander extends LitElement {
   }
 
   getActivePane(): PaneState {
-    return this.activePane === 'left' ? this.leftPane : this.rightPane
+    // Sync activePane with PaneManager
+    this.paneManager.setActivePane(this.activePane)
+    return this.paneManager.getActivePane()
   }
 
   getInactivePane(): PaneState {
-    return this.activePane === 'left' ? this.rightPane : this.leftPane
+    // Sync activePane with PaneManager
+    this.paneManager.setActivePane(this.activePane)
+    return this.paneManager.getInactivePane()
   }
 
   updateActivePane(updates: Partial<PaneState>) {
+    // Sync activePane with PaneManager
+    this.paneManager.setActivePane(this.activePane)
+
+    // Update through PaneManager
+    const updatedPane = this.paneManager.updateActivePane(updates)
+
+    // Sync back to reactive properties for Lit to detect changes
     if (this.activePane === 'left') {
-      this.leftPane = { ...this.leftPane, ...updates }
+      this.leftPane = updatedPane
     } else {
-      this.rightPane = { ...this.rightPane, ...updates }
+      this.rightPane = updatedPane
     }
   }
 
@@ -611,91 +640,28 @@ export class Commander extends LitElement {
 
   // Add a path to the history of the active pane
   addToHistory(path: string) {
-    if (this.activePane === 'left') {
-      // If we're not at the end of history, truncate forward history
-      if (this.leftHistoryIndex < this.leftHistory.length - 1) {
-        this.leftHistory = this.leftHistory.slice(0, this.leftHistoryIndex + 1)
-      }
-      // Add new path
-      this.leftHistory = [...this.leftHistory, path]
-      // Keep only last 20 entries
-      if (this.leftHistory.length > 20) {
-        this.leftHistory = this.leftHistory.slice(-20)
-      }
-      this.leftHistoryIndex = this.leftHistory.length - 1
-    } else {
-      // If we're not at the end of history, truncate forward history
-      if (this.rightHistoryIndex < this.rightHistory.length - 1) {
-        this.rightHistory = this.rightHistory.slice(
-          0,
-          this.rightHistoryIndex + 1,
-        )
-      }
-      // Add new path
-      this.rightHistory = [...this.rightHistory, path]
-      // Keep only last 20 entries
-      if (this.rightHistory.length > 20) {
-        this.rightHistory = this.rightHistory.slice(-20)
-      }
-      this.rightHistoryIndex = this.rightHistory.length - 1
-    }
+    this.historyService.addToHistory(this.activePane, path)
   }
 
   // Navigate back in history
   async navigateHistoryBack() {
-    if (this.activePane === 'left') {
-      if (this.leftHistoryIndex >= 0 && this.leftHistory.length > 0) {
-        const targetPath = this.leftHistory[this.leftHistoryIndex]
-        this.leftHistoryIndex = Math.max(0, this.leftHistoryIndex - 1)
-        await this.loadDirectory('left', targetPath)
-        this.setStatus(
-          `← Back (${this.leftHistoryIndex + 1}/${this.leftHistory.length})`,
-          'success',
-        )
-      } else {
-        this.setStatus('No history to go back', 'normal')
-      }
+    const result = this.historyService.navigate(this.activePane, -1)
+    if (result) {
+      await this.loadDirectory(this.activePane, result.path)
+      this.setStatus(result.message, 'success')
     } else {
-      if (this.rightHistoryIndex >= 0 && this.rightHistory.length > 0) {
-        const targetPath = this.rightHistory[this.rightHistoryIndex]
-        this.rightHistoryIndex = Math.max(0, this.rightHistoryIndex - 1)
-        await this.loadDirectory('right', targetPath)
-        this.setStatus(
-          `← Back (${this.rightHistoryIndex + 1}/${this.rightHistory.length})`,
-          'success',
-        )
-      } else {
-        this.setStatus('No history to go back', 'normal')
-      }
+      this.setStatus('No history to go back', 'normal')
     }
   }
 
   // Navigate forward in history
   async navigateHistoryForward() {
-    if (this.activePane === 'left') {
-      if (this.leftHistoryIndex < this.leftHistory.length - 1) {
-        this.leftHistoryIndex++
-        const targetPath = this.leftHistory[this.leftHistoryIndex]
-        await this.loadDirectory('left', targetPath)
-        this.setStatus(
-          `→ Forward (${this.leftHistoryIndex + 1}/${this.leftHistory.length})`,
-          'success',
-        )
-      } else {
-        this.setStatus('No history to go forward', 'normal')
-      }
+    const result = this.historyService.navigate(this.activePane, 1)
+    if (result) {
+      await this.loadDirectory(this.activePane, result.path)
+      this.setStatus(result.message, 'success')
     } else {
-      if (this.rightHistoryIndex < this.rightHistory.length - 1) {
-        this.rightHistoryIndex++
-        const targetPath = this.rightHistory[this.rightHistoryIndex]
-        await this.loadDirectory('right', targetPath)
-        this.setStatus(
-          `→ Forward (${this.rightHistoryIndex + 1}/${this.rightHistory.length})`,
-          'success',
-        )
-      } else {
-        this.setStatus('No history to go forward', 'normal')
-      }
+      this.setStatus('No history to go forward', 'normal')
     }
   }
 
@@ -813,307 +779,6 @@ export class Commander extends LitElement {
         this.updateActivePane({ focusedIndex: i })
         return
       }
-    }
-  }
-
-  handleGlobalKeydown(event: KeyboardEvent) {
-    // Ignore if typing in an input field (let input handle its own events)
-    if (
-      event.target instanceof HTMLInputElement ||
-      event.target instanceof HTMLTextAreaElement
-    ) {
-      return
-    }
-
-    // Handle keyboard navigation in drive selector FIRST (before anyDialogOpen check)
-    if (this.showDriveSelector) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        this.closeDriveSelector()
-        return
-      }
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        this.moveDriveSelectorFocus(-1)
-        return
-      }
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        this.moveDriveSelectorFocus(1)
-        return
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        this.selectFocusedDrive()
-        return
-      }
-      // Block other keys while drive selector is open
-      return
-    }
-
-    // Handle ESC for dialogs first
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      if (this.showHelp) {
-        this.closeHelp()
-        return
-      }
-      if (this.viewerFile) {
-        this.closeViewer()
-        return
-      }
-      if (this.operationDialog) {
-        this.cancelOperation()
-        return
-      }
-      if (this.deleteDialog) {
-        this.cancelDelete()
-        return
-      }
-      if (this.commandDialog) {
-        this.cancelCommand()
-        return
-      }
-      if (this.quickLaunchDialog) {
-        this.cancelQuickLaunch()
-        return
-      }
-      if (this.renameDialog) {
-        this.cancelRename()
-        return
-      }
-      if (this.zipDialog) {
-        this.cancelZip()
-        return
-      }
-      // Clear filter if active
-      const pane = this.getActivePane()
-      if (pane.filterActive) {
-        this.updateActivePane({ filter: '', filterActive: false })
-        return
-      }
-    }
-
-    // Handle ENTER for delete dialog
-    if (event.key === 'Enter' && this.deleteDialog) {
-      event.preventDefault()
-      this.executeDelete()
-      return
-    }
-
-    // Handle arrow keys in image viewer
-    if (this.viewerFile && this.viewerFile.isImage) {
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        this.viewNextImage()
-        return
-      }
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        this.viewPreviousImage()
-        return
-      }
-    }
-
-    // Check for alphanumeric input to open quick launch
-    // Only if no dialogs are open and no filter is active
-    if (
-      !this.showHelp &&
-      !this.viewerFile &&
-      !this.operationDialog &&
-      !this.deleteDialog &&
-      !this.showDriveSelector &&
-      !this.commandDialog &&
-      !this.quickLaunchDialog &&
-      !this.renameDialog &&
-      !this.zipDialog &&
-      !this.compareDialog &&
-      !this.getActivePane().filterActive &&
-      !event.ctrlKey &&
-      !event.altKey &&
-      !event.metaKey &&
-      event.key.length === 1 &&
-      event.key.match(/[a-zA-Z0-9]/)
-    ) {
-      event.preventDefault()
-      this.openQuickLaunch(event.key)
-      return
-    }
-
-    // Handle Alt+1 and Alt+2 (or Cmd+1 and Cmd+2 on Mac) for drive selection, Alt+F for filter
-    if (event.altKey || event.metaKey) {
-      if (event.key === '1') {
-        event.preventDefault()
-        this.handlePathClick('left')
-        return
-      } else if (event.key === '2') {
-        event.preventDefault()
-        this.handlePathClick('right')
-        return
-      } else if (event.key.toLowerCase() === 'f' && event.altKey) {
-        // Only Alt+F for filter (not Cmd+F which is browser search)
-        event.preventDefault()
-        const pane = this.getActivePane()
-        this.updateActivePane({ filterActive: !pane.filterActive })
-        // Focus the filter input after a short delay
-        if (!pane.filterActive) {
-          setTimeout(() => {
-            const filterInput = this.shadowRoot?.querySelector(
-              '.pane.active .filter-input',
-            ) as HTMLInputElement
-            if (filterInput) {
-              filterInput.focus()
-            }
-          }, 100)
-        }
-        return
-      }
-    }
-
-    switch (event.key) {
-      case 'F1':
-        event.preventDefault()
-        this.openHelp()
-        break
-
-      case 'F2':
-        event.preventDefault()
-        this.handleF2()
-        break
-
-      case 'F3':
-        event.preventDefault()
-        this.handleF3()
-        break
-
-      case 'F12':
-        event.preventDefault()
-        this.handleF12()
-        break
-
-      case 'F5':
-        event.preventDefault()
-        this.handleF5()
-        break
-
-      case 'F6':
-        event.preventDefault()
-        this.handleF6()
-        break
-
-      case 'F8':
-        event.preventDefault()
-        this.handleF8()
-        break
-      case 'Delete':
-        event.preventDefault()
-        this.handleF8()
-        break
-
-      case 'F9':
-        event.preventDefault()
-        this.handleF9()
-        break
-
-      case 'F10':
-        event.preventDefault()
-        this.handleF10()
-        break
-
-      case 'Enter':
-        // Don't handle Enter if a dialog is open
-        if (this.operationDialog || this.showHelp || this.showDriveSelector) {
-          return
-        }
-        event.preventDefault()
-        this.handleEnter()
-        break
-
-      case 'ArrowUp':
-        if (event.ctrlKey) {
-          event.preventDefault()
-          this.moveFocus(-1, true)
-        } else {
-          event.preventDefault()
-          this.moveFocus(-1, false)
-        }
-        break
-
-      case 'ArrowDown':
-        if (event.ctrlKey) {
-          event.preventDefault()
-          this.moveFocus(1, true)
-        } else {
-          event.preventDefault()
-          this.moveFocus(1, false)
-        }
-        break
-
-      case 'ArrowLeft':
-        if (event.altKey) {
-          event.preventDefault()
-          // Alt+Left: Navigate back in history
-          this.navigateHistoryBack()
-        } else if (event.ctrlKey) {
-          event.preventDefault()
-          // Ctrl+Left: Switch left panel to right panel's directory
-          const targetPath = this.rightPane.currentPath
-          const previousActive = this.activePane
-          this.activePane = 'left'
-          this.navigateToDirectory(targetPath).then(() => {
-            this.activePane = previousActive
-          })
-        }
-        break
-
-      case 'ArrowRight':
-        if (event.altKey) {
-          event.preventDefault()
-          // Alt+Right: Navigate forward in history
-          this.navigateHistoryForward()
-        } else if (event.ctrlKey) {
-          event.preventDefault()
-          // Ctrl+Right: Switch right panel to left panel's directory
-          const targetPath = this.leftPane.currentPath
-          const previousActive = this.activePane
-          this.activePane = 'right'
-          this.navigateToDirectory(targetPath).then(() => {
-            this.activePane = previousActive
-          })
-        }
-        break
-
-      case 'PageUp':
-        event.preventDefault()
-        this.moveFocus(-20, event.ctrlKey)
-        break
-
-      case 'PageDown':
-        event.preventDefault()
-        this.moveFocus(20, event.ctrlKey)
-        break
-
-      case 'Home': // Pos1
-        event.preventDefault()
-        this.moveFocus(-Infinity, event.ctrlKey)
-        break
-
-      case 'End': // Ende
-        event.preventDefault()
-        this.moveFocus(Infinity, event.ctrlKey)
-        break
-
-      case 'Tab':
-        event.preventDefault()
-        this.activePane = this.activePane === 'left' ? 'right' : 'left'
-        break
-
-      case ' ':
-        if (event.ctrlKey) {
-          event.preventDefault()
-          this.toggleSelection()
-        }
-        break
     }
   }
 
@@ -1908,18 +1573,9 @@ export class Commander extends LitElement {
       this.updateActivePane({ sortBy, sortDirection: 'asc' })
     }
 
-    // Save to localStorage
-    const paneKey =
-      this.activePane === 'left'
-        ? 'commander-left-sort'
-        : 'commander-right-sort'
-    localStorage.setItem(
-      paneKey,
-      JSON.stringify({
-        sortBy: this.getActivePane().sortBy,
-        sortDirection: this.getActivePane().sortDirection,
-      }),
-    )
+    // Save sort settings through PaneManager
+    this.paneManager.setActivePane(this.activePane)
+    this.paneManager.saveSortSettings(this.activePane)
 
     this.setStatus(
       `Sorted by ${sortBy} (${this.getActivePane().sortDirection})`,
