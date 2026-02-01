@@ -13,6 +13,8 @@ import { FILE_ICONS } from './commander/utils/file-utils.js'
 // Import dialog components
 import './commander/dialogs/index.js'
 
+// Import context menu extension
+
 export class Commander extends LitElement {
   static styles = commanderStyles
 
@@ -157,6 +159,13 @@ export class Commander extends LitElement {
 
   @property({ type: Number })
   rightHistoryIndex = -1
+
+  @property({ type: Object })
+  contextMenu: {
+    fileName: string
+    isDirectory: boolean
+    selectedCount: number
+  } | null = null
 
   async connectedCallback() {
     super.connectedCallback()
@@ -1510,6 +1519,60 @@ export class Commander extends LitElement {
     }
   }
 
+  openContextMenu() {
+    const pane = this.getActivePane()
+    const item = pane.items[pane.focusedIndex]
+
+    if (!item || item.name === '..') {
+      this.setStatus('No valid file selected for context menu', 'error')
+      return
+    }
+
+    const selectedCount =
+      pane.selectedIndices.size > 0 ? pane.selectedIndices.size : 1
+
+    this.contextMenu = {
+      fileName: item.name,
+      isDirectory: item.isDirectory,
+      selectedCount: selectedCount,
+    }
+  }
+
+  closeContextMenu() {
+    this.contextMenu = null
+  }
+
+  handleContextMenuAction(action: string) {
+    switch (action) {
+      case 'view':
+        this.handleF3()
+        break
+      case 'rename':
+        this.handleF2()
+        break
+      case 'copy':
+        this.handleF5()
+        break
+      case 'move':
+        this.handleF6()
+        break
+      case 'delete':
+        this.handleF8()
+        break
+      case 'copy-path':
+        this.handleF10()
+        break
+      case 'zip':
+        this.handleF12()
+        break
+      case 'command':
+        this.handleF9()
+        break
+      default:
+        this.setStatus(`Action not implemented: ${action}`, 'error')
+    }
+  }
+
   formatFileSize(bytes: number): string {
     if (bytes === 0) return ''
     const sizes = ['B', 'KB', 'MB', 'GB']
@@ -1748,6 +1811,16 @@ export class Commander extends LitElement {
               .open=${this.showHelp}
               @close=${this.closeHelp}
             ></help-dialog>`
+          : ''}
+        ${this.contextMenu
+          ? html`<context-menu-dialog
+              .fileName=${this.contextMenu.fileName}
+              .isDirectory=${this.contextMenu.isDirectory}
+              .selectedCount=${this.contextMenu.selectedCount}
+              @close=${this.closeContextMenu}
+              @action=${(e: CustomEvent) =>
+                this.handleContextMenuAction(e.detail)}
+            ></context-menu-dialog>`
           : ''}
       </div>
     `

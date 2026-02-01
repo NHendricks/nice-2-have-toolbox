@@ -7,8 +7,8 @@ commander:
 - drag and drop support for files and folders
 - native context menu opener
 - warn for overwrite
-
-- how does file filter work on mac?
+- connect network d
+- how does file filter work on mac? may improve functionality
 - fonts / colors
   toolbar-title: rgb(36 199 251)
   ...

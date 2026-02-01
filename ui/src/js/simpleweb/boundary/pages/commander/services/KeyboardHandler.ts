@@ -367,8 +367,14 @@ export class KeyboardHandler {
         break
 
       case 'F10':
-        event.preventDefault()
-        this.commander.handleF10()
+        // SHIFT + F10 opens context menu
+        if (event.shiftKey) {
+          event.preventDefault()
+          this.commander.openContextMenu()
+        } else {
+          event.preventDefault()
+          this.commander.handleF10()
+        }
         break
 
       case 'F12':
