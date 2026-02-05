@@ -45,7 +45,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           echo "Signing nh-toolbox.app"
-          codesign --force --deep --sign - target/dist/nh-toolbox-mac-x64/nh-toolbox.app
+          codesign --force --deep --sign - target/dist/nh-toolbox.app
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
