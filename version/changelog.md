@@ -12,7 +12,9 @@
   - enable selecting individual apps also
 - export / import settings
 - add network share support
-- 
+- add default search patterns for regex
+- improve filter icon behaviour (more intuitive)
+- Fix OneDrive Links recognition on Windows (hacky)
 
 ### v1.5.0 (31.01.2026)
 
