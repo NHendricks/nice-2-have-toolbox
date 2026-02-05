@@ -1353,11 +1353,9 @@ export class Commander extends LitElement {
     }
   }
 
-  async executeQuickLaunch() {
-    if (!this.quickLaunchDialog || !this.quickLaunchDialog.command.trim())
-      return
+  async executeQuickLaunch(command: string) {
+    if (!this.quickLaunchDialog || !command.trim()) return
 
-    const { command } = this.quickLaunchDialog
     const pane = this.getActivePane()
 
     try {
@@ -2173,9 +2171,8 @@ export class Commander extends LitElement {
               .command=${this.quickLaunchDialog.command}
               .workingDir=${this.getActivePane().currentPath}
               @close=${this.cancelQuickLaunch}
-              @execute=${this.executeQuickLaunch}
-              @update-command=${(e: CustomEvent) =>
-                this.updateQuickLaunchCommand(e.detail)}
+              @execute=${(e: CustomEvent) =>
+                this.executeQuickLaunch(e.detail)}
             ></quick-launch-dialog>`
           : ''}
         ${this.renameDialog

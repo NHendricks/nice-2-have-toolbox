@@ -47,15 +47,11 @@ export class KeyboardHandler {
         this.commander.executeZip()
         return
       }
-      if (this.commander.quickLaunchDialog) {
-        event.preventDefault()
-        this.commander.executeQuickLaunch()
-        return
-      }
+      // quickLaunchDialog handles ENTER internally
     }
 
     // Ignore other keys if typing in an input field
-    if (this.isInputField(event.target)) {
+    if (this.isInputField(event)) {
       // Block all other keys when in input fields
       return
     }
@@ -86,11 +82,14 @@ export class KeyboardHandler {
 
   /**
    * Check if the event target is an input field
+   * Uses composedPath() to handle Shadow DOM properly
    */
-  private isInputField(target: EventTarget | null): boolean {
-    return (
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement
+  private isInputField(event: KeyboardEvent): boolean {
+    // Check the composed path to handle Shadow DOM
+    const path = event.composedPath()
+    return path.some(
+      (el) =>
+        el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement,
     )
   }
 

@@ -1,5 +1,4 @@
 commander:
-- fix menu when click on commander in menu
 - fix quicklauncher (loses focus after 1 letter)
 - fix onedrive-Link
 - drive list: add smb-share for windows

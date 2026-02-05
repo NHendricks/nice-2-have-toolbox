@@ -1,5 +1,5 @@
 import { LitElement, css, html } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { customElement, property, state } from 'lit/decorators.js'
 import '../../../components/SimpleDialog'
 
 @customElement('quick-launch-dialog')
@@ -65,14 +65,37 @@ export class QuickLaunchDialog extends LitElement {
   @property({ type: String }) command = ''
   @property({ type: String }) workingDir = ''
 
+  // Local state for the input - prevents parent re-renders from stealing focus
+  @state() private localCommand = ''
+  private initialized = false
+
+  updated(changedProperties: Map<string, unknown>) {
+    // Initialize local command from prop only once when dialog opens
+    if (changedProperties.has('command') && !this.initialized) {
+      this.localCommand = this.command
+      this.initialized = true
+      // Auto-focus the input
+      setTimeout(() => {
+        const input = this.shadowRoot?.querySelector('input')
+        if (input) {
+          input.focus()
+          // Place cursor at end
+          input.setSelectionRange(input.value.length, input.value.length)
+        }
+      }, 0)
+    }
+  }
+
   private close() {
     this.dispatchEvent(new CustomEvent('close'))
   }
+
   private execute() {
-    this.dispatchEvent(new CustomEvent('execute'))
-  }
-  private updateCommand(value: string) {
-    this.dispatchEvent(new CustomEvent('update-command', { detail: value }))
+    if (!this.localCommand.trim()) return
+    // Pass the local command value when executing
+    this.dispatchEvent(
+      new CustomEvent('execute', { detail: this.localCommand }),
+    )
   }
 
   render() {
@@ -88,16 +111,19 @@ export class QuickLaunchDialog extends LitElement {
             <label>type command to execute in: ${this.workingDir}</label>
             <input
               type="text"
-              .value=${this.command}
+              .value=${this.localCommand}
               placeholder="Type command and press ENTER..."
-              @input=${(e: Event) =>
-                this.updateCommand((e.target as HTMLInputElement).value)}
+              @input=${(e: Event) => {
+                this.localCommand = (e.target as HTMLInputElement).value
+              }}
               @keydown=${(e: KeyboardEvent) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
+                  e.stopPropagation()
                   this.execute()
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
+                  e.stopPropagation()
                   this.close()
                 }
               }}
