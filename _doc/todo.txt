@@ -1,5 +1,4 @@
 commander:
-- fix onedrive-Link
 - drive list: add smb-share for windows
 - find files by text or name (in ctrl+f dialog, enable rekurse search here)
 - regex enhance with examples (dropdown and help)

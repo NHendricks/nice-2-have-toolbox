@@ -11,6 +11,8 @@
 - add open with dialog for open with native installed apps
   - enable selecting individual apps also
 - export / import settings
+- add network share support
+- 
 
 ### v1.5.0 (31.01.2026)
 
