@@ -306,7 +306,7 @@ export class FileOperationsCommand implements ICommand {
           isSymbolicLink: isSymlink,
           isDirectory: isSymlink
             ? linkTargetType === 'directory'
-            : entry.isDirectory(),
+            : entry.isDirectory() || entry.name.startsWith('OneDrive '), // hack because stats doesnt recognize strange OneDrive links on Windows
           isFile: isSymlink ? linkTargetType === 'file' : entry.isFile(),
           linkTargetType, // 'file' | 'directory' | null
         };

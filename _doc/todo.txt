@@ -1,5 +1,4 @@
 commander:
-- fix quicklauncher (loses focus after 1 letter)
 - fix onedrive-Link
 - drive list: add smb-share for windows
 - find files by text or name (in ctrl+f dialog, enable rekurse search here)
