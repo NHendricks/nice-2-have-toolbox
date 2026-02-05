@@ -168,7 +168,11 @@ export class FileService {
    * Register IPC listener
    */
   static onProgress(
-    channel: 'zip-progress' | 'copy-progress' | 'compare-progress',
+    channel:
+      | 'zip-progress'
+      | 'copy-progress'
+      | 'compare-progress'
+      | 'directory-size-progress',
     callback: (data: any) => void,
   ) {
     ;(window as any).electron.ipcRenderer.on(channel, callback)

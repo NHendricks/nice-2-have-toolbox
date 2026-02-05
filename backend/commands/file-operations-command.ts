@@ -333,14 +333,11 @@ export class FileOperationsCommand implements ICommand {
    * Get total size of a directory including all files recursively
    */
   private async getDirectorySize(dirPath: string): Promise<any> {
-    console.log('[DirectorySize] Called with dirPath:', dirPath);
-
     if (!dirPath) {
       throw new Error('dirPath is required for directory-size operation');
     }
 
     const absolutePath = path.resolve(dirPath);
-    console.log('[DirectorySize] Absolute path:', absolutePath);
 
     // Check if directory exists
     if (!fs.existsSync(absolutePath)) {
@@ -352,9 +349,14 @@ export class FileOperationsCommand implements ICommand {
       throw new Error(`Path is not a directory: ${absolutePath}`);
     }
 
-    // Calculate size recursively
-    const result = await this.calculateDirectorySizeRecursive(absolutePath);
-    console.log('[DirectorySize] Result:', result);
+    // Track progress state
+    const progressState = { processedFiles: 0 };
+
+    // Calculate size recursively with progress reporting
+    const result = await this.calculateDirectorySizeRecursive(
+      absolutePath,
+      progressState,
+    );
 
     return {
       success: true,
@@ -368,10 +370,11 @@ export class FileOperationsCommand implements ICommand {
   }
 
   /**
-   * Recursively calculate directory size
+   * Recursively calculate directory size with progress reporting
    */
   private async calculateDirectorySizeRecursive(
     dirPath: string,
+    progressState: { processedFiles: number },
   ): Promise<{ totalSize: number; fileCount: number; directoryCount: number }> {
     let totalSize = 0;
     let fileCount = 0;
@@ -379,22 +382,13 @@ export class FileOperationsCommand implements ICommand {
 
     try {
       const entries = await readdir(dirPath, { withFileTypes: true });
-      console.log(
-        `[DirectorySize] Reading ${dirPath}: found ${entries.length} entries`,
-      );
 
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry.name);
-        console.log(
-          `[DirectorySize] Processing: ${entry.name}, isDir=${entry.isDirectory()}, isFile=${entry.isFile()}`,
-        );
 
         try {
           // Use stat to get file size and follow symlinks
           const fileStats = await stat(fullPath);
-          console.log(
-            `[DirectorySize] Stat: isDir=${fileStats.isDirectory()}, isFile=${fileStats.isFile()}, size=${fileStats.size}`,
-          );
 
           // Check if directory - use both stat and Dirent for robustness
           const isDir =
@@ -404,8 +398,10 @@ export class FileOperationsCommand implements ICommand {
 
           if (isDir) {
             directoryCount++;
-            const subResult =
-              await this.calculateDirectorySizeRecursive(fullPath);
+            const subResult = await this.calculateDirectorySizeRecursive(
+              fullPath,
+              progressState,
+            );
             totalSize += subResult.totalSize;
             fileCount += subResult.fileCount;
             directoryCount += subResult.directoryCount;
@@ -413,27 +409,26 @@ export class FileOperationsCommand implements ICommand {
             // If not a directory, count as file and add its size
             totalSize += fileStats.size;
             fileCount++;
-            console.log(
-              `[DirectorySize] Counted file: ${entry.name}, size=${fileStats.size}`,
-            );
+            progressState.processedFiles++;
+
+            // Report progress every file
+            if (this.progressCallback) {
+              this.progressCallback(
+                progressState.processedFiles,
+                0, // We don't know total upfront
+                entry.name,
+              );
+            }
           }
         } catch (error: any) {
           // Skip files that are locked or inaccessible
-          console.warn(
-            `Warning: Unable to access ${fullPath}: ${error.message}`,
-          );
           continue;
         }
       }
     } catch (error: any) {
-      console.warn(
-        `Warning: Unable to read directory ${dirPath}: ${error.message}`,
-      );
+      // Skip directories that can't be read
     }
 
-    console.log(
-      `[DirectorySize] Dir ${dirPath} totals: size=${totalSize}, files=${fileCount}, dirs=${directoryCount}`,
-    );
     return { totalSize, fileCount, directoryCount };
   }
 

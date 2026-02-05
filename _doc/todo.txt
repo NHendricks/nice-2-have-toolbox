@@ -1,6 +1,10 @@
 commander:
 - show size of directory with all recurse files when clicking Ctrl+s 
+  - finish this:
+    show a popup instead of in status and also show progress of visiting files
+  - add ESC button and cancel search process then
 - remember added shares in favorites
+- add text editor in context menu. create an own simple text editor for this action.
 - find files by text or name (in ctrl+f dialog, enable recurse search here)
 - new logo (retry with thinner letters and move letter 5% down)
 

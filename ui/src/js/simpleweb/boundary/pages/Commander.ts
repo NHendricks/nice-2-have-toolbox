@@ -150,6 +150,17 @@ export class Commander extends LitElement {
     percentage: number
   } | null = null
 
+  @property({ type: Object })
+  directorySizeDialog: {
+    name: string
+    path: string
+    isCalculating: boolean
+    totalSize: number
+    fileCount: number
+    directoryCount: number
+    currentFile: string
+  } | null = null
+
   // Directory history for back/forward navigation (max 5 entries per pane)
   @property({ type: Array })
   leftHistory: string[] = []
@@ -238,6 +249,22 @@ export class Commander extends LitElement {
         this.compareProgress = data
         // Force UI update
         this.requestUpdate()
+      },
+    )
+
+    // Add IPC listener for directory size progress
+    ;(window as any).electron.ipcRenderer.on(
+      'directory-size-progress',
+      (data: any) => {
+        if (this.directorySizeDialog) {
+          this.directorySizeDialog = {
+            ...this.directorySizeDialog,
+            currentFile: data.fileName,
+            fileCount: data.current,
+          }
+          // Force UI update
+          this.requestUpdate()
+        }
       },
     )
   }

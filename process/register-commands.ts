@@ -52,12 +52,13 @@ export function registerCommands(ipcMain: any, version: string) {
         // Get command instance for progress callback setup
         const command = handler.getCommand(toolname);
 
-        // If it's a file-operations command with zip, copy, or compare operation, set up progress callback
+        // If it's a file-operations command with zip, copy, compare, or directory-size operation, set up progress callback
         if (
           toolname === 'file-operations' &&
           (params.operation === 'zip' ||
             params.operation === 'copy' ||
-            params.operation === 'compare') &&
+            params.operation === 'compare' ||
+            params.operation === 'directory-size') &&
           command
         ) {
           const eventName =
@@ -65,7 +66,9 @@ export function registerCommands(ipcMain: any, version: string) {
               ? 'zip-progress'
               : params.operation === 'compare'
                 ? 'compare-progress'
-                : 'copy-progress';
+                : params.operation === 'directory-size'
+                  ? 'directory-size-progress'
+                  : 'copy-progress';
 
           // Reset cancellation flag before starting
           (command as any).resetCancellation?.();
@@ -91,7 +94,8 @@ export function registerCommands(ipcMain: any, version: string) {
           toolname === 'file-operations' &&
           (params.operation === 'zip' ||
             params.operation === 'copy' ||
-            params.operation === 'compare') &&
+            params.operation === 'compare' ||
+            params.operation === 'directory-size') &&
           command
         ) {
           (command as any).setProgressCallback?.(undefined);
