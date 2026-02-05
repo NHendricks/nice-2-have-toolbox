@@ -250,16 +250,42 @@ export class OpenWithDialog extends LitElement {
 
   async handleBrowseForApp() {
     try {
-      // Use Electron dialog to browse for executable
-      const result = await (window as any).electron.ipcRenderer.invoke(
-        'show-open-dialog',
-        {
+      // Get platform from navigator
+      const isMac = navigator.platform.toLowerCase().includes('mac')
+      const isWindows = navigator.platform.toLowerCase().includes('win')
+
+      // Platform-specific dialog configuration
+      let dialogOptions: any = {}
+
+      if (isMac) {
+        // On macOS, allow selecting .app bundles (which are directories)
+        dialogOptions = {
+          properties: ['openFile', 'openDirectory'],
+          filters: [
+            { name: 'Applications', extensions: ['app'] },
+            { name: 'All Files', extensions: ['*'] },
+          ],
+        }
+      } else if (isWindows) {
+        // On Windows, allow selecting executables
+        dialogOptions = {
           properties: ['openFile'],
           filters: [
             { name: 'Executables', extensions: ['exe', 'bat', 'cmd'] },
             { name: 'All Files', extensions: ['*'] },
           ],
-        },
+        }
+      } else {
+        // On Linux and other platforms
+        dialogOptions = {
+          properties: ['openFile'],
+          filters: [{ name: 'All Files', extensions: ['*'] }],
+        }
+      }
+
+      const result = await (window as any).electron.ipcRenderer.invoke(
+        'show-open-dialog',
+        dialogOptions,
       )
 
       if (result && !result.canceled && result.filePaths.length > 0) {

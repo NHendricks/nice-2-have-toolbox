@@ -2561,6 +2561,21 @@ export class Commander extends LitElement {
                     this.handleItemDoubleClick(originalIndex)
                   }
                 }}
+                @contextmenu=${(e: MouseEvent) => {
+                  e.preventDefault()
+                  // Find original index in pane.items
+                  const originalIndex = pane.items.findIndex(
+                    (i) => i.path === item.path,
+                  )
+                  if (originalIndex !== -1) {
+                    // Set focus to this item first
+                    this.updateActivePane({
+                      focusedIndex: originalIndex,
+                    })
+                    // Then open context menu
+                    this.openContextMenu()
+                  }
+                }}
               >
                 <span class="file-icon"
                   >${item.isDirectory
