@@ -398,6 +398,69 @@ export class CompareDialog extends LitElement {
     }
   }
 
+  getFilteredCounts() {
+    if (!this.result) {
+      return {
+        totalLeft: 0,
+        totalRight: 0,
+        onlyInLeft: 0,
+        onlyInRight: 0,
+        different: 0,
+        identical: 0,
+      }
+    }
+
+    let totalLeft = 0
+    let totalRight = 0
+    let onlyInLeft = 0
+    let onlyInRight = 0
+    let different = 0
+    let identical = 0
+
+    this.result.onlyInLeft.forEach((item: any) => {
+      if (this.hideDirectories && item.isDirectory) return
+      if (!this.matchesRegexFilter(item.path)) return
+      totalLeft++
+      if (this.showLeft) onlyInLeft++
+    })
+
+    this.result.onlyInRight.forEach((item: any) => {
+      if (this.hideDirectories && item.isDirectory) return
+      if (!this.matchesRegexFilter(item.path)) return
+      totalRight++
+      if (this.showRight) onlyInRight++
+    })
+
+    this.result.different.forEach((item: any) => {
+      if (
+        this.hideDirectories &&
+        (item.leftIsDirectory || item.rightIsDirectory)
+      )
+        return
+      if (!this.matchesRegexFilter(item.path)) return
+      totalLeft++
+      totalRight++
+      if (this.showDifferent) different++
+    })
+
+    this.result.identical.forEach((item: any) => {
+      if (this.hideDirectories && item.isDirectory) return
+      if (!this.matchesRegexFilter(item.path)) return
+      totalLeft++
+      totalRight++
+      if (!this.hideIdentical) identical++
+    })
+
+    return {
+      totalLeft,
+      totalRight,
+      onlyInLeft,
+      onlyInRight,
+      different,
+      identical,
+    }
+  }
+
   getFilteredItems() {
     if (!this.result) return []
 
@@ -615,7 +678,10 @@ export class CompareDialog extends LitElement {
               📁
             </label>
 
-            <label class=${this.showLeft ? 'active' : ''} title="Show left only">
+            <label
+              class=${this.showLeft ? 'active' : ''}
+              title="Show left only"
+            >
               <input
                 type="checkbox"
                 .checked=${this.showLeft}
@@ -635,7 +701,7 @@ export class CompareDialog extends LitElement {
                 @change=${(e: Event) =>
                   (this.showRight = (e.target as HTMLInputElement).checked)}
               />
-              ➡
+              ⮕
             </label>
 
             <label
@@ -646,9 +712,7 @@ export class CompareDialog extends LitElement {
                 type="checkbox"
                 .checked=${this.showDifferent}
                 @change=${(e: Event) =>
-                  (this.showDifferent = (
-                    e.target as HTMLInputElement
-                  ).checked)}
+                  (this.showDifferent = (e.target as HTMLInputElement).checked)}
               />
               ≠
             </label>
@@ -664,32 +728,30 @@ export class CompareDialog extends LitElement {
             </label>
           </div>
 
-          <div class="summary-section">
-            <div class="summary-item">
-              <div class="summary-label">Total left</div>
-              <div class="summary-value">${summary.totalLeft}</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-label">Total right</div>
-              <div class="summary-value">${summary.totalRight}</div>
-            </div>
-            <div class="summary-item status-left-only">
-              <div class="summary-label">Left only</div>
-              <div class="summary-value">${summary.onlyInLeft}</div>
-            </div>
-            <div class="summary-item status-right-only">
-              <div class="summary-label">Right only</div>
-              <div class="summary-value">${summary.onlyInRight}</div>
-            </div>
-            <div class="summary-item status-different">
-              <div class="summary-label">Different</div>
-              <div class="summary-value">${summary.different}</div>
-            </div>
-            <div class="summary-item status-identical">
-              <div class="summary-label">Identical</div>
-              <div class="summary-value">${summary.identical}</div>
-            </div>
-          </div>
+          ${(() => {
+            const filtered = this.getFilteredCounts()
+
+            return html`
+              <div class="summary-section">
+                <div class="summary-item status-left-only">
+                  <div class="summary-label">Left only</div>
+                  <div class="summary-value">${filtered.onlyInLeft}</div>
+                </div>
+                <div class="summary-item status-right-only">
+                  <div class="summary-label">Right only</div>
+                  <div class="summary-value">${filtered.onlyInRight}</div>
+                </div>
+                <div class="summary-item status-different">
+                  <div class="summary-label">Different</div>
+                  <div class="summary-value">${filtered.different}</div>
+                </div>
+                <div class="summary-item status-identical">
+                  <div class="summary-label">Identical</div>
+                  <div class="summary-value">${filtered.identical}</div>
+                </div>
+              </div>
+            `
+          })()}
           <!-- Table & Summary Section same as your original code -->
           ${hasDifferences
             ? html`
@@ -824,9 +886,14 @@ export class CompareDialog extends LitElement {
               .width=${'550px'}
               @dialog-close=${() => (this.showRegexDialog = false)}
             >
-              <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+              <div
+                style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+              >
                 <div>
-                  <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Examples:</label>
+                  <label
+                    style="display: block; margin-bottom: 0.5rem; color: #94a3b8;"
+                    >Examples:</label
+                  >
                   <select
                     style="width: 100%; padding: 0.6rem; background: #1e293b; border: 2px solid #475569; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; border-radius: 4px; cursor: pointer;"
                     @change=${(e: Event) => {
@@ -840,31 +907,56 @@ export class CompareDialog extends LitElement {
                     <option value="">-- Select an example --</option>
                     <optgroup label="File Extensions">
                       <option value="\\.txt$">Text files (.txt)</option>
-                      <option value="\\.(jpe?g|png|gif)$">Images (.jpg, .png, .gif)</option>
-                      <option value="\\.(docx?|xlsx?|pptx?)$">Office files (.doc, .xls, .ppt)</option>
+                      <option value="\\.(jpe?g|png|gif)$">
+                        Images (.jpg, .png, .gif)
+                      </option>
+                      <option value="\\.(docx?|xlsx?|pptx?)$">
+                        Office files (.doc, .xls, .ppt)
+                      </option>
                       <option value="\\.pdf$">PDF files (.pdf)</option>
-                      <option value="\\.(zip|rar|7z)$">Archives (.zip, .rar, .7z)</option>
-                      <option value="\\.(js|ts)$">JavaScript/TypeScript (.js, .ts)</option>
-                      <option value="\\.(css|scss|less)$">Stylesheets (.css, .scss)</option>
-                      <option value="\\.(json|xml|yaml)$">Config files (.json, .xml, .yaml)</option>
+                      <option value="\\.(zip|rar|7z)$">
+                        Archives (.zip, .rar, .7z)
+                      </option>
+                      <option value="\\.(js|ts)$">
+                        JavaScript/TypeScript (.js, .ts)
+                      </option>
+                      <option value="\\.(css|scss|less)$">
+                        Stylesheets (.css, .scss)
+                      </option>
+                      <option value="\\.(json|xml|yaml)$">
+                        Config files (.json, .xml, .yaml)
+                      </option>
                     </optgroup>
                     <optgroup label="Name Patterns">
                       <option value="^\\.">Hidden files (start with .)</option>
-                      <option value="^[Rr]eadme">Files starting with "readme"</option>
-                      <option value="(backup|bak|old)">Backup files (backup, bak, old)</option>
-                      <option value="(test|spec)">Test files (test, spec)</option>
+                      <option value="^[Rr]eadme">
+                        Files starting with "readme"
+                      </option>
+                      <option value="(backup|bak|old)">
+                        Backup files (backup, bak, old)
+                      </option>
+                      <option value="(test|spec)">
+                        Test files (test, spec)
+                      </option>
                       <option value="^_">Files starting with underscore</option>
-                      <option value="\\.(tmp|temp|swp)$">Temporary files (.tmp, .temp, .swp)</option>
+                      <option value="\\.(tmp|temp|swp)$">
+                        Temporary files (.tmp, .temp, .swp)
+                      </option>
                     </optgroup>
                     <optgroup label="Exclude Patterns (use with caution)">
-                      <option value="^(?!.*node_modules)">Exclude node_modules</option>
+                      <option value="^(?!.*node_modules)">
+                        Exclude node_modules
+                      </option>
                       <option value="^(?!.*\\.git)">Exclude .git</option>
                     </optgroup>
                   </select>
                 </div>
 
                 <div>
-                  <label style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Custom pattern:</label>
+                  <label
+                    style="display: block; margin-bottom: 0.5rem; color: #94a3b8;"
+                    >Custom pattern:</label
+                  >
                   <input
                     type="text"
                     class="regex-input ${this.regexFilter &&
@@ -901,19 +993,35 @@ export class CompareDialog extends LitElement {
                     : ''}
                 </div>
 
-                <details style="background: #1e293b; border-radius: 4px; padding: 0.75rem;">
-                  <summary style="cursor: pointer; color: #fbbf24; font-weight: bold;">📖 Quick Reference</summary>
-                  <div style="margin-top: 0.75rem; font-size: 0.85rem; color: #cbd5e1; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem;">
-                    <code style="color: #0ea5e9;">.</code><span>Any character</span>
-                    <code style="color: #0ea5e9;">*</code><span>Zero or more</span>
-                    <code style="color: #0ea5e9;">+</code><span>One or more</span>
+                <details
+                  style="background: #1e293b; border-radius: 4px; padding: 0.75rem;"
+                >
+                  <summary
+                    style="cursor: pointer; color: #fbbf24; font-weight: bold;"
+                  >
+                    📖 Quick Reference
+                  </summary>
+                  <div
+                    style="margin-top: 0.75rem; font-size: 0.85rem; color: #cbd5e1; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem;"
+                  >
+                    <code style="color: #0ea5e9;">.</code
+                    ><span>Any character</span>
+                    <code style="color: #0ea5e9;">*</code
+                    ><span>Zero or more</span>
+                    <code style="color: #0ea5e9;">+</code
+                    ><span>One or more</span>
                     <code style="color: #0ea5e9;">?</code><span>Optional</span>
-                    <code style="color: #0ea5e9;">^</code><span>Start of string</span>
-                    <code style="color: #0ea5e9;">$</code><span>End of string</span>
-                    <code style="color: #0ea5e9;">\\.</code><span>Literal dot</span>
+                    <code style="color: #0ea5e9;">^</code
+                    ><span>Start of string</span>
+                    <code style="color: #0ea5e9;">$</code
+                    ><span>End of string</span>
+                    <code style="color: #0ea5e9;">\\.</code
+                    ><span>Literal dot</span>
                     <code style="color: #0ea5e9;">a|b</code><span>a OR b</span>
-                    <code style="color: #0ea5e9;">[abc]</code><span>Any of a, b, c</span>
-                    <code style="color: #0ea5e9;">[^abc]</code><span>Not a, b, c</span>
+                    <code style="color: #0ea5e9;">[abc]</code
+                    ><span>Any of a, b, c</span>
+                    <code style="color: #0ea5e9;">[^abc]</code
+                    ><span>Not a, b, c</span>
                   </div>
                 </details>
               </div>
