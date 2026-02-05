@@ -1,4 +1,7 @@
-# nh-toolbox (https://github.com/NHendricks/nh-toolbox)
+# nh-toolbox (https://github.com/NHendricks/nice-2-have-toolbox)
+
+For use on MAC please read the readme at https://github.com/NHendricks/nice-2-have-toolbox
+ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/releases
 
 ## changelog
 
