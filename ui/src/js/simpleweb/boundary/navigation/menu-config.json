@@ -2,7 +2,7 @@
   "mainNavigation": [
     {
       "label": "Commander",
-      "path": "/commander"
+      "path": "/"
     },
     {
       "label": "Moneyfinder",

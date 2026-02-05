@@ -1,4 +1,8 @@
 commander:
+- fix menu when click on commander in menu
+- fix quicklauncher (loses focus after 1 letter)
+- fix onedrive-Link
+- drive list: add smb-share for windows
 - find files by text or name (in ctrl+f dialog, enable rekurse search here)
 - regex enhance with examples (dropdown and help)
 - change filter behaviour in compare dialog (more intuitive)
@@ -7,6 +11,7 @@ commander:
 - support \\paths (Windows only) ? Or better map to drive … .
 
 other:
+- rename appname in github-action-build 
 - build app for linux
 - integrate more cmdline-Tools
   - dirsorter for jpegs
