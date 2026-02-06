@@ -18,6 +18,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 - add default search patterns for regex
 - improve filter icon behaviour (more intuitive)
 - Fix OneDrive Links recognition on Windows (hacky)
+- open cmdline window with SHIFT+F9
 
 ### v1.5.0 (31.01.2026)
 

@@ -386,7 +386,12 @@ export class KeyboardHandler {
           return
 
         case 'F9':
-          this.commander.handleF9()
+          // SHIFT + F9 opens terminal in current directory
+          if (event.shiftKey) {
+            this.commander.openTerminal()
+          } else {
+            this.commander.handleF9()
+          }
           return
 
         case 'F10':

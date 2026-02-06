@@ -1,7 +1,6 @@
 dbeaver
 commander:
 - command "code ." shows dialog too late
-- open cmd window mac or windows
 - copy from zip (or from zip in zip) doesnt work or is very slow
 - show progress for copy file (big files)
 - enhance help with all shortcuts available
@@ -11,7 +10,7 @@ commander:
 - add text editor in context menu. create an own simple text editor for this action.
 - find files by text or name (in ctrl+f dialog, enable recurse search here)
 - new logo (retry with thinner letters and move letter 5% down)
-
+- refactor commander (try again)
 other:
 - build app for linux
 - integrate more cmdline-Tools

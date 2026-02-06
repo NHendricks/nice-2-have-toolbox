@@ -1381,6 +1381,23 @@ export class Commander extends LitElement {
     }
   }
 
+  async openTerminal() {
+    const pane = this.getActivePane()
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'open-terminal',
+        pane.currentPath,
+      )
+      if (response.success) {
+        this.setStatus(`Terminal opened in ${pane.currentPath}`, 'success')
+      } else {
+        this.setStatus(`Failed to open terminal: ${response.error}`, 'error')
+      }
+    } catch (error: any) {
+      this.setStatus(`Failed to open terminal: ${error.message}`, 'error')
+    }
+  }
+
   async handleF10() {
     const pane = this.getActivePane()
     const item = pane.items[pane.focusedIndex]

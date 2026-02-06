@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { spawn } from 'child_process';
 import { registerCommands } from './register-commands';
 
 // electron/main.js
@@ -229,6 +230,44 @@ ipcMain.handle('show-save-dialog', async (_event: any, options: any) => {
       return { success: true, canceled: true };
     }
     return { success: true, canceled: false, filePath: result.filePath };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-terminal', async (_event: any, dirPath: string) => {
+  try {
+    const platform = process.platform;
+    if (platform === 'win32') {
+      // Windows: open cmd.exe in the specified directory
+      spawn('cmd.exe', [], {
+        cwd: dirPath,
+        detached: true,
+        stdio: 'ignore',
+        shell: true,
+      }).unref();
+    } else if (platform === 'darwin') {
+      // macOS: open Terminal.app in the specified directory
+      spawn('open', ['-a', 'Terminal', dirPath], {
+        detached: true,
+        stdio: 'ignore',
+      }).unref();
+    } else {
+      // Linux: try common terminal emulators
+      const terminals = ['gnome-terminal', 'konsole', 'xterm'];
+      for (const term of terminals) {
+        try {
+          spawn(term, ['--working-directory=' + dirPath], {
+            detached: true,
+            stdio: 'ignore',
+          }).unref();
+          break;
+        } catch {
+          continue;
+        }
+      }
+    }
+    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
