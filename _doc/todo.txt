@@ -1,5 +1,9 @@
 dbeaver
 commander:
+- add ftp support in driveselection 
+- editor
+  - add find dialog
+  - add replace dialog
 - copy from zip (or from zip in zip) doesnt work or is very slow
 - new logo (retry with thinner letters and move letter 5% down)
 - refactor commander (try again)
