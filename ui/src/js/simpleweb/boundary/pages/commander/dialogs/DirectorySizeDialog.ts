@@ -104,6 +104,7 @@ export class DirectorySizeDialog extends LitElement {
     fileCount: number
     directoryCount: number
     currentFile: string
+    isFile?: boolean
   } | null = null
 
   private close() {
@@ -137,18 +138,18 @@ export class DirectorySizeDialog extends LitElement {
   render() {
     if (!this.data) return ''
 
-    const { name, isCalculating, totalSize, fileCount, directoryCount, currentFile } = this.data
+    const { name, isCalculating, totalSize, fileCount, directoryCount, currentFile, isFile } = this.data
 
     return html`
       <simple-dialog
         .open=${true}
-        .title=${'Directory Size'}
+        .title=${isFile ? 'File Size' : 'Directory Size'}
         .width=${'500px'}
         .showCloseButton=${!isCalculating}
         @dialog-close=${isCalculating ? null : this.close}
       >
         <div class="content">
-          <div class="directory-name">${name}</div>
+          <div class="directory-name">${isFile ? '📄' : '📁'} ${name}</div>
 
           <div class="progress-box ${isCalculating ? 'calculating' : ''}">
             ${isCalculating
@@ -166,18 +167,25 @@ export class DirectorySizeDialog extends LitElement {
                       </div>`
                     : ''}
                 `
-              : html`
-                  <div class="result-grid">
-                    <span class="result-label">Total Size:</span>
-                    <span class="result-value size">${this.formatFileSize(totalSize)}</span>
+              : isFile
+                ? html`
+                    <div class="result-grid">
+                      <span class="result-label">File Size:</span>
+                      <span class="result-value size">${this.formatFileSize(totalSize)}</span>
+                    </div>
+                  `
+                : html`
+                    <div class="result-grid">
+                      <span class="result-label">Total Size:</span>
+                      <span class="result-value size">${this.formatFileSize(totalSize)}</span>
 
-                    <span class="result-label">Files:</span>
-                    <span class="result-value">${fileCount.toLocaleString()}</span>
+                      <span class="result-label">Files:</span>
+                      <span class="result-value">${fileCount.toLocaleString()}</span>
 
-                    <span class="result-label">Folders:</span>
-                    <span class="result-value">${directoryCount.toLocaleString()}</span>
-                  </div>
-                `}
+                      <span class="result-label">Folders:</span>
+                      <span class="result-value">${directoryCount.toLocaleString()}</span>
+                    </div>
+                  `}
           </div>
         </div>
 

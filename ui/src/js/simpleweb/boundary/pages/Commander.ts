@@ -159,6 +159,7 @@ export class Commander extends LitElement {
     fileCount: number
     directoryCount: number
     currentFile: string
+    isFile?: boolean
   } | null = null
 
   // Directory history for back/forward navigation (max 5 entries per pane)
@@ -1059,11 +1060,17 @@ export class Commander extends LitElement {
 
     console.log('[UI] item.isDirectory:', item.isDirectory)
     if (!item.isDirectory) {
-      // For files, just show the file size in status bar
-      this.setStatus(
-        `${item.name}: ${this.formatFileSize(item.size)}`,
-        'success',
-      )
+      // For files, show the dialog with file info directly (no calculation needed)
+      this.directorySizeDialog = {
+        name: item.name,
+        path: item.path,
+        isCalculating: false,
+        totalSize: item.size,
+        fileCount: 1,
+        directoryCount: 0,
+        currentFile: '',
+        isFile: true,
+      }
       return
     }
 
@@ -1076,6 +1083,7 @@ export class Commander extends LitElement {
       fileCount: 0,
       directoryCount: 0,
       currentFile: '',
+      isFile: false,
     }
 
     try {
@@ -1107,6 +1115,7 @@ export class Commander extends LitElement {
           fileCount,
           directoryCount: dirCount,
           currentFile: '',
+          isFile: false,
         }
       } else {
         this.directorySizeDialog = null

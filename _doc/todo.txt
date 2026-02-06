@@ -1,9 +1,9 @@
 dbeaver
 commander:
-- fix show size of file, not only for directories
+- add ESC button and cancel search process for Ctrl+s
+- show current sum of size in progress bar for Ctrl+s
 - enhance help with all shortcuts available
 - copy from zip (or from zip in zip) doesnt work or is very slow
-- add ESC button and cancel search process for Ctrl+s
 - add text editor in context menu. create an own simple text editor for this action.
 - find files by text or name (in ctrl+f dialog, enable recurse search here)
 - new logo (retry with thinner letters and move letter 5% down)
