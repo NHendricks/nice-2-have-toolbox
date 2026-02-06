@@ -1,12 +1,9 @@
 dbeaver
 commander:
-- command "code ." shows dialog too late
-- copy from zip (or from zip in zip) doesnt work or is very slow
-- show progress for copy file (big files)
-- enhance help with all shortcuts available
 - fix show size of file, not only for directories
-- show size of directory with all recurse files when clicking Ctrl+s 
-  - add ESC button and cancel search process then
+- enhance help with all shortcuts available
+- copy from zip (or from zip in zip) doesnt work or is very slow
+- add ESC button and cancel search process for Ctrl+s
 - add text editor in context menu. create an own simple text editor for this action.
 - find files by text or name (in ctrl+f dialog, enable recurse search here)
 - new logo (retry with thinner letters and move letter 5% down)

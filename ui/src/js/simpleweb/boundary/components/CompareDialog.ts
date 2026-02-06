@@ -619,7 +619,7 @@ export class CompareDialog extends LitElement {
                   ${this.progress
                     ? html`
                         <div
-                          style="margin-top: 1rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 2px solid #0ea5e9; min-width: 300px;"
+                          style="margin-top: 1rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 2px solid #0ea5e9; width: 400px;"
                         >
                           <div
                             style="width: 100%; height: 20px; background: #0f172a; border-radius: 4px; overflow: hidden; margin-bottom: 0.75rem;"
@@ -636,7 +636,7 @@ export class CompareDialog extends LitElement {
                             files
                           </div>
                           <div
-                            style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px;"
+                            style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.5rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                           >
                             ${this.progress.fileName}
                           </div>
