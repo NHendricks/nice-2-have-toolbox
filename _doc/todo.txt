@@ -1,14 +1,12 @@
 dbeaver
 commander:
-- up and down in context menu should not be propagated. the file selection changes currently.
-- add F2 button for rename
+- add examples for replace in texteditor (e.g. line feeds)
 - add F7 create folder for files and ftp
 - fix rename files for ftp
 - copy from zip (or from zip in zip) doesnt work or is very slow
 - add support for browse into asar files
 - dos2unix and unix2dos in text editor
 - enable search text in named files. remove the content search radio button and create a new sestion
-- add examples for replace in texteditor (e.g. line feeds)
 - refactor commander (try again now with claude code)
 - fix ftps
 other:

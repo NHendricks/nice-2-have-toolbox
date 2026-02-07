@@ -269,6 +269,7 @@ export class KeyboardHandler {
       this.commander.renameDialog ||
       this.commander.zipDialog ||
       this.commander.compareDialog ||
+      this.commander.contextMenu ||
       this.commander.getActivePane().filterActive
     )
   }
@@ -360,6 +361,14 @@ export class KeyboardHandler {
     // Use event.code for function keys to work on macOS (with Fn key)
     const code = event.code
     const key = event.key
+
+    // Don't handle arrow keys when context menu is open (it handles them itself)
+    if (
+      this.commander.contextMenu &&
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)
+    ) {
+      return
+    }
 
     // Handle function keys using event.code (works with Fn on Mac)
     if (code.startsWith('F') && code.match(/^F\d+$/)) {

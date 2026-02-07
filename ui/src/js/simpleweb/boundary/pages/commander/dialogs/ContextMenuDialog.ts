@@ -38,16 +38,20 @@ export class ContextMenuDialog extends LitElement {
 
     if (e.key === 'Escape') {
       e.preventDefault()
+      e.stopPropagation()
       this.handleClose()
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
+      e.stopPropagation()
       this.focusedIndex = (this.focusedIndex + 1) % menuItems.length
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
+      e.stopPropagation()
       this.focusedIndex =
         (this.focusedIndex - 1 + menuItems.length) % menuItems.length
     } else if (e.key === 'Enter') {
       e.preventDefault()
+      e.stopPropagation()
       const focusedItem = menuItems[this.focusedIndex]
       if (focusedItem) {
         this.handleAction(focusedItem.action)
