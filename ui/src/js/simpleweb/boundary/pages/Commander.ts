@@ -2641,6 +2641,10 @@ export class Commander extends LitElement {
         </div>
 
         <div class="function-bar">
+          <div class="function-key" @click=${() => this.handleF2()}>
+            <span class="function-key-label">F2</span>
+            <span class="function-key-action">rename</span>
+          </div>
           <div class="function-key" @click=${() => this.handleF3()}>
             <span class="function-key-label">F3</span>
             <span class="function-key-action">view</span>

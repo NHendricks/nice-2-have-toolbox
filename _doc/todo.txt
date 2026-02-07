@@ -1,10 +1,13 @@
 dbeaver
 commander:
-- add ftp support in driveselection 
+- add F2 button for rename
+- add F7 create folder for fies and ftp
+- fix rename files for ftp
 - dos2unix and unix2dos in text editor
+- enable search text in named files. move the content search radio button to a new scetion
 - add examples for replace in textediotr (e.g. line feeds)
 - copy from zip (or from zip in zip) doesnt work or is very slow
-- refactor commander (try again)
+- refactor commander (try again now with claude code)
 other:
 - build app for linux
 - integrate more cmdline-Tools
