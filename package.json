@@ -23,7 +23,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "basic-ftp": "^5.1.0",
     "png-to-ico": "^3.0.1",
     "rcedit": "^5.0.2",
     "rifraf": "^2.0.3",
