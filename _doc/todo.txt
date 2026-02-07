@@ -10,7 +10,10 @@ commander:
 - ctrl+pageup/down: select all files between these
 - at startup no ftp and no sambe restore
 - loading directory... should show whole path
-- compare dir, then fiel: move down for both files synch scrolling
+- compare dir, then file: move down for both files synch scrolling
+- cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
+- show free size of opened drives in top st
+- compare file does not show real content of left and right file
 other:
 - build app for linux
 - db tool like bweaver

@@ -122,6 +122,7 @@ export class FileCompare extends LitElement {
   private diffLines: number[] = []
   private currentDiff = 0
   private lineDiffMap: { left: string; right: string; changed: boolean }[] = []
+  private isSyncing = false
 
   /* ---------- Lifecycle ---------- */
   connectedCallback() {
@@ -186,27 +187,56 @@ export class FileCompare extends LitElement {
     this.lineDiffMap = []
 
     let lineNum = 1
-    changes.forEach((change) => {
+    let i = 0
+    while (i < changes.length) {
+      const change = changes[i]
       const lines = change.value.split('\n')
       if (lines[lines.length - 1] === '') lines.pop()
 
-      if (change.added || change.removed) {
-        lines.forEach((line) => {
-          this.lineDiffMap.push({
-            left: change.removed ? line : '',
-            right: change.added ? line : '',
-            changed: true,
+      if (change.removed) {
+        // Check if next change is 'added' (modification pair)
+        const next = changes[i + 1]
+        if (next?.added) {
+          const addedLines = next.value.split('\n')
+          if (addedLines[addedLines.length - 1] === '') addedLines.pop()
+
+          // Pair removed and added lines together
+          const maxLen = Math.max(lines.length, addedLines.length)
+          for (let j = 0; j < maxLen; j++) {
+            this.lineDiffMap.push({
+              left: lines[j] ?? '',
+              right: addedLines[j] ?? '',
+              changed: true,
+            })
+            this.diffLines.push(lineNum)
+            lineNum++
+          }
+          i += 2 // Skip both removed and added
+          continue
+        } else {
+          // Only removed (deleted lines)
+          lines.forEach((line) => {
+            this.lineDiffMap.push({ left: line, right: '', changed: true })
+            this.diffLines.push(lineNum)
+            lineNum++
           })
+        }
+      } else if (change.added) {
+        // Only added (new lines, not paired with removed)
+        lines.forEach((line) => {
+          this.lineDiffMap.push({ left: '', right: line, changed: true })
           this.diffLines.push(lineNum)
           lineNum++
         })
       } else {
+        // Unchanged lines
         lines.forEach((line) => {
           this.lineDiffMap.push({ left: line, right: line, changed: false })
         })
         lineNum += lines.length
       }
-    })
+      i++
+    }
   }
 
   scrollToDiff(index: number) {
@@ -252,6 +282,24 @@ export class FileCompare extends LitElement {
     )
   }
 
+  /* ---------- Synchronized scrolling ---------- */
+  private syncScroll = (e: Event) => {
+    if (this.isSyncing) return
+
+    const source = e.target as HTMLElement
+    const panes = this.renderRoot.querySelectorAll('.file')
+    if (panes.length !== 2) return
+
+    this.isSyncing = true
+    panes.forEach((pane) => {
+      if (pane !== source) {
+        ;(pane as HTMLElement).scrollTop = source.scrollTop
+        ;(pane as HTMLElement).scrollLeft = source.scrollLeft
+      }
+    })
+    this.isSyncing = false
+  }
+
   /* ---------- Render helpers ---------- */
   renderSide() {
     const visible = this.showOnlyDiffs
@@ -260,7 +308,7 @@ export class FileCompare extends LitElement {
 
     return html`
       <div class="compare-body">
-        <div class="file">
+        <div class="file" @scroll=${this.syncScroll}>
           ${visible.map(
             (row, i) => html`
               <span
@@ -276,7 +324,7 @@ export class FileCompare extends LitElement {
             `,
           )}
         </div>
-        <div class="file">
+        <div class="file" @scroll=${this.syncScroll}>
           ${visible.map(
             (row, i) => html`
               <span
