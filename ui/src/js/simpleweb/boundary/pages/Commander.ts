@@ -2383,8 +2383,8 @@ export class Commander extends LitElement {
   }
 
   async executeSearch(detail: {
-    searchText: string
-    searchByContent: boolean
+    filenamePattern: string
+    contentText: string
     recursive: boolean
     caseSensitive: boolean
   }) {
@@ -2408,8 +2408,8 @@ export class Commander extends LitElement {
     try {
       const response = await FileService.search(
         this.searchDialog.searchPath,
-        detail.searchText,
-        detail.searchByContent,
+        detail.filenamePattern,
+        detail.contentText,
         detail.recursive,
         detail.caseSensitive,
       )
@@ -2575,8 +2575,15 @@ export class Commander extends LitElement {
         },
       )
 
-      if (response.success && response.data?.success && response.data?.data?.path) {
-        this.setStatus(`Settings exported to: ${response.data.data.path}`, 'success')
+      if (
+        response.success &&
+        response.data?.success &&
+        response.data?.data?.path
+      ) {
+        this.setStatus(
+          `Settings exported to: ${response.data.data.path}`,
+          'success',
+        )
       } else {
         this.setStatus(
           `Export error: ${response.data?.error || response.error || 'Unknown error'}`,
@@ -2641,13 +2648,15 @@ export class Commander extends LitElement {
 
       // Import FTP connections (decrypt passwords)
       if (settings.ftpConnections) {
-        const decryptedConnections = settings.ftpConnections.map((conn: any) => ({
-          ...conn,
-          password: conn._encrypted
-            ? this.decryptPassword(conn.password)
-            : conn.password,
-          _encrypted: undefined, // Remove the marker
-        }))
+        const decryptedConnections = settings.ftpConnections.map(
+          (conn: any) => ({
+            ...conn,
+            password: conn._encrypted
+              ? this.decryptPassword(conn.password)
+              : conn.password,
+            _encrypted: undefined, // Remove the marker
+          }),
+        )
         localStorage.setItem(
           'ftp-connections',
           JSON.stringify(decryptedConnections),
@@ -3087,7 +3096,9 @@ export class Commander extends LitElement {
             this.handlePathClick()
           }}
         >
-          <span class="path-display">${this.maskFtpPassword(pane.currentPath)}</span>
+          <span class="path-display"
+            >${this.maskFtpPassword(pane.currentPath)}</span
+          >
           <span class="item-count">
             ${filteredItems.length}${pane.filterActive && pane.filter
               ? ` / ${pane.items.length}`

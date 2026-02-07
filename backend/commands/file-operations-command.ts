@@ -109,8 +109,8 @@ export class FileOperationsCommand implements ICommand {
         case 'search':
           return await this.searchFiles(
             params.searchPath,
-            params.searchText,
-            params.searchByContent,
+            params.filenamePattern || params.searchText, // backwards compatibility
+            params.contentText || (params.searchByContent ? params.searchText : ''),
             params.recursive,
             params.caseSensitive,
             this.progressCallback,
@@ -2668,12 +2668,12 @@ export class FileOperationsCommand implements ICommand {
   }
 
   /**
-   * Search for files by name or content
+   * Search for files by name pattern and optionally search within file content
    */
   private async searchFiles(
     searchPath: string,
-    searchText: string,
-    searchByContent: boolean,
+    filenamePattern: string,
+    contentText: string,
     recursive: boolean,
     caseSensitive: boolean,
     progressCallback?: (current: number, total: number, fileName: string) => void,
@@ -2689,9 +2689,15 @@ export class FileOperationsCommand implements ICommand {
     let filesScanned = 0;
     const maxResults = 500; // Limit results to prevent overwhelming UI
 
-    const searchPattern = caseSensitive
-      ? searchText
-      : searchText.toLowerCase();
+    // Prepare filename pattern for matching
+    const filenamePatternLower = caseSensitive
+      ? filenamePattern
+      : filenamePattern.toLowerCase();
+
+    // Prepare content search pattern
+    const contentPattern = contentText
+      ? (caseSensitive ? contentText : contentText.toLowerCase())
+      : '';
 
     const searchDir = async (dirPath: string): Promise<void> => {
       if (this.cancelled || results.length >= maxResults) return;
@@ -2705,14 +2711,27 @@ export class FileOperationsCommand implements ICommand {
           const fullPath = path.join(dirPath, entry.name);
           const entryName = caseSensitive ? entry.name : entry.name.toLowerCase();
 
-          if (searchByContent) {
-            // Search in file content
-            if (entry.isFile()) {
-              filesScanned++;
-              if (progressCallback) {
-                progressCallback(filesScanned, 0, entry.name);
-              }
+          filesScanned++;
+          if (progressCallback && filesScanned % 100 === 0) {
+            progressCallback(filesScanned, 0, entry.name);
+          }
 
+          // Check if filename matches the pattern
+          let filenameMatches = false;
+          if (filenamePatternLower.includes('*') || filenamePatternLower.includes('?')) {
+            const regexPattern = filenamePatternLower
+              .replace(/\./g, '\\.')
+              .replace(/\*/g, '.*')
+              .replace(/\?/g, '.');
+            const regex = new RegExp(`^${regexPattern}$`, caseSensitive ? '' : 'i');
+            filenameMatches = regex.test(entry.name);
+          } else {
+            filenameMatches = entryName.includes(filenamePatternLower);
+          }
+
+          if (filenameMatches) {
+            // If content search is requested, search within matching files
+            if (contentPattern && entry.isFile()) {
               try {
                 // Only search in text files (skip binary)
                 const ext = path.extname(entry.name).toLowerCase();
@@ -2734,7 +2753,7 @@ export class FileOperationsCommand implements ICommand {
 
                     for (let i = 0; i < lines.length; i++) {
                       const line = caseSensitive ? lines[i] : lines[i].toLowerCase();
-                      if (line.includes(searchPattern)) {
+                      if (line.includes(contentPattern)) {
                         results.push({
                           path: fullPath,
                           name: entry.name,
@@ -2750,44 +2769,19 @@ export class FileOperationsCommand implements ICommand {
               } catch {
                 // Skip files that can't be read
               }
-            }
-
-            // Recurse into directories
-            if (entry.isDirectory() && recursive) {
-              await searchDir(fullPath);
-            }
-          } else {
-            // Search by filename
-            filesScanned++;
-            if (progressCallback && filesScanned % 100 === 0) {
-              progressCallback(filesScanned, 0, entry.name);
-            }
-
-            // Use wildcard matching if pattern contains * or ?
-            let matches = false;
-            if (searchPattern.includes('*') || searchPattern.includes('?')) {
-              const regexPattern = searchPattern
-                .replace(/\./g, '\\.')
-                .replace(/\*/g, '.*')
-                .replace(/\?/g, '.');
-              const regex = new RegExp(`^${regexPattern}$`, caseSensitive ? '' : 'i');
-              matches = regex.test(entry.name);
-            } else {
-              matches = entryName.includes(searchPattern);
-            }
-
-            if (matches) {
+            } else if (!contentPattern) {
+              // No content search - just add matching files/directories
               results.push({
                 path: fullPath,
                 name: entry.name,
                 isDirectory: entry.isDirectory(),
               });
             }
+          }
 
-            // Recurse into directories
-            if (entry.isDirectory() && recursive) {
-              await searchDir(fullPath);
-            }
+          // Recurse into directories
+          if (entry.isDirectory() && recursive) {
+            await searchDir(fullPath);
           }
         }
       } catch {
@@ -2802,8 +2796,8 @@ export class FileOperationsCommand implements ICommand {
       operation: 'search',
       data: {
         searchPath,
-        searchText,
-        searchByContent,
+        filenamePattern,
+        contentText,
         recursive,
         caseSensitive,
         results,

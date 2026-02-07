@@ -16,4 +16,4 @@ other:
   - imdb finder
     - find imdb rating quickly by typing film name 
 - music player (IPOD-like see www.nilshendricks.de>widgets)
-
+- pdf manager

@@ -105,11 +105,10 @@ export class FileService {
   static async delete(sourcePath: string) {
     // Use FTP command for FTP paths
     if (sourcePath.startsWith('ftp://')) {
-      return (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'ftp',
-        { operation: 'delete', ftpUrl: sourcePath },
-      )
+      return (window as any).electron.ipcRenderer.invoke('cli-execute', 'ftp', {
+        operation: 'delete',
+        ftpUrl: sourcePath,
+      })
     }
     return (window as any).electron.ipcRenderer.invoke(
       'cli-execute',
@@ -214,8 +213,8 @@ export class FileService {
    */
   static async search(
     searchPath: string,
-    searchText: string,
-    searchByContent: boolean,
+    filenamePattern: string,
+    contentText: string,
     recursive: boolean,
     caseSensitive: boolean,
   ): Promise<{
@@ -225,8 +224,8 @@ export class FileService {
       operation: string
       data: {
         searchPath: string
-        searchText: string
-        searchByContent: boolean
+        filenamePattern: string
+        contentText: string
         recursive: boolean
         caseSensitive: boolean
         results: Array<{
@@ -245,7 +244,14 @@ export class FileService {
     return (window as any).electron.ipcRenderer.invoke(
       'cli-execute',
       'file-operations',
-      { operation: 'search', searchPath, searchText, searchByContent, recursive, caseSensitive },
+      {
+        operation: 'search',
+        searchPath,
+        filenamePattern,
+        contentText,
+        recursive,
+        caseSensitive,
+      },
     )
   }
 

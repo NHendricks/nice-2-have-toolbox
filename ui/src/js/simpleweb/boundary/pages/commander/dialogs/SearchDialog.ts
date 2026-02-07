@@ -191,8 +191,8 @@ export class SearchDialog extends LitElement {
   @property({ type: String }) searchPath = ''
   @property({ type: Boolean }) searching = false
 
-  @state() private searchText = ''
-  @state() private searchByContent = false
+  @state() private filenamePattern = '*.*'
+  @state() private contentText = ''
   @state() private recursive = true
   @state() private caseSensitive = false
   @state() private results: SearchResult[] = []
@@ -259,13 +259,13 @@ export class SearchDialog extends LitElement {
   }
 
   private handleSearch() {
-    if (!this.searchText.trim()) return
+    if (!this.filenamePattern.trim()) return
 
     this.dispatchEvent(
       new CustomEvent('search', {
         detail: {
-          searchText: this.searchText.trim(),
-          searchByContent: this.searchByContent,
+          filenamePattern: this.filenamePattern.trim(),
+          contentText: this.contentText.trim(),
           recursive: this.recursive,
           caseSensitive: this.caseSensitive,
         },
@@ -314,49 +314,49 @@ export class SearchDialog extends LitElement {
             Search in: ${this.searchPath}
           </div>
 
-          <div class="search-input-row">
+          <!-- Filename Pattern Section -->
+          <div style="margin-bottom: 0.5rem;">
+            <label style="color: #94a3b8; font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">
+              Filename pattern (use * and ? wildcards)
+            </label>
             <input
               class="search-input"
               type="text"
-              placeholder="${this.searchByContent ? 'Search text in files...' : 'Search filename (use * and ? wildcards)...'}"
-              .value=${this.searchText}
-              @input=${(e: Event) => this.searchText = (e.target as HTMLInputElement).value}
+              placeholder="*.txt, *.ts, report*.pdf..."
+              .value=${this.filenamePattern}
+              @input=${(e: Event) => this.filenamePattern = (e.target as HTMLInputElement).value}
               @keydown=${this.handleInputKeyDown}
               ?disabled=${this.searching}
               autofocus
             />
-            <button
-              class="btn btn-search"
-              @click=${this.handleSearch}
-              ?disabled=${this.searching || !this.searchText.trim()}
-            >
-              ${this.searching ? 'Searching...' : 'Search'}
-            </button>
+          </div>
+
+          <!-- Content Search Section -->
+          <div style="margin-bottom: 0.5rem;">
+            <label style="color: #94a3b8; font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">
+              Search text in files (optional)
+            </label>
+            <div class="search-input-row">
+              <input
+                class="search-input"
+                type="text"
+                placeholder="Leave empty to find files by name only..."
+                .value=${this.contentText}
+                @input=${(e: Event) => this.contentText = (e.target as HTMLInputElement).value}
+                @keydown=${this.handleInputKeyDown}
+                ?disabled=${this.searching}
+              />
+              <button
+                class="btn btn-search"
+                @click=${this.handleSearch}
+                ?disabled=${this.searching || !this.filenamePattern.trim()}
+              >
+                ${this.searching ? 'Searching...' : 'Search'}
+              </button>
+            </div>
           </div>
 
           <div class="search-options">
-            <div class="option-group">
-              <input
-                type="radio"
-                id="search-name"
-                name="search-type"
-                ?checked=${!this.searchByContent}
-                @change=${() => this.searchByContent = false}
-                ?disabled=${this.searching}
-              />
-              <label for="search-name">Search by name</label>
-            </div>
-            <div class="option-group">
-              <input
-                type="radio"
-                id="search-content"
-                name="search-type"
-                ?checked=${this.searchByContent}
-                @change=${() => this.searchByContent = true}
-                ?disabled=${this.searching}
-              />
-              <label for="search-content">Search in content</label>
-            </div>
             <div class="option-group">
               <input
                 type="checkbox"
