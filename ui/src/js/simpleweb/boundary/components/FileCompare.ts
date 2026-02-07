@@ -114,10 +114,10 @@ export class FileCompare extends LitElement {
   @property() error = ''
 
   @property({ type: String })
-  viewMode: 'side' | 'unified' = 'unified'
+  viewMode: 'side' | 'unified' = 'side'
 
   @property({ type: Boolean })
-  showOnlyDiffs = true
+  showOnlyDiffs = false
 
   private diffLines: number[] = []
   private currentDiff = 0
@@ -348,7 +348,18 @@ export class FileCompare extends LitElement {
     if (!left && !right) return html``
     if (left === right) return html`${left}`
 
-    // Always diff left→right for consistent interpretation
+    // Handle cases where one side is empty
+    if (side === 'left') {
+      if (!left) return html`` // Left is empty, show nothing on left side
+      if (!right)
+        return html`<span class="inline-del">${left}</span>` // Entire line deleted
+    } else {
+      if (!right) return html`` // Right is empty, show nothing on right side
+      if (!left)
+        return html`<span class="inline-add">${right}</span>` // Entire line added
+    }
+
+    // Both sides have content - show word-level diff
     const diffs = diffWords(left, right)
 
     if (side === 'left') {
