@@ -348,16 +348,28 @@ export class FileCompare extends LitElement {
     if (!left && !right) return html``
     if (left === right) return html`${left}`
 
-    const diffs =
-      side === 'left' ? diffWords(left, right) : diffWords(right, left)
+    // Always diff left→right for consistent interpretation
+    const diffs = diffWords(left, right)
 
-    return html`${diffs.map((part) =>
-      part.added
-        ? html`<span class="inline-add">${part.value}</span>`
-        : part.removed
-          ? html`<span class="inline-del">${part.value}</span>`
-          : html`${part.value}`,
-    )}`
+    if (side === 'left') {
+      // Left pane: show removed (red) + unchanged, skip added
+      return html`${diffs.map((part) =>
+        part.added
+          ? html`` // Don't show added content on left side
+          : part.removed
+            ? html`<span class="inline-del">${part.value}</span>`
+            : html`${part.value}`,
+      )}`
+    } else {
+      // Right pane: show added (green) + unchanged, skip removed
+      return html`${diffs.map((part) =>
+        part.removed
+          ? html`` // Don't show removed content on right side
+          : part.added
+            ? html`<span class="inline-add">${part.value}</span>`
+            : html`${part.value}`,
+      )}`
+    }
   }
 
   renderUnified() {
