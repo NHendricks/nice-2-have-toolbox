@@ -325,8 +325,10 @@ export class FTPConnectionDialog extends LitElement {
     this.connecting = true
     this.setStatus('Connecting...', 'info')
 
-    // Build FTP URL
-    const ftpUrl = `ftp://${this.user || 'anonymous'}:${this.password || 'anonymous@'}@${this.host}:${parseInt(this.port, 10) || 21}/`
+    // Build FTP URL (encode user and password to handle special characters)
+    const encodedUser = encodeURIComponent(this.user || 'anonymous')
+    const encodedPassword = encodeURIComponent(this.password || 'anonymous@')
+    const ftpUrl = `ftp://${encodedUser}:${encodedPassword}@${this.host}:${parseInt(this.port, 10) || 21}/`
 
     // Dispatch connect event with FTP URL
     this.dispatchEvent(

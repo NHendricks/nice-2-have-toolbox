@@ -61,14 +61,16 @@ export class FTPCommand implements ICommand {
       hostPort = hostPort.substring(0, slashIndex);
     }
 
-    // Parse credentials
+    // Parse credentials (decode URL-encoded values)
     let user = 'anonymous';
     let password = 'anonymous@';
     if (credentials) {
       if (credentials.includes(':')) {
-        [user, password] = credentials.split(':', 2);
+        const [encodedUser, encodedPassword] = credentials.split(':', 2);
+        user = decodeURIComponent(encodedUser);
+        password = decodeURIComponent(encodedPassword);
       } else {
-        user = credentials;
+        user = decodeURIComponent(credentials);
       }
     }
 
@@ -155,6 +157,27 @@ export class FTPCommand implements ICommand {
     }
   }
 
+  /**
+   * Invalidate session for a given FTP URL (on connection errors)
+   */
+  private invalidateSession(ftpUrl: string) {
+    try {
+      const { connection } = this.parseFTPUrl(ftpUrl);
+      const key = this.getSessionKey(connection);
+      const session = activeSessions.get(key);
+      if (session) {
+        try {
+          session.client.close();
+        } catch {
+          // Ignore close errors
+        }
+        activeSessions.delete(key);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
   async execute(params: any): Promise<any> {
     const { operation, ftpUrl, localPath, newName, content } = params;
 
@@ -182,6 +205,10 @@ export class FTPCommand implements ICommand {
           };
       }
     } catch (error: any) {
+      // Invalidate session on error - connection may be broken
+      if (ftpUrl) {
+        this.invalidateSession(ftpUrl);
+      }
       return {
         success: false,
         error: error.message,
@@ -361,6 +388,9 @@ export class FTPCommand implements ICommand {
       // Rename file
       await client.rename(remotePath, newPath);
 
+      // Invalidate session after rename - connection state may be unreliable
+      this.invalidateSession(ftpUrl);
+
       return {
         success: true,
         operation: 'rename',
@@ -389,6 +419,9 @@ export class FTPCommand implements ICommand {
         // If that fails, try as directory
         await client.removeDir(remotePath);
       }
+
+      // Invalidate session after delete - connection state may be unreliable
+      this.invalidateSession(ftpUrl);
 
       return {
         success: true,

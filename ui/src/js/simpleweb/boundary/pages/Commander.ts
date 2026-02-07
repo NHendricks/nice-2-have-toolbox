@@ -477,15 +477,17 @@ export class Commander extends LitElement {
           const items: FileItem[] = []
 
           // Add parent directory if not at root
-          const urlParts = path.split('/')
-          if (urlParts.length > 4) {
-            // More than ftp://user@host:port/
+          // Extract path after ftp://user@host:port
+          const ftpMatch = path.match(/^ftp:\/\/[^/]+(.*)$/)
+          const remotePath = ftpMatch ? ftpMatch[1] : '/'
+          // Show ".." if we're not at root (remotePath is more than just "/" or empty)
+          if (remotePath && remotePath !== '/' && remotePath.length > 1) {
             const parentUrl =
-              urlParts.slice(0, -1).join('/') ||
-              path.substring(0, path.lastIndexOf('/'))
+              path.substring(0, path.lastIndexOf('/')) ||
+              path.replace(/\/[^/]*\/?$/, '')
             items.push({
               name: '..',
-              path: parentUrl,
+              path: parentUrl || path.match(/^ftp:\/\/[^/]+/)?.[0] + '/',
               size: 0,
               created: new Date(),
               modified: new Date(),
