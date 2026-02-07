@@ -1,6 +1,5 @@
 dbeaver
 commander:
-- enable search text in named files. remove the content search radio button and create a new sestion
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 - copy from zip (or from zip in zip) doesnt work or is very slow
@@ -17,3 +16,9 @@ other:
     - find imdb rating quickly by typing film name 
 - music player (IPOD-like see www.nilshendricks.de>widgets)
 - pdf manager
+  - split pdf
+  - get text from pdf (ocr)
+  - find text in pdfs 
+    - write text for each pdf
+    - find text
+  - rename pdf (date/sender/account)

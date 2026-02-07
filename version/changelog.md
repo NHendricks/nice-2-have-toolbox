@@ -7,6 +7,10 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 
 ### upcoming
 
+(you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
+
+### v1.6.0 (07.02.2026)
+
 - in drive dialog support keyboard navigation
 - memorize directories and enable backward history navigation
 - support nested zips
