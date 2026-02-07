@@ -69,6 +69,8 @@ export class FileOperationsCommand implements ICommand {
           return await this.moveFile(sourcePath, destinationPath);
         case 'rename':
           return await this.renameFile(sourcePath, destinationPath);
+        case 'mkdir':
+          return await this.createDirectory(params.dirPath);
         case 'delete':
           return await this.deleteFile(sourcePath);
         case 'execute-command':
@@ -1386,6 +1388,32 @@ export class FileOperationsCommand implements ICommand {
         timestamp: new Date().toISOString(),
       };
     }
+  }
+
+  /**
+   * Create a new directory
+   */
+  private async createDirectory(dirPath: string): Promise<any> {
+    if (!dirPath) {
+      throw new Error('dirPath is required for mkdir operation');
+    }
+
+    const absolutePath = path.resolve(dirPath);
+
+    // Check if directory already exists
+    if (fs.existsSync(absolutePath)) {
+      throw new Error(`Directory already exists: ${absolutePath}`);
+    }
+
+    // Create the directory
+    await mkdir(absolutePath, { recursive: true });
+
+    return {
+      success: true,
+      operation: 'mkdir',
+      path: absolutePath,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**

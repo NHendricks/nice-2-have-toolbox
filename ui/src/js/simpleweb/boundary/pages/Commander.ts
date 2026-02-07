@@ -132,6 +132,9 @@ export class Commander extends LitElement {
     null
 
   @property({ type: Object })
+  mkdirDialog: { currentPath: string; folderName: string } | null = null
+
+  @property({ type: Object })
   zipDialog: { files: string[]; zipFileName: string } | null = null
 
   @property({ type: Object })
@@ -982,6 +985,75 @@ export class Commander extends LitElement {
     const item = pane.items[pane.focusedIndex]
     if (item && item.isFile) {
       this.viewFile(item.path)
+    }
+  }
+
+  handleF7() {
+    const pane = this.getActivePane()
+    this.mkdirDialog = {
+      currentPath: pane.currentPath,
+      folderName: 'New Folder',
+    }
+  }
+
+  async executeMkdir() {
+    if (!this.mkdirDialog) return
+
+    const { currentPath, folderName } = this.mkdirDialog
+    if (!folderName.trim()) {
+      this.setStatus('Folder name cannot be empty', 'error')
+      return
+    }
+
+    try {
+      let response
+      if (currentPath.startsWith('ftp://')) {
+        // FTP mkdir
+        const ftpUrl = currentPath.endsWith('/')
+          ? `${currentPath}${folderName}`
+          : `${currentPath}/${folderName}`
+        response = await (window as any).electron.ipcRenderer.invoke(
+          'cli-execute',
+          'ftp',
+          { operation: 'mkdir', ftpUrl },
+        )
+      } else {
+        // Local mkdir
+        const dirPath =
+          currentPath + (currentPath.endsWith('/') ? '' : '/') + folderName
+        response = await (window as any).electron.ipcRenderer.invoke(
+          'cli-execute',
+          'file-operations',
+          { operation: 'mkdir', dirPath },
+        )
+      }
+
+      if (response.success && response.data?.success) {
+        this.setStatus(`Created folder: ${folderName}`, 'success')
+        this.mkdirDialog = null
+        // Refresh the current directory
+        await this.loadDirectory(this.activePane, currentPath)
+      } else {
+        this.setStatus(
+          `Error: ${response.data?.error || response.error || 'Unknown error'}`,
+          'error',
+        )
+      }
+    } catch (error: any) {
+      this.setStatus(`Error: ${error.message}`, 'error')
+    }
+  }
+
+  cancelMkdir() {
+    this.mkdirDialog = null
+  }
+
+  updateMkdir(value: string) {
+    if (this.mkdirDialog) {
+      this.mkdirDialog = {
+        ...this.mkdirDialog,
+        folderName: value,
+      }
     }
   }
 
@@ -2679,16 +2751,9 @@ export class Commander extends LitElement {
             <span class="function-key-label">F6</span>
             <span class="function-key-action">move</span>
           </div>
-          <div
-            class="function-key"
-            @click=${() =>
-              this.loadDirectory(
-                this.activePane,
-                this.getActivePane().currentPath,
-              )}
-          >
+          <div class="function-key" @click=${() => this.handleF7()}>
             <span class="function-key-label">F7</span>
-            <span class="function-key-action">refresh</span>
+            <span class="function-key-action">mkdir</span>
           </div>
           <div class="function-key" @click=${() => this.handleF8()}>
             <span class="function-key-label">F8</span>
@@ -2759,6 +2824,15 @@ export class Commander extends LitElement {
               @execute=${this.executeRename}
               @update-name=${(e: CustomEvent) => this.updateRename(e.detail)}
             ></rename-dialog>`
+          : ''}
+        ${this.mkdirDialog
+          ? html`<mkdir-dialog
+              .currentPath=${this.mkdirDialog.currentPath}
+              .folderName=${this.mkdirDialog.folderName}
+              @close=${this.cancelMkdir}
+              @execute=${this.executeMkdir}
+              @update-name=${(e: CustomEvent) => this.updateMkdir(e.detail)}
+            ></mkdir-dialog>`
           : ''}
         ${this.zipDialog
           ? html`<zip-dialog

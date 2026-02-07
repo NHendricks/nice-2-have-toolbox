@@ -173,6 +173,11 @@ export class KeyboardHandler {
       return true
     }
 
+    if (this.commander.mkdirDialog) {
+      this.commander.cancelMkdir()
+      return true
+    }
+
     if (this.commander.zipDialog) {
       this.commander.cancelZip()
       return true
@@ -267,6 +272,7 @@ export class KeyboardHandler {
       this.commander.commandDialog ||
       this.commander.quickLaunchDialog ||
       this.commander.renameDialog ||
+      this.commander.mkdirDialog ||
       this.commander.zipDialog ||
       this.commander.compareDialog ||
       this.commander.contextMenu ||
@@ -397,6 +403,10 @@ export class KeyboardHandler {
 
         case 'F6':
           this.commander.handleF6()
+          return
+
+        case 'F7':
+          this.commander.handleF7()
           return
 
         case 'F8':

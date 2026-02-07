@@ -200,6 +200,8 @@ export class FTPCommand implements ICommand {
           return await this.uploadFile(localPath, ftpUrl);
         case 'rename':
           return await this.renameFile(ftpUrl, newName);
+        case 'mkdir':
+          return await this.createDirectory(ftpUrl);
         case 'delete':
           return await this.deleteFile(ftpUrl);
         case 'close-all':
@@ -417,6 +419,35 @@ export class FTPCommand implements ICommand {
     } catch (error: any) {
       console.log('[FTP] Rename failed:', error.message);
       throw new Error(`Failed to rename file: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create directory on FTP
+   */
+  private async createDirectory(ftpUrl: string): Promise<any> {
+    console.log('[FTP] Mkdir called:', ftpUrl);
+    const { connection, remotePath } = this.parseFTPUrl(ftpUrl);
+    const client = await this.getClient(connection);
+
+    try {
+      // Create directory
+      await client.ensureDir(remotePath);
+      console.log('[FTP] Mkdir successful:', remotePath);
+
+      // URL-encode credentials for the result path
+      const encodedUser = encodeURIComponent(connection.user);
+      const encodedPassword = encodeURIComponent(connection.password);
+
+      return {
+        success: true,
+        operation: 'mkdir',
+        path: `ftp://${encodedUser}:${encodedPassword}@${connection.host}:${connection.port}${remotePath}`,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      console.log('[FTP] Mkdir failed:', error.message);
+      throw new Error(`Failed to create directory: ${error.message}`);
     }
   }
 
