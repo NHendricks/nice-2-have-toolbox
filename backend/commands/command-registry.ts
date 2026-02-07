@@ -6,6 +6,7 @@
 import { CalculateCommand } from './calculate-command.js';
 import { ICommand } from './command-interface.js';
 import { FileOperationsCommand } from './file-operations-command.js';
+import { FTPCommand } from './ftp-command.js';
 import { HelpCommand } from './help-command.js';
 import { PingCommand } from './ping-command.js';
 import { ProficashCommand } from './proficash-command.js';
@@ -26,6 +27,7 @@ export class CommandRegistry {
     this.register('calculate', new CalculateCommand());
     this.register('help', new HelpCommand(this));
     this.register('file-operations', new FileOperationsCommand());
+    this.register('ftp', new FTPCommand());
     this.register('proficash', new ProficashCommand());
   }
 

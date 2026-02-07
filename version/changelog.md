@@ -21,6 +21,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 - open cmdline window with SHIFT+F9
 - add text editor (F4)
 - find files by text or name (ctrl+f)
+- ftp support
 
 ### v1.5.0 (31.01.2026)
 

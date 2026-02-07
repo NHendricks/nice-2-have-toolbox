@@ -264,6 +264,15 @@ export class DriveSelectorDialog extends LitElement {
                   )}
                 `
               : ''}
+            <!-- FTP Section -->
+            <div class="section-header">📡 FTP</div>
+            <button
+              class="btn-add-network"
+              @click=${() => this.dispatchEvent(new CustomEvent('open-ftp'))}
+            >
+              + Connect to FTP Server
+            </button>
+
             <!-- Network Shares Section -->
             <div class="section-header">🌐 Network</div>
             ${this.networkShares.length > 0

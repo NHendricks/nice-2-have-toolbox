@@ -210,6 +210,9 @@ export class Commander extends LitElement {
   @property({ type: Boolean })
   showSettingsDialog = false
 
+  @property({ type: Boolean })
+  showFTPDialog = false
+
   async connectedCallback() {
     super.connectedCallback()
 
@@ -457,6 +460,84 @@ export class Commander extends LitElement {
     try {
       this.setStatus('Loading directory...', 'normal')
       console.log(`Loading directory for ${pane}: ${path}`)
+
+      // Check if this is an FTP path
+      if (path.startsWith('ftp://')) {
+        console.log('FTP path detected, calling FTP list operation')
+        const ftpResponse = await (window as any).electron.ipcRenderer.invoke(
+          'cli-execute',
+          'ftp',
+          { operation: 'list', ftpUrl: path },
+        )
+
+        console.log('FTP Response:', ftpResponse)
+
+        if (ftpResponse.success && ftpResponse.data) {
+          const data = ftpResponse.data
+          const items: FileItem[] = []
+
+          // Add parent directory if not at root
+          const urlParts = path.split('/')
+          if (urlParts.length > 4) {
+            // More than ftp://user@host:port/
+            const parentUrl =
+              urlParts.slice(0, -1).join('/') ||
+              path.substring(0, path.lastIndexOf('/'))
+            items.push({
+              name: '..',
+              path: parentUrl,
+              size: 0,
+              created: new Date(),
+              modified: new Date(),
+              isDirectory: true,
+              isFile: false,
+            })
+          }
+
+          if (data.directories) items.push(...data.directories)
+          if (data.files) items.push(...data.files)
+
+          if (pane === 'left') {
+            this.leftPane = {
+              currentPath: data.path || path,
+              items,
+              selectedIndices: new Set(),
+              focusedIndex: 0,
+              filter: this.leftPane.filter,
+              filterActive: this.leftPane.filterActive,
+              sortBy: this.leftPane.sortBy,
+              sortDirection: this.leftPane.sortDirection,
+            }
+            this.paneManager.setPane('left', this.leftPane)
+          } else {
+            this.rightPane = {
+              currentPath: data.path || path,
+              items,
+              selectedIndices: new Set(),
+              focusedIndex: 0,
+              filter: this.rightPane.filter,
+              filterActive: this.rightPane.filterActive,
+              sortBy: this.rightPane.sortBy,
+              sortDirection: this.rightPane.sortDirection,
+            }
+            this.paneManager.setPane('right', this.rightPane)
+          }
+
+          const dirCount =
+            data.summary?.totalDirectories ?? (data.directories?.length || 0)
+          const fileCount =
+            data.summary?.totalFiles ?? (data.files?.length || 0)
+          this.setStatus(
+            `${dirCount} folders, ${fileCount} files (FTP)`,
+            'success',
+          )
+          return
+        } else {
+          this.setStatus(`FTP Error: ${ftpResponse.error}`, 'error')
+          console.error('FTP Error:', ftpResponse.error)
+          return
+        }
+      }
 
       const { FileService } = await import(
         './commander/services/FileService.js'
@@ -1275,34 +1356,104 @@ export class Commander extends LitElement {
 
       let successCount = 0
       for (const file of files) {
-        const fileName = file.split(/[/\\]/).pop() || 'file'
-        // Use the appropriate separator based on the OS
-        const separator = destination.includes('\\') ? '\\' : '/'
-        const destPath = destination + separator + fileName
+        const fileName = file.split(/[/\\\/]/).pop() || 'file'
+        const isSourceFTP = file.startsWith('ftp://')
+        const isDestFTP = destination.startsWith('ftp://')
 
-        console.log('[UI] Invoking copy operation:', {
-          operation: type,
-          sourcePath: file,
-          destinationPath: destPath,
+        console.log('[UI] File operation:', {
+          file,
+          fileName,
+          isSourceFTP,
+          isDestFTP,
         })
 
-        const response = await (window as any).electron.ipcRenderer.invoke(
-          'cli-execute',
-          'file-operations',
-          {
+        // Handle FTP operations
+        if (isSourceFTP && !isDestFTP) {
+          // Download from FTP to local
+          const separator = destination.includes('\\') ? '\\' : '/'
+          const localPath = destination + separator + fileName
+
+          console.log('[UI] FTP Download:', file, '→', localPath)
+
+          const response = await (window as any).electron.ipcRenderer.invoke(
+            'cli-execute',
+            'ftp',
+            {
+              operation: 'download',
+              ftpUrl: file,
+              localPath: localPath,
+            },
+          )
+
+          if (response.success) {
+            successCount++
+          } else {
+            this.setStatus(
+              `Error downloading ${fileName}: ${response.error}`,
+              'error',
+            )
+            break
+          }
+        } else if (!isSourceFTP && isDestFTP) {
+          // Upload from local to FTP
+          const ftpPath = destination.endsWith('/')
+            ? destination + fileName
+            : destination + '/' + fileName
+
+          console.log('[UI] FTP Upload:', file, '→', ftpPath)
+
+          const response = await (window as any).electron.ipcRenderer.invoke(
+            'cli-execute',
+            'ftp',
+            {
+              operation: 'upload',
+              localPath: file,
+              ftpUrl: ftpPath,
+            },
+          )
+
+          if (response.success) {
+            successCount++
+          } else {
+            this.setStatus(
+              `Error uploading ${fileName}: ${response.error}`,
+              'error',
+            )
+            break
+          }
+        } else if (isSourceFTP && isDestFTP) {
+          // FTP to FTP not supported yet
+          this.setStatus('FTP to FTP copy not supported yet', 'error')
+          break
+        } else {
+          // Normal local file operation
+          const separator = destination.includes('\\') ? '\\' : '/'
+          const destPath = destination + separator + fileName
+
+          console.log('[UI] Invoking local copy operation:', {
             operation: type,
             sourcePath: file,
             destinationPath: destPath,
-          },
-        )
+          })
 
-        console.log('[UI] Copy operation response:', response)
+          const response = await (window as any).electron.ipcRenderer.invoke(
+            'cli-execute',
+            'file-operations',
+            {
+              operation: type,
+              sourcePath: file,
+              destinationPath: destPath,
+            },
+          )
 
-        if (response.success) {
-          successCount++
-        } else {
-          this.setStatus(`Error with ${fileName}: ${response.error}`, 'error')
-          break
+          console.log('[UI] Copy operation response:', response)
+
+          if (response.success) {
+            successCount++
+          } else {
+            this.setStatus(`Error with ${fileName}: ${response.error}`, 'error')
+            break
+          }
         }
       }
 
@@ -2112,9 +2263,7 @@ export class Commander extends LitElement {
       searching: true,
     }
 
-    const { FileService } = await import(
-      './commander/services/FileService.js'
-    )
+    const { FileService } = await import('./commander/services/FileService.js')
 
     // Setup progress listener
     FileService.onProgress('search-progress', (data: any) => {
@@ -2154,9 +2303,7 @@ export class Commander extends LitElement {
   }
 
   async cancelSearch() {
-    const { FileService } = await import(
-      './commander/services/FileService.js'
-    )
+    const { FileService } = await import('./commander/services/FileService.js')
     await FileService.cancelOperation()
     if (this.searchDialog) {
       this.searchDialog = {
@@ -2627,7 +2774,21 @@ export class Commander extends LitElement {
                 this.toggleFavorite(e.detail)}
               @add-to-favorites=${(e: CustomEvent) =>
                 this.addToFavorites(e.detail)}
+              @open-ftp=${() => {
+                this.showDriveSelector = false
+                this.showFTPDialog = true
+              }}
             ></drive-selector-dialog>`
+          : ''}
+        ${this.showFTPDialog
+          ? html`<ftp-connection-dialog
+              .open=${true}
+              @close=${() => (this.showFTPDialog = false)}
+              @connect=${(e: CustomEvent) => {
+                this.showFTPDialog = false
+                this.navigateToDirectory(e.detail)
+              }}
+            ></ftp-connection-dialog>`
           : ''}
         ${this.showHelp
           ? html`<help-dialog
@@ -2668,8 +2829,7 @@ export class Commander extends LitElement {
               .saving=${this.textEditorDialog.saving}
               .error=${this.textEditorDialog.error}
               @close=${this.closeTextEditor}
-              @save=${(e: CustomEvent) =>
-                this.saveTextEditor(e.detail.content)}
+              @save=${(e: CustomEvent) => this.saveTextEditor(e.detail.content)}
             ></text-editor-dialog>`
           : ''}
         ${this.showSettingsDialog
