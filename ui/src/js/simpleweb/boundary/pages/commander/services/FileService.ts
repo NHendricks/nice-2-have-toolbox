@@ -213,20 +213,24 @@ export class FileService {
   ): Promise<{
     success: boolean
     data?: {
-      searchPath: string
-      searchText: string
-      searchByContent: boolean
-      recursive: boolean
-      caseSensitive: boolean
-      results: Array<{
-        path: string
-        name: string
-        isDirectory: boolean
-        matchLine?: number
-        matchContext?: string
-      }>
-      filesScanned: number
-      truncated: boolean
+      success: boolean
+      operation: string
+      data: {
+        searchPath: string
+        searchText: string
+        searchByContent: boolean
+        recursive: boolean
+        caseSensitive: boolean
+        results: Array<{
+          path: string
+          name: string
+          isDirectory: boolean
+          matchLine?: number
+          matchContext?: string
+        }>
+        filesScanned: number
+        truncated: boolean
+      }
     }
     error?: string
   }> {
