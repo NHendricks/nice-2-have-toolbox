@@ -2489,12 +2489,25 @@ export class Commander extends LitElement {
         customApplications = {}
       }
 
+      // Safely parse FTP connections
+      let ftpConnections: any[] = []
+      try {
+        const ftpJson = localStorage.getItem('ftp-connections')
+        if (ftpJson) {
+          ftpConnections = JSON.parse(ftpJson)
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse FTP connections:', parseError)
+        ftpConnections = []
+      }
+
       // Collect all settings
       const settings = {
         version: '1.0.0',
         exportDate: new Date().toISOString(),
         favorites: this.favoritePaths,
         customApplications: customApplications,
+        ftpConnections: ftpConnections,
         leftPane: {
           path: this.leftPane.currentPath,
           sort: {
@@ -2524,11 +2537,11 @@ export class Commander extends LitElement {
         },
       )
 
-      if (response.success && response.data?.path) {
-        this.setStatus(`Settings exported to: ${response.data.path}`, 'success')
+      if (response.success && response.data?.success && response.data?.data?.path) {
+        this.setStatus(`Settings exported to: ${response.data.data.path}`, 'success')
       } else {
         this.setStatus(
-          `Export error: ${response.error || 'Unknown error'}`,
+          `Export error: ${response.data?.error || response.error || 'Unknown error'}`,
           'error',
         )
       }
@@ -2588,6 +2601,14 @@ export class Commander extends LitElement {
         )
       }
 
+      // Import FTP connections
+      if (settings.ftpConnections) {
+        localStorage.setItem(
+          'ftp-connections',
+          JSON.stringify(settings.ftpConnections),
+        )
+      }
+
       this.setStatus('Settings imported successfully', 'success')
 
       // Reload pane paths
@@ -2613,6 +2634,7 @@ export class Commander extends LitElement {
         'commander-right-path',
         'commander-left-sort',
         'commander-right-sort',
+        'ftp-connections',
       ]
       keys.forEach((key) => localStorage.removeItem(key))
 
