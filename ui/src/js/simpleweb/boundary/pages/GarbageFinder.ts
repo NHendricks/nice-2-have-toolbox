@@ -554,7 +554,6 @@ export class GarbageFinder extends LitElement {
     this.treeData = this.updateNodeInTree(this.treeData, node.path, {
       isLoading: true,
     })
-    this.expandedPaths.add(node.path)
 
     try {
       const response = await (window as any).electron.ipcRenderer.invoke(
@@ -568,7 +567,6 @@ export class GarbageFinder extends LitElement {
         const analyzedNode = response.data.tree[0]
         this.updateAnalyzedNode({
           ...analyzedNode,
-          isExpanded: true,
           isAnalyzed: true,
           isLoading: false,
         })
@@ -592,7 +590,7 @@ export class GarbageFinder extends LitElement {
       ...node,
       depth,
       isAnalyzed: true,
-      isExpanded: this.expandedPaths.has(node.path) || depth === 0,
+      isExpanded: this.expandedPaths.has(node.path),
       isLoading: false,
       children: node.children.map((child) => addAnalyzedFlag(child, depth + 1)),
     })
