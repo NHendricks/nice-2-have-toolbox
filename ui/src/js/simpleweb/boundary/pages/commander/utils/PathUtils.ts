@@ -66,6 +66,7 @@ export function getParentPath(currentPath: string): string {
  * ftp://user:password@host:port/path -> ftp://user:***@host:port/path
  */
 export function maskFtpPassword(path: string): string {
+  if (!path) return ''
   if (!path.startsWith('ftp://')) return path
   // Match ftp://user:password@host pattern
   return path.replace(/^(ftp:\/\/[^:]+:)[^@]+(@)/, '$1***$2')
@@ -111,5 +112,5 @@ export function joinPath(basePath: string, ...segments: string[]): string {
  * Check if a path is an FTP URL
  */
 export function isFtpPath(path: string): boolean {
-  return path.startsWith('ftp://')
+  return path ? path.startsWith('ftp://') : false
 }

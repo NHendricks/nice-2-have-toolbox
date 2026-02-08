@@ -123,7 +123,7 @@ export class DirectorySizeDialog extends LitElement {
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
-  private handleKeyDown(e: KeyboardEvent) {
+  private handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault()
       if (this.data?.isCalculating) {
@@ -136,12 +136,12 @@ export class DirectorySizeDialog extends LitElement {
 
   connectedCallback() {
     super.connectedCallback()
-    window.addEventListener('keydown', this.handleKeyDown.bind(this))
+    window.addEventListener('keydown', this.handleKeyDown)
   }
 
   disconnectedCallback() {
     super.disconnectedCallback()
-    window.removeEventListener('keydown', this.handleKeyDown.bind(this))
+    window.removeEventListener('keydown', this.handleKeyDown)
   }
 
   render() {

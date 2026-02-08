@@ -55,6 +55,9 @@ export class FileOperationsCommand implements ICommand {
       workingDir,
     } = params;
 
+    // Reset cancellation flag at the start of each operation
+    this.resetCancellation();
+
     try {
       switch (operation) {
         case 'list':

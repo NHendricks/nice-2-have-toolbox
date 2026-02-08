@@ -1,18 +1,18 @@
 commander:
+- at startup no ftp and no sambe restore
+- in ftp dir up => got to dir where we came from
+- dir size dialog cannot be cancelled
+- loading directory... should show whole path
+- Ctrl+a should select all files
+- ctrl+pageup/down: select all files between these
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 - copy from zip (or from zip in zip) doesnt work or is very slow
+- exceptions in read dirs should not block app
+later:
 - add support for browse into asar files
-- refactor commander (try again now with claude code)
-- test and fix ftps
-- in ftp dir up => got to dir where we came from
-- Ctrl+a should select all files
-- ctrl+pageup/down: select all files between these
-- at startup no ftp and no sambe restore
-- loading directory... should show whole path
 - cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
-- show free size of opened drives in top st
-- dir size dialog cannot be cancelled
+- test and fix ftps
 other:
 - build app for linux
 - db tool like bweaver

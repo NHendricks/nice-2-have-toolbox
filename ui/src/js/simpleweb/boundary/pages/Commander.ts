@@ -2183,9 +2183,14 @@ export class Commander extends LitElement {
   }
 
   async cancelDirectorySize() {
-    // Cancel any ongoing file operation
-    await (window as any).electron.ipcRenderer.invoke('cancel-file-operation')
+    // Close dialog immediately for better UX
     this.directorySizeDialog = null
+    // Then cancel any ongoing file operation in background
+    try {
+      await (window as any).electron.ipcRenderer.invoke('cancel-file-operation')
+    } catch (error) {
+      console.error('Failed to cancel operation:', error)
+    }
   }
 
   async handleExportSettings() {
