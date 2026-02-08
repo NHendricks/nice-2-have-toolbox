@@ -514,12 +514,28 @@ export class Commander extends LitElement {
           if (data.directories) items.push(...data.directories)
           if (data.files) items.push(...data.files)
 
+          // Find the index of the previous directory (for focusing when going up)
+          let focusedIndex = 0
+          if (previousPath) {
+            // Extract just the directory name from the previous path
+            const prevName = previousPath
+              .split(/[/\\]/)
+              .filter((p) => p)
+              .pop()
+            if (prevName) {
+              const index = items.findIndex((item) => item.name === prevName)
+              if (index !== -1) {
+                focusedIndex = index
+              }
+            }
+          }
+
           if (pane === 'left') {
             this.leftPane = {
               currentPath: data.path || path,
               items,
               selectedIndices: new Set(),
-              focusedIndex: 0,
+              focusedIndex: focusedIndex,
               filter: this.leftPane.filter,
               filterActive: this.leftPane.filterActive,
               sortBy: this.leftPane.sortBy,
@@ -531,7 +547,7 @@ export class Commander extends LitElement {
               currentPath: data.path || path,
               items,
               selectedIndices: new Set(),
-              focusedIndex: 0,
+              focusedIndex: focusedIndex,
               filter: this.rightPane.filter,
               filterActive: this.rightPane.filterActive,
               sortBy: this.rightPane.sortBy,
@@ -839,6 +855,20 @@ export class Commander extends LitElement {
     } else {
       this.setStatus('No history to go forward', 'normal')
     }
+  }
+
+  // Navigate up one directory (Backspace)
+  async navigateUp() {
+    const currentPath = this.getActivePane().currentPath
+    const parentPath = this.getParentPath(currentPath)
+
+    // Don't navigate if we're already at root
+    if (parentPath === currentPath) {
+      return
+    }
+
+    // Navigate to parent, passing current path for focusing
+    await this.navigateToDirectory(parentPath)
   }
 
   isImageFile(filePath: string): boolean {

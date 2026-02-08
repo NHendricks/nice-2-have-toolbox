@@ -1,21 +1,19 @@
 Commander:
-- for ftp or samba connect show connect dialog and provide cancel button
 - in ftp dir up => go to dir where we came from
-- dir size dialog cannot be cancelled
+- add buildscript for build linux app
 - loading directory... should show whole path
 - Ctrl+a should select all files
 - ctrl+pageup/down: select all files between these
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 - copy from zip (or from zip in zip) doesnt work or is very slow
-- exceptions in read dirs should not block app
+- exceptions in read dirs should be captured and not crash the ui to be unusable
 later:
 - add support for browse into asar files
 - cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
 - test and fix ftps
 - generate tests for all backend features
 other:
-- build app for linux
 - db tool like bweaver
 - quick launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)

@@ -4,9 +4,37 @@
 
 /**
  * Get the parent path from a given path
- * Handles both Windows (C:\) and Unix (/) style paths
+ * Handles Windows (C:\), Unix (/), and FTP (ftp://) style paths
  */
 export function getParentPath(currentPath: string): string {
+  // Handle FTP URLs
+  if (currentPath.startsWith('ftp://')) {
+    // Extract the base URL (ftp://user:pass@host:port) and the remote path
+    const match = currentPath.match(/^(ftp:\/\/[^/]+)(\/.*)?$/)
+    if (!match) return currentPath
+
+    const baseUrl = match[1] // ftp://user:pass@host:port
+    const remotePath = match[2] || '/' // /folder1/folder2/
+
+    // If we're at root of FTP, stay there
+    if (remotePath === '/' || remotePath === '') {
+      return baseUrl + '/'
+    }
+
+    // Remove trailing slash for processing
+    const cleanPath = remotePath.endsWith('/') ? remotePath.slice(0, -1) : remotePath
+
+    // Find the last slash to get parent
+    const lastSlash = cleanPath.lastIndexOf('/')
+    if (lastSlash <= 0) {
+      // We're at top level folder, go to root
+      return baseUrl + '/'
+    }
+
+    // Return parent path with trailing slash
+    return baseUrl + cleanPath.substring(0, lastSlash) + '/'
+  }
+
   // Detect OS: Windows paths have drive letters (e.g., "C:\"), Unix paths start with "/"
   const isWindows = /^[a-zA-Z]:[\\\/]/.test(currentPath)
   const separator = isWindows ? '\\' : '/'

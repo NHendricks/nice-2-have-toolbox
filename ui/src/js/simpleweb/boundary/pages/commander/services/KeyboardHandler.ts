@@ -521,6 +521,12 @@ export class KeyboardHandler {
           this.commander.toggleSelection()
         }
         break
+
+      // Backspace - go up one directory
+      case 'Backspace':
+        event.preventDefault()
+        this.commander.navigateUp()
+        break
     }
   }
 
