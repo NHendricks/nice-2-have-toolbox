@@ -6,8 +6,12 @@ This **Nice2Have Toolbox** is a modular Electron-based utility application with 
 
 see https://github.com/NHendricks/nh-toolbox/releases
 
-The binaries are unsigned. So on Mac you might get an error message when you start it. Then go to Mac settings - security and allow nh-toolbox to be executed.
-In the Terminal call **xattr -rd com.apple.quarantine nh-toolbox.app** if it still doesnt want to start. Macs are getting more weird with every update ... . Im sorry but i dont want to pay for an apple ID.
+For **Windows** just unzip and start it.
+
+For **Linux** (tested on Ubuntu) call **sudo install.sh** in terminal to install it.
+
+The binaries are unsigned. So on **Mac** you might get an error message when you start it. Then go to Mac settings - security and allow nh-toolbox to be executed.
+In the Terminal call **xattr -rd com.apple.quarantine nh-toolbox.app** in terminal if it still doesnt want to start. Macs are getting more weird with every update ... . Im sorry but i dont want to pay for an apple ID.
 
 **Changelog** see https://github.com/NHendricks/nh-toolbox/blob/main/version/changelog.md
 
