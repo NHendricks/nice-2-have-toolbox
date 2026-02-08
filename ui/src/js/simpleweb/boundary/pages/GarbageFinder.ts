@@ -81,6 +81,35 @@ export class GarbageFinder extends LitElement {
       cursor: not-allowed;
     }
 
+    .btn-toggle {
+      padding: 0.5rem 1rem;
+      background: #334155;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-toggle:hover {
+      background: #475569;
+      color: white;
+    }
+
+    .btn-toggle.active {
+      background: #0ea5e9;
+      border-color: #0ea5e9;
+      color: white;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
     h1 {
       margin: 0;
       font-size: 1.5rem;
@@ -204,7 +233,7 @@ export class GarbageFinder extends LitElement {
 
     .tree-header {
       display: grid;
-      grid-template-columns: 1fr 150px 100px 80px;
+      grid-template-columns: 1fr 150px 80px 120px;
       gap: 0.5rem;
       padding: 0.75rem 1rem;
       background: #334155;
@@ -220,7 +249,7 @@ export class GarbageFinder extends LitElement {
 
     .tree-node {
       display: grid;
-      grid-template-columns: 1fr 150px 100px 80px;
+      grid-template-columns: 1fr 150px 80px 120px;
       gap: 0.5rem;
       padding: 0.5rem 1rem;
       border-bottom: 1px solid #1e293b;
@@ -302,7 +331,10 @@ export class GarbageFinder extends LitElement {
     }
 
     .action-cell {
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
     }
 
     .empty-state {
@@ -353,6 +385,111 @@ export class GarbageFinder extends LitElement {
       text-align: center;
       flex-shrink: 0;
     }
+
+    .btn-delete {
+      padding: 0.3rem 0.5rem;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .btn-delete:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: white;
+    }
+
+    .btn-delete:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .confirm-dialog {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-width: 450px;
+      width: 90%;
+    }
+
+    .confirm-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .confirm-message {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .confirm-path {
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      background: #0f172a;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      word-break: break-all;
+    }
+
+    .confirm-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .btn-cancel {
+      padding: 0.5rem 1rem;
+      background: #475569;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-cancel:hover {
+      background: #64748b;
+    }
+
+    .btn-confirm-delete {
+      padding: 0.5rem 1rem;
+      background: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-confirm-delete:hover {
+      background: #b91c1c;
+    }
   `
 
   @property({ type: Array })
@@ -370,6 +507,15 @@ export class GarbageFinder extends LitElement {
 
   @property({ type: Array })
   drives: DriveInfo[] = []
+
+  @property({ type: Object })
+  deleteConfirm: { show: boolean; node: FolderNode | null } = {
+    show: false,
+    node: null,
+  }
+
+  @property({ type: Boolean })
+  sortBySize: boolean = false
 
   private expandedPaths: Set<string> = new Set()
 
@@ -673,6 +819,50 @@ export class GarbageFinder extends LitElement {
     this.loadDrives()
   }
 
+  showDeleteConfirm(node: FolderNode, e: Event) {
+    e.stopPropagation()
+    this.deleteConfirm = { show: true, node }
+  }
+
+  hideDeleteConfirm() {
+    this.deleteConfirm = { show: false, node: null }
+  }
+
+  async confirmDelete() {
+    if (!this.deleteConfirm.node) return
+
+    const nodePath = this.deleteConfirm.node.path
+    this.hideDeleteConfirm()
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        { operation: 'delete', path: nodePath },
+      )
+
+      if (response.success) {
+        // Remove the node from the tree
+        this.treeData = this.removeNodeFromTree(this.treeData, nodePath)
+      } else {
+        console.error('Delete failed:', response.error)
+        alert(`Failed to delete: ${response.error}`)
+      }
+    } catch (error) {
+      console.error('Delete failed:', error)
+      alert(`Failed to delete: ${error}`)
+    }
+  }
+
+  removeNodeFromTree(nodes: FolderNode[], targetPath: string): FolderNode[] {
+    return nodes
+      .filter((node) => node.path !== targetPath)
+      .map((node) => ({
+        ...node,
+        children: this.removeNodeFromTree(node.children, targetPath),
+      }))
+  }
+
   formatSize(bytes: number): string {
     if (bytes === 0) return '-'
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -722,12 +912,16 @@ export class GarbageFinder extends LitElement {
   }
 
   renderTree(nodes: FolderNode[], parentSize: number): any {
-    const maxSiblingSize = this.getMaxSiblingSize(nodes)
-    const totalSiblingSize = this.getTotalSiblingSize(nodes)
+    // Sort by size if enabled
+    const sortedNodes = this.sortBySize
+      ? [...nodes].sort((a, b) => b.size - a.size)
+      : nodes
+    const maxSiblingSize = this.getMaxSiblingSize(sortedNodes)
+    const totalSiblingSize = this.getTotalSiblingSize(sortedNodes)
     // Use the larger of parentSize or totalSiblingSize as reference
     // This handles cases where parent wasn't analyzed but children were
     const effectiveParentSize = Math.max(parentSize, totalSiblingSize)
-    return nodes.map((node) => {
+    return sortedNodes.map((node) => {
         const barWidth =
           effectiveParentSize > 0 ? (node.size / effectiveParentSize) * 100 : 0
         const indent = node.depth * 20
@@ -793,13 +987,25 @@ export class GarbageFinder extends LitElement {
                   >
                     Cancel
                   </button>`
-                : html`<button
-                    class="btn btn-primary"
-                    ?disabled=${this.scanProgress.isScanning}
-                    @click=${(e: Event) => this.analyzeFolder(node, e)}
-                  >
-                    Analyze
-                  </button>`}
+                : html`
+                    <button
+                      class="btn btn-primary"
+                      ?disabled=${this.scanProgress.isScanning}
+                      @click=${(e: Event) => this.analyzeFolder(node, e)}
+                    >
+                      Analyze
+                    </button>
+                    ${node.depth > 0
+                      ? html`<button
+                          class="btn btn-delete"
+                          ?disabled=${this.scanProgress.isScanning}
+                          @click=${(e: Event) => this.showDeleteConfirm(node, e)}
+                          title="Delete folder"
+                        >
+                          🗑
+                        </button>`
+                      : ''}
+                  `}
             </div>
           </div>
           ${node.isExpanded && node.children.length > 0
@@ -821,13 +1027,24 @@ export class GarbageFinder extends LitElement {
               Analyze folder sizes - find your space hogs easily
             </div>
           </div>
-          <button
-            class="btn-reset"
-            @click=${() => this.reset()}
-            ?disabled=${this.scanProgress.isScanning}
-          >
-            Reset
-          </button>
+          <div class="header-actions">
+            <button
+              class="btn-toggle ${this.sortBySize ? 'active' : ''}"
+              @click=${() => {
+                this.sortBySize = !this.sortBySize
+              }}
+              title="Sort folders by size (largest first)"
+            >
+              Sort by Size
+            </button>
+            <button
+              class="btn-reset"
+              @click=${() => this.reset()}
+              ?disabled=${this.scanProgress.isScanning}
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         ${this.scanProgress.isScanning
@@ -886,6 +1103,28 @@ export class GarbageFinder extends LitElement {
           </div>
         </div>
       </div>
+
+      ${this.deleteConfirm.show && this.deleteConfirm.node
+        ? html`
+            <div class="confirm-overlay" @click=${() => this.hideDeleteConfirm()}>
+              <div class="confirm-dialog" @click=${(e: Event) => e.stopPropagation()}>
+                <div class="confirm-title">⚠️ Delete Folder</div>
+                <div class="confirm-message">
+                  Are you sure you want to permanently delete this folder and all its contents?
+                </div>
+                <div class="confirm-path">${this.deleteConfirm.node.path}</div>
+                <div class="confirm-buttons">
+                  <button class="btn-cancel" @click=${() => this.hideDeleteConfirm()}>
+                    Cancel
+                  </button>
+                  <button class="btn-confirm-delete" @click=${() => this.confirmDelete()}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          `
+        : ''}
     `
   }
 }

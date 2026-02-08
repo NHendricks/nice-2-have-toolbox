@@ -1,5 +1,6 @@
 GarbageFinder:
 - add delete action
+- add sort by size toggle option on top bar nexz to reset button
 Commander:
 - at startup no ftp and no sambe restore, always start with local folders (last used), save history to settings
 - in ftp dir up => go to dir where we came from
@@ -15,6 +16,7 @@ later:
 - add support for browse into asar files
 - cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
 - test and fix ftps
+- generate tests for all backend features
 other:
 - build app for linux
 - db tool like bweaver
