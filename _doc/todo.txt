@@ -1,8 +1,13 @@
+GarbageFinder
+- rename to garbage finder
+- fix delete files function (at least show error message when unsuccessful)
+- option to show files here also
 Commander:
 - linux app
   - icon
   - readme (sudo install.sh)
   - samba share fix
+- support end and pos1 keys 
 - loading directory... should show whole path
 - Ctrl+a should select all files
 - ctrl+pageup/down: select all files between these
@@ -16,6 +21,23 @@ later:
 - test and fix ftps
 - generate tests for all backend features
 other:
+- pdf manager
+  - define own managed folder
+  - scan pdf
+  - split pdf incl. preview
+  - show text
+      - ocr scan if wanted(ocrmypdf must be installed, check this!)
+  - find text in pdfs 
+    - write textfile for each pdf
+    - find text within text files
+  - rename and move to folder sender as sender(-account)_date_billingnr
+    - in dialog
+    - read text and extract 
+      - sender(-account)
+      - date
+      - billing nr
+      make these fields editable and save them in preferences for future scans 
+  - rename pdf (date/sender/account)
 - db tool like bweaver
 - quick launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)
@@ -26,10 +48,3 @@ other:
   - imdb finder
     - find imdb rating quickly by typing film name 
 - music player (IPOD-like see www.nilshendricks.de>widgets)
-- pdf manager
-  - split pdf
-  - get text from pdf (ocr)
-  - find text in pdfs 
-    - write text for each pdf
-    - find text
-  - rename pdf (date/sender/account)

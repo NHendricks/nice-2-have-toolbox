@@ -473,7 +473,7 @@ export class Commander extends LitElement {
     previousPath?: string,
   ) {
     try {
-      this.setStatus('Loading directory...', 'normal')
+      this.setStatus(`Loading ${path}`, 'normal')
       console.log(`Loading directory for ${pane}: ${path}`)
 
       // Check if this is an FTP path
