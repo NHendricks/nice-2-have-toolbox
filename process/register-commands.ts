@@ -120,12 +120,14 @@ export function registerCommands(ipcMain: any, version: string) {
               currentSize: number,
               currentPath: string,
               percentage: number,
+              tree: any[],
             ) => {
               event.sender?.send('garbage-scan-progress', {
                 foldersScanned,
                 currentSize,
                 currentPath,
                 percentage,
+                tree,
               });
             },
           );

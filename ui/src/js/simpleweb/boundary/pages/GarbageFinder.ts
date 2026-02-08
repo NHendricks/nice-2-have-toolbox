@@ -334,6 +334,8 @@ export class GarbageFinder extends LitElement {
   @property({ type: Number })
   rootSize = 0
 
+  private expandedPaths: Set<string> = new Set()
+
   connectedCallback() {
     super.connectedCallback()
     // Listen for scan progress events
@@ -347,9 +349,27 @@ export class GarbageFinder extends LitElement {
           currentSize: data.currentSize || 0,
           percentage: data.percentage || 0,
         }
+
+        // Update tree data progressively during scan
+        if (data.tree && data.tree.length > 0) {
+          this.treeData = this.applyExpandedStates(data.tree)
+          this.rootSize = data.currentSize || 0
+        }
+
         this.requestUpdate()
       },
     )
+  }
+
+  /**
+   * Apply saved expanded states to incoming tree data
+   */
+  private applyExpandedStates(nodes: FolderNode[]): FolderNode[] {
+    return nodes.map((node) => ({
+      ...node,
+      isExpanded: node.depth === 0 || this.expandedPaths.has(node.path),
+      children: node.children ? this.applyExpandedStates(node.children) : [],
+    }))
   }
 
   async selectFolder() {
@@ -382,6 +402,7 @@ export class GarbageFinder extends LitElement {
     }
     this.treeData = []
     this.rootSize = 0
+    this.expandedPaths.clear()
 
     try {
       const response = await (window as any).electron.ipcRenderer.invoke(
@@ -425,6 +446,12 @@ export class GarbageFinder extends LitElement {
   }
 
   toggleNode(nodePath: string) {
+    // Track expanded state
+    if (this.expandedPaths.has(nodePath)) {
+      this.expandedPaths.delete(nodePath)
+    } else {
+      this.expandedPaths.add(nodePath)
+    }
     this.treeData = this.toggleNodeRecursive(this.treeData, nodePath)
     this.requestUpdate()
   }
@@ -478,7 +505,9 @@ export class GarbageFinder extends LitElement {
                     : '📁'
                   : '📁'}
               </span>
-              <span class="folder-label" title="${node.path}">${node.name}</span>
+              <span class="folder-label" title="${node.path}"
+                >${node.name}</span
+              >
             </div>
             <div class="size-bar-container">
               <div
@@ -501,7 +530,9 @@ export class GarbageFinder extends LitElement {
         <div class="header">
           <div>
             <h1>GarbageFinder</h1>
-            <div class="subtitle">Analyze folder sizes like TreeSize</div>
+            <div class="subtitle">
+              Analyze folder sizes - find your space occuppiers easily
+            </div>
           </div>
         </div>
 
@@ -543,10 +574,16 @@ export class GarbageFinder extends LitElement {
                   </div>
                   <div class="progress-stats">
                     <div>
-                      Folders: <span>${this.scanProgress.foldersScanned.toLocaleString()}</span>
+                      Folders:
+                      <span
+                        >${this.scanProgress.foldersScanned.toLocaleString()}</span
+                      >
                     </div>
                     <div>
-                      Size: <span>${this.formatSize(this.scanProgress.currentSize)}</span>
+                      Size:
+                      <span
+                        >${this.formatSize(this.scanProgress.currentSize)}</span
+                      >
                     </div>
                   </div>
                 </div>

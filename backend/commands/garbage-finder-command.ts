@@ -27,10 +27,14 @@ export class GarbageFinderCommand implements ICommand {
     currentSize: number,
     currentPath: string,
     percentage: number,
+    tree: FolderNode[],
   ) => void;
   private cancelled: boolean = false;
   private foldersScanned: number = 0;
   private totalSize: number = 0;
+  private rootNode: FolderNode | null = null;
+  private lastProgressUpdate: number = 0;
+  private progressThrottleMs: number = 100; // Update UI every 100ms max
 
   setProgressCallback(
     callback: (
@@ -38,6 +42,7 @@ export class GarbageFinderCommand implements ICommand {
       currentSize: number,
       currentPath: string,
       percentage: number,
+      tree: FolderNode[],
     ) => void,
   ) {
     this.progressCallback = callback;
@@ -95,8 +100,23 @@ export class GarbageFinderCommand implements ICommand {
       return { success: false, error: `Cannot access path: ${absolutePath}` };
     }
 
+    // Initialize root node
+    this.rootNode = null;
+
     // Build tree
     const tree = await this.buildFolderNode(absolutePath, 0);
+    this.rootNode = tree;
+
+    // Send final update
+    if (this.progressCallback && tree) {
+      this.progressCallback(
+        this.foldersScanned,
+        this.totalSize,
+        absolutePath,
+        100,
+        [tree],
+      );
+    }
 
     return {
       success: true,
@@ -106,6 +126,29 @@ export class GarbageFinderCommand implements ICommand {
       foldersScanned: this.foldersScanned,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Send throttled progress update with current tree state
+   */
+  private sendProgressUpdate(currentPath: string): void {
+    const now = Date.now();
+    if (now - this.lastProgressUpdate >= this.progressThrottleMs) {
+      this.lastProgressUpdate = now;
+      if (this.progressCallback && this.rootNode) {
+        const estimatedPercentage = Math.min(
+          Math.round((this.foldersScanned / 1000) * 100),
+          99,
+        );
+        this.progressCallback(
+          this.foldersScanned,
+          this.totalSize,
+          currentPath,
+          estimatedPercentage,
+          [this.rootNode],
+        );
+      }
+    }
   }
 
   /**
@@ -121,21 +164,6 @@ export class GarbageFinderCommand implements ICommand {
 
     this.foldersScanned++;
 
-    // Report progress
-    if (this.progressCallback) {
-      // Estimate percentage based on depth (rough approximation)
-      const estimatedPercentage = Math.min(
-        Math.round((this.foldersScanned / 1000) * 100),
-        99,
-      );
-      this.progressCallback(
-        this.foldersScanned,
-        this.totalSize,
-        folderPath,
-        estimatedPercentage,
-      );
-    }
-
     const node: FolderNode = {
       name: path.basename(folderPath) || folderPath,
       path: folderPath,
@@ -145,6 +173,14 @@ export class GarbageFinderCommand implements ICommand {
       fileCount: 0,
       folderCount: 0,
     };
+
+    // Set as root if this is the first node
+    if (depth === 0) {
+      this.rootNode = node;
+    }
+
+    // Send throttled progress update
+    this.sendProgressUpdate(folderPath);
 
     try {
       const entries = await readdir(folderPath, { withFileTypes: true });

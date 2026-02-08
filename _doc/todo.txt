@@ -1,7 +1,5 @@
 GarbageFinder:
-- show size of dirs of a folder
-  - show like treesize
-  - add cleanup actions
+- add cleanup actions
 Commander:
 - fix free disk size on mac
 - at startup no ftp and no sambe restore
