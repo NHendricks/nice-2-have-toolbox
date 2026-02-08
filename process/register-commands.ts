@@ -104,6 +104,33 @@ export function registerCommands(ipcMain: any, version: string) {
           );
         }
 
+        // If it's a garbage-finder command with scan operation, set up progress callback
+        if (
+          toolname === 'garbage-finder' &&
+          params.operation === 'scan' &&
+          command
+        ) {
+          // Reset cancellation flag before starting
+          (command as any).resetCancellation?.();
+
+          // Set up progress callback to send events to renderer
+          (command as any).setProgressCallback?.(
+            (
+              foldersScanned: number,
+              currentSize: number,
+              currentPath: string,
+              percentage: number,
+            ) => {
+              event.sender?.send('garbage-scan-progress', {
+                foldersScanned,
+                currentSize,
+                currentPath,
+                percentage,
+              });
+            },
+          );
+        }
+
         // Execute command directly
         const result = await handler.execute(toolname, params);
 
@@ -115,6 +142,15 @@ export function registerCommands(ipcMain: any, version: string) {
             params.operation === 'compare' ||
             params.operation === 'directory-size' ||
             params.operation === 'search') &&
+          command
+        ) {
+          (command as any).setProgressCallback?.(undefined);
+        }
+
+        // Clear garbage-finder progress callback after operation completes
+        if (
+          toolname === 'garbage-finder' &&
+          params.operation === 'scan' &&
           command
         ) {
           (command as any).setProgressCallback?.(undefined);
@@ -136,6 +172,15 @@ export function registerCommands(ipcMain: any, version: string) {
             params.operation === 'directory-size' ||
             params.operation === 'search')
         ) {
+          const handler = getCommandHandler();
+          const command = handler.getCommand(toolname);
+          if (command) {
+            (command as any).setProgressCallback?.(undefined);
+          }
+        }
+
+        // Clear garbage-finder progress callback on error
+        if (toolname === 'garbage-finder' && params.operation === 'scan') {
           const handler = getCommandHandler();
           const command = handler.getCommand(toolname);
           if (command) {
@@ -165,6 +210,24 @@ export function registerCommands(ipcMain: any, version: string) {
       // Use shared handler to cancel operations on the same instance
       const handler = getCommandHandler();
       const command = handler.getCommand('file-operations');
+
+      if (command) {
+        (command as any).cancel?.();
+        return { success: true };
+      }
+
+      return { success: false, error: 'Command not found' };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Cancel garbage-finder scan
+  ipcMain.handle('cancel-garbage-scan', async () => {
+    try {
+      // Use shared handler to cancel operations on the same instance
+      const handler = getCommandHandler();
+      const command = handler.getCommand('garbage-finder');
 
       if (command) {
         (command as any).cancel?.();

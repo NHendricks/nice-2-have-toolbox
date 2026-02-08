@@ -9,6 +9,10 @@
       "path": "/moneyfinder"
     },
     {
+      "label": "GarbageFinder",
+      "path": "/garbagefinder"
+    },
+    {
       "label": "Help",
       "path": "/faq"
     }
@@ -25,6 +29,10 @@
       "addBodyClass": "force-portrait"
     },
     "/moneyfinder": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/garbagefinder": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }

@@ -5,23 +5,27 @@ import '../components/CompareDialog'
 // Import from refactored modules
 import { commanderStyles } from './commander/commander.styles.js'
 import type { FileItem, PaneState } from './commander/commander.types.js'
+import { FavoritesService } from './commander/services/FavoritesService.js'
+import {
+  cancelOperation,
+  executeDelete,
+  executeFileOperation,
+  executeMkdir,
+  executeRename,
+  executeZip,
+} from './commander/services/FileOperationsHandler.js'
 import { HistoryService } from './commander/services/HistoryService.js'
 import { KeyboardHandler } from './commander/services/KeyboardHandler.js'
 import { PaneManager } from './commander/services/PaneManager.js'
-import { FavoritesService } from './commander/services/FavoritesService.js'
 import { settingsService } from './commander/services/SettingsService.js'
-import {
-  executeFileOperation,
-  executeDelete,
-  executeZip,
-  executeRename,
-  executeMkdir,
-  cancelOperation,
-} from './commander/services/FileOperationsHandler.js'
 import { FILE_ICONS } from './commander/utils/file-utils.js'
-import { getParentPath, maskFtpPassword, getPathSeparator } from './commander/utils/PathUtils.js'
 import { formatFileSize } from './commander/utils/FormatUtils.js'
-import { sortItems, getNextSortState } from './commander/utils/SortUtils.js'
+import {
+  getParentPath,
+  getPathSeparator,
+  maskFtpPassword,
+} from './commander/utils/PathUtils.js'
+import { getNextSortState, sortItems } from './commander/utils/SortUtils.js'
 
 // Import dialog components
 import './commander/dialogs/index.js'
@@ -698,16 +702,16 @@ export class Commander extends LitElement {
         { operation: 'drive-info', drivePath: path },
       )
 
-      console.log('Drive info response:', response)
-
       // Handle both response structures: response.data.freeSpace or response.freeSpace
       const data = response.data || response
-      if (data && (data.freeSpace !== undefined || data.totalSpace !== undefined)) {
+      if (
+        data &&
+        (data.freeSpace !== undefined || data.totalSpace !== undefined)
+      ) {
         const info = {
           freeSpace: data.freeSpace ?? null,
           totalSpace: data.totalSpace ?? null,
         }
-        console.log('Setting drive info:', pane, info)
         if (pane === 'left') {
           this.leftDriveInfo = info
         } else {
@@ -1357,7 +1361,10 @@ export class Commander extends LitElement {
 
     if (result.success) {
       // Refresh both panes
-      await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
+      await this.loadDirectory(
+        this.activePane,
+        this.getActivePane().currentPath,
+      )
       await this.loadDirectory(
         this.activePane === 'left' ? 'right' : 'left',
         this.getInactivePane().currentPath,
@@ -1392,7 +1399,10 @@ export class Commander extends LitElement {
     this.setStatus(result.message, result.success ? 'success' : 'error')
 
     if (result.success) {
-      await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
+      await this.loadDirectory(
+        this.activePane,
+        this.getActivePane().currentPath,
+      )
     }
 
     this.deleteDialog = null
@@ -1593,7 +1603,10 @@ export class Commander extends LitElement {
     this.setStatus(result.message, result.success ? 'success' : 'error')
 
     if (result.success) {
-      await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
+      await this.loadDirectory(
+        this.activePane,
+        this.getActivePane().currentPath,
+      )
     }
 
     this.renameDialog = null
@@ -2238,8 +2251,15 @@ export class Commander extends LitElement {
         },
       )
 
-      if (response.success && response.data?.success && response.data?.data?.path) {
-        this.setStatus(`Settings exported to: ${response.data.data.path}`, 'success')
+      if (
+        response.success &&
+        response.data?.success &&
+        response.data?.data?.path
+      ) {
+        this.setStatus(
+          `Settings exported to: ${response.data.data.path}`,
+          'success',
+        )
       } else {
         this.setStatus(
           `Export error: ${response.data?.error || response.error || 'Unknown error'}`,
@@ -2648,7 +2668,11 @@ export class Commander extends LitElement {
             >${this.maskFtpPassword(pane.currentPath)}</span
           >
           <span class="item-count">
-            ${freeSpaceText ? html`<span style="color: #22c55e; margin-right: 0.5rem;">${freeSpaceText}</span>` : ''}
+            ${freeSpaceText
+              ? html`<span style="color: #22c55e; margin-right: 0.5rem;"
+                  >${freeSpaceText}</span
+                >`
+              : ''}
             ${filteredItems.length}${pane.filterActive && pane.filter
               ? ` / ${pane.items.length}`
               : ''}

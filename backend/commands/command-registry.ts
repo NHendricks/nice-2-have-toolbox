@@ -7,6 +7,7 @@ import { CalculateCommand } from './calculate-command.js';
 import { ICommand } from './command-interface.js';
 import { FileOperationsCommand } from './file-operations-command.js';
 import { FTPCommand } from './ftp-command.js';
+import { GarbageFinderCommand } from './garbage-finder-command.js';
 import { HelpCommand } from './help-command.js';
 import { PingCommand } from './ping-command.js';
 import { ProficashCommand } from './proficash-command.js';
@@ -29,6 +30,7 @@ export class CommandRegistry {
     this.register('file-operations', new FileOperationsCommand());
     this.register('ftp', new FTPCommand());
     this.register('proficash', new ProficashCommand());
+    this.register('garbage-finder', new GarbageFinderCommand());
   }
 
   /**

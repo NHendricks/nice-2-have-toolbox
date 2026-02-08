@@ -1,6 +1,11 @@
-commander:
+GarbageFinder:
+- show size of dirs of a folder
+  - show like treesize
+  - add cleanup actions
+Commander:
+- fix free disk size on mac
 - at startup no ftp and no sambe restore
-- in ftp dir up => got to dir where we came from
+- in ftp dir up => go to dir where we came from
 - dir size dialog cannot be cancelled
 - loading directory... should show whole path
 - Ctrl+a should select all files
@@ -18,9 +23,6 @@ other:
 - db tool like bweaver
 - quick launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)
-- show size of dirs of a folder
-  - show like treesize
-  - add cleanup actions
 - integrate more cmdline-Tools
   - versioning (git simple)
   - dirsorter for jpegs

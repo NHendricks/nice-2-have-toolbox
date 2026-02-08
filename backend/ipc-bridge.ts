@@ -76,12 +76,49 @@ export class IpcBridge {
             );
           }
 
+          // If it's a garbage-finder command with scan operation, set up progress callback
+          if (
+            toolname === 'garbage-finder' &&
+            params.operation === 'scan' &&
+            command
+          ) {
+            console.log(
+              '[IPC] Setting up progress callback for garbage-finder scan',
+            );
+
+            // Set up progress callback to send events to renderer
+            (command as any).setProgressCallback?.(
+              (
+                foldersScanned: number,
+                currentSize: number,
+                currentPath: string,
+                percentage: number,
+              ) => {
+                event.sender?.send('garbage-scan-progress', {
+                  foldersScanned,
+                  currentSize,
+                  currentPath,
+                  percentage,
+                });
+              },
+            );
+          }
+
           const result = await this.handler.execute(toolname, params);
 
           // Clear progress callback after operation completes
           if (
             toolname === 'file-operations' &&
             (params.operation === 'zip' || params.operation === 'copy') &&
+            command
+          ) {
+            (command as any).setProgressCallback?.(undefined);
+          }
+
+          // Clear garbage-finder progress callback after operation completes
+          if (
+            toolname === 'garbage-finder' &&
+            params.operation === 'scan' &&
             command
           ) {
             (command as any).setProgressCallback?.(undefined);
@@ -99,6 +136,14 @@ export class IpcBridge {
             toolname === 'file-operations' &&
             (params.operation === 'zip' || params.operation === 'copy')
           ) {
+            const command = this.handler.getCommand(toolname);
+            if (command) {
+              (command as any).setProgressCallback?.(undefined);
+            }
+          }
+
+          // Clear garbage-finder progress callback on error
+          if (toolname === 'garbage-finder' && params.operation === 'scan') {
             const command = this.handler.getCommand(toolname);
             if (command) {
               (command as any).setProgressCallback?.(undefined);

@@ -4,6 +4,7 @@ import './simpleweb/boundary/pages/Commander'
 import './simpleweb/boundary/pages/CommandParameter'
 import './simpleweb/boundary/pages/Faq'
 import './simpleweb/boundary/pages/MoneyFinder'
+import './simpleweb/boundary/pages/GarbageFinder'
 
 const outlet = document.querySelector('.view')
 outlet?.classList.add('view')
@@ -15,6 +16,7 @@ router.setRoutes([
   { path: '/backend', component: 'command-params' },
   { path: '/commander', component: 'simple-commander' },
   { path: '/moneyfinder', component: 'nh-moneyfinder' },
+  { path: '/garbagefinder', component: 'nh-garbagefinder' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 
