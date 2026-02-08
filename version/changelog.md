@@ -11,7 +11,10 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 
 - fix file diff in directory compare
 - show free disk space
-- new app garbagefinder
+- new app garbage-finder
+  - find large folders easily
+  - show size as relative size in a tree
+- lots of small bug fixes (see commits)
 
 ### v1.7.0 (07.02.2026)
 

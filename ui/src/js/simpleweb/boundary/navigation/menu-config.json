@@ -5,12 +5,12 @@
       "path": "/"
     },
     {
-      "label": "Moneyfinder",
-      "path": "/moneyfinder"
-    },
-    {
       "label": "GarbageFinder",
       "path": "/garbagefinder"
+    },
+    {
+      "label": "Moneyfinder",
+      "path": "/moneyfinder"
     },
     {
       "label": "Help",

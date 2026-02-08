@@ -693,6 +693,10 @@ export class GarbageFinder extends LitElement {
     return Math.max(...siblings.map((s) => s.size))
   }
 
+  getTotalSiblingSize(siblings: FolderNode[]): number {
+    return siblings.reduce((sum, s) => sum + s.size, 0)
+  }
+
   getParentSize(node: FolderNode): number {
     // For root nodes (drives), use total drive space or largest sibling
     if (node.depth === 0) {
@@ -719,9 +723,13 @@ export class GarbageFinder extends LitElement {
 
   renderTree(nodes: FolderNode[], parentSize: number): any {
     const maxSiblingSize = this.getMaxSiblingSize(nodes)
+    const totalSiblingSize = this.getTotalSiblingSize(nodes)
+    // Use the larger of parentSize or totalSiblingSize as reference
+    // This handles cases where parent wasn't analyzed but children were
+    const effectiveParentSize = Math.max(parentSize, totalSiblingSize)
     return nodes.map((node) => {
-        // Bar width relative to parent (shows actual % of parent)
-        const barWidth = parentSize > 0 ? (node.size / parentSize) * 100 : 0
+        const barWidth =
+          effectiveParentSize > 0 ? (node.size / effectiveParentSize) * 100 : 0
         const indent = node.depth * 20
         const driveInfo = node.depth === 0 ? this.getDriveInfo(node.path) : null
         const isBeingAnalyzed =
@@ -759,7 +767,7 @@ export class GarbageFinder extends LitElement {
                 : ''}
             </div>
             <div class="size-bar-container">
-              ${node.isAnalyzed && node.size > 0
+              ${node.size > 0
                 ? html`
                     <div
                       class="size-bar ${this.getSizeBarClass(
@@ -772,7 +780,7 @@ export class GarbageFinder extends LitElement {
                 : ''}
             </div>
             <div class="size-text">
-              ${node.isAnalyzed ? this.formatSize(node.size) : '-'}
+              ${node.size > 0 ? this.formatSize(node.size) : '-'}
             </div>
             <div class="action-cell">
               ${isBeingAnalyzed
