@@ -670,9 +670,12 @@ export class FileOperationsCommand implements ICommand {
       console.log(`[Linux] Attempting to mount ${smbUrl} using gio mount`);
 
       try {
-        await execPromise(`gio mount "${smbUrl}"`, {
+        const { stdout, stderr } = await execPromise(`gio mount "${smbUrl}" 2>&1`, {
           timeout: 30000, // 30 second timeout for credential prompt
         });
+
+        console.log(`[Linux] gio mount stdout: ${stdout}`);
+        if (stderr) console.log(`[Linux] gio mount stderr: ${stderr}`);
 
         // Wait a bit for the mount to complete
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -691,59 +694,41 @@ export class FileOperationsCommand implements ICommand {
 
         return {
           success: false,
-          error: 'Mount point not found after mounting attempt. Try opening the share in your file manager first.',
+          error: 'Mount point not found after gio mount. Try opening the share in your file manager first.',
         };
       } catch (error: any) {
-        console.log(`[Linux] gio mount returned: ${error.message}`);
+        const errorMsg = error.message || error.stderr || String(error);
+        console.error(`[Linux] gio mount failed: ${errorMsg}`);
 
-        // "Datenträger unterstützt einhängen nicht" (German) or "Location is already mounted"
-        // means the share is already mounted - check for existing mount points again
-        const alreadyMountedIndicators = [
-          'already mounted',
-          'bereits eingehängt',
-          'unterstützt einhängen nicht',
-          'is not supported',
-        ];
-
-        const errorLower = error.message?.toLowerCase() || '';
-        const isAlreadyMounted = alreadyMountedIndicators.some(indicator =>
-          errorLower.includes(indicator.toLowerCase())
-        );
-
-        if (isAlreadyMounted) {
-          console.log(`[Linux] Share appears to be already mounted, checking mount points...`);
-
-          // Re-check GVFS mount points (they might exist now or use different casing)
-          const gvfsPath = `/run/user/${uid}/gvfs`;
-          if (fs.existsSync(gvfsPath)) {
-            try {
-              const entries = await fs.promises.readdir(gvfsPath);
-              for (const entry of entries) {
-                // Check if this entry matches our share (case-insensitive)
-                if (entry.toLowerCase().includes(`server=${computer.toLowerCase()}`) &&
-                    entry.toLowerCase().includes(`share=${share.toLowerCase()}`)) {
-                  const mountPoint = path.join(gvfsPath, entry);
-                  const fullPath = subPath ? `${mountPoint}/${subPath}` : mountPoint;
-                  console.log(`[Linux] Found existing mount at: ${mountPoint}`);
-                  return {
-                    success: true,
-                    mountPoint: fullPath,
-                  };
-                }
+        // Check if share might already be mounted (try to find it)
+        const gvfsPath = `/run/user/${uid}/gvfs`;
+        if (fs.existsSync(gvfsPath)) {
+          try {
+            const entries = await fs.promises.readdir(gvfsPath);
+            for (const entry of entries) {
+              // Check if this entry matches our share (case-insensitive)
+              if (entry.toLowerCase().includes(`server=${computer.toLowerCase()}`) &&
+                  entry.toLowerCase().includes(`share=${share.toLowerCase()}`)) {
+                const mountPoint = path.join(gvfsPath, entry);
+                const fullPath = subPath ? `${mountPoint}/${subPath}` : mountPoint;
+                console.log(`[Linux] Found existing mount at: ${mountPoint}`);
+                return {
+                  success: true,
+                  mountPoint: fullPath,
+                };
               }
-            } catch (e) {
-              // Ignore read errors
             }
+          } catch (e) {
+            // Ignore read errors
           }
         }
 
-        // If gio mount fails and we couldn't find mount, provide helpful error message
+        // Return the actual error message so user can see what went wrong
         return {
           success: false,
-          error: `Failed to mount SMB share. Try one of these options:\n` +
-                 `1. Open the share in your file manager first (smb://${computer}/${share})\n` +
-                 `2. Mount manually: sudo mount -t cifs //${computer}/${share} /mnt/${share}\n` +
-                 `Error: ${error.message}`,
+          error: `SMB mount failed: ${errorMsg}\n\n` +
+                 `To mount manually, run:\n` +
+                 `  sudo mount -t cifs //${computer}/${share} /mnt/${share} -o username=YOUR_USER`,
         };
       }
     } catch (error: any) {
