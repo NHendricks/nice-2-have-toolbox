@@ -233,18 +233,29 @@ export class FileOperationsCommand implements ICommand {
         // Linux/Mac: Use df command
         // Escape single quotes in path for shell
         const escapedPath = drivePath.replace(/'/g, "'\\''");
-        const { stdout } = await execPromise(
-          `df -B1 '${escapedPath}' 2>/dev/null | tail -1`,
-          { encoding: 'utf8', timeout: 5000 },
-        );
+
+        // macOS doesn't support -B1, use -k (1KB blocks) instead
+        // Linux supports -B1 (1-byte blocks)
+        const isMac = process.platform === 'darwin';
+        const dfCommand = isMac
+          ? `df -k '${escapedPath}' 2>/dev/null | tail -1`
+          : `df -B1 '${escapedPath}' 2>/dev/null | tail -1`;
+
+        const { stdout } = await execPromise(dfCommand, {
+          encoding: 'utf8',
+          timeout: 5000,
+        });
 
         const trimmed = stdout.trim();
         if (trimmed) {
-          // df output: Filesystem 1B-blocks Used Available Use% Mounted
+          // df output: Filesystem blocks Used Available Use% Mounted
           const parts = trimmed.split(/\s+/);
           if (parts.length >= 4) {
-            const totalSpace = parseInt(parts[1], 10) || 0;
-            const freeSpace = parseInt(parts[3], 10) || 0;
+            // On macOS with -k, values are in KB, multiply by 1024
+            // On Linux with -B1, values are in bytes
+            const multiplier = isMac ? 1024 : 1;
+            const totalSpace = (parseInt(parts[1], 10) || 0) * multiplier;
+            const freeSpace = (parseInt(parts[3], 10) || 0) * multiplier;
 
             return {
               success: true,
