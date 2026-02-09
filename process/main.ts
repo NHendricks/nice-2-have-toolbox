@@ -135,8 +135,8 @@ async function createWindow() {
     if (isDev) {
       iconPath = path.join(__dirname, '../../assets/icons/icon-256.png');
     } else {
-      // On Linux, icon.png is in the app root directory (same level as the binary)
-      iconPath = path.join(process.resourcesPath, '../icon.png');
+      // On Linux, icon.png is in the resources folder
+      iconPath = path.join(process.resourcesPath, 'icon.png');
     }
     windowOptions.icon = iconPath;
   }
@@ -372,6 +372,11 @@ function createApplicationMenu() {
 }
 
 app.whenReady().then(() => {
+  // Set app name for Linux WM_CLASS (needed for dock icon to work)
+  if (process.platform === 'linux') {
+    app.setName('nh-toolbox');
+  }
+
   createApplicationMenu(); // Create application menu with zoom support
   createTray(); // Will only create tray on macOS
   createWindow();

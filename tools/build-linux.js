@@ -219,6 +219,11 @@ async function build() {
   if (fs.existsSync(sourceIconPath)) {
     fs.copySync(sourceIconPath, targetIconPath);
     console.log('   ✅ icon-256.png copied as icon.png to build directory');
+
+    // Also copy to resources folder for BrowserWindow icon
+    const resourcesIconPath = path.join(resourcesDir, 'icon.png');
+    fs.copySync(sourceIconPath, resourcesIconPath);
+    console.log('   ✅ icon.png also copied to resources directory');
   } else {
     console.log('   ⚠️  icon-256.png not found at assets/icons/icon-256.png');
   }
@@ -253,6 +258,7 @@ Icon=icon
 Type=Application
 Categories=Utility;
 Terminal=false
+StartupWMClass=nh-toolbox
 `;
   const desktopFilePath = path.join(outputDir, 'nh-toolbox.desktop');
   fs.writeFileSync(desktopFilePath, desktopFileContent, 'utf8');
@@ -289,6 +295,7 @@ Icon=$INSTALL_DIR/icon.png
 Type=Application
 Categories=Utility;
 Terminal=false
+StartupWMClass=nh-toolbox
 EOF
 
 # Set permissions
