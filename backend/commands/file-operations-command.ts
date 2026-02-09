@@ -954,6 +954,63 @@ export class FileOperationsCommand implements ICommand {
   }
 
   /**
+   * Connect to a Windows network share using net use
+   * @param uncPath - UNC path like \\server\share
+   * @param smbUrl - Authenticated SMB URL like smb://[domain;]username:password@server/share
+   */
+  private async connectWindowsShare(
+    uncPath: string,
+    smbUrl: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Parse credentials from SMB URL: smb://[domain;]username:password@server/share
+      const urlMatch = smbUrl.match(
+        /smb:\/\/(?:([^;]+);)?([^:]+):([^@]+)@([^/]+)\/(.+)/,
+      );
+      if (!urlMatch) {
+        return { success: false, error: 'Invalid SMB URL format' };
+      }
+
+      const [, domain, username, password, server, shareName] = urlMatch;
+
+      // Build the UNC path for net use
+      const shareUncPath = `\\\\${server}\\${shareName}`;
+
+      // Build net use command with credentials
+      let netUseCmd = `net use "${shareUncPath}" "${password}" /user:`;
+      if (domain) {
+        netUseCmd += `"${domain}\\${username}"`;
+      } else {
+        netUseCmd += `"${username}"`;
+      }
+      netUseCmd += ' /persistent:no';
+
+      console.log(
+        `[Windows] Connecting to share: ${shareUncPath} as ${domain ? domain + '\\' : ''}${username}`,
+      );
+
+      try {
+        await execPromise(netUseCmd, { timeout: 30000 });
+        console.log(`[Windows] Successfully connected to ${shareUncPath}`);
+        return { success: true };
+      } catch (error: any) {
+        // Check if already connected (error 1219)
+        if (error.message?.includes('1219')) {
+          console.log(`[Windows] Share already connected: ${shareUncPath}`);
+          return { success: true };
+        }
+        console.error(`[Windows] net use failed:`, error.message);
+        return {
+          success: false,
+          error: `Failed to connect: ${error.message}`,
+        };
+      }
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get total size of a directory including all files recursively
    */
   private async getDirectorySize(dirPath: string): Promise<any> {
@@ -1224,7 +1281,48 @@ export class FileOperationsCommand implements ICommand {
 
     // Check if directory exists
     if (!fs.existsSync(absolutePath)) {
-      throw new Error(`Directory does not exist: ${absolutePath}`);
+      // On Windows, UNC paths may need authentication
+      const isUncPath =
+        folderPath.startsWith('\\\\') || folderPath.startsWith('//');
+      if (isUncPath && process.platform === 'win32') {
+        // Check if we have credentials via smbUrl parameter
+        if (smbUrl) {
+          // Try to connect with credentials using net use
+          const connectResult = await this.connectWindowsShare(
+            folderPath,
+            smbUrl,
+          );
+          if (!connectResult.success) {
+            return {
+              success: false,
+              operation: 'list',
+              error: connectResult.error || 'Failed to connect to share',
+              needsAuth: true,
+              uncPath: folderPath,
+            };
+          }
+          // Retry checking if directory exists after connecting
+          if (!fs.existsSync(absolutePath)) {
+            return {
+              success: false,
+              operation: 'list',
+              error: `Directory does not exist: ${absolutePath}`,
+              uncPath: folderPath,
+            };
+          }
+        } else {
+          // No credentials provided, ask for authentication
+          return {
+            success: false,
+            operation: 'list',
+            error: 'Authentication required for network share',
+            needsAuth: true,
+            uncPath: folderPath,
+          };
+        }
+      } else {
+        throw new Error(`Directory does not exist: ${absolutePath}`);
+      }
     }
 
     // Check if it's actually a directory

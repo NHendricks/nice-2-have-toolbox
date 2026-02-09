@@ -4,7 +4,7 @@
 
 /**
  * Get the parent path from a given path
- * Handles Windows (C:\), Unix (/), and FTP (ftp://) style paths
+ * Handles Windows (C:\), Unix (/), UNC (\\server\share), and FTP (ftp://) style paths
  */
 export function getParentPath(currentPath: string): string {
   // Handle FTP URLs
@@ -33,6 +33,27 @@ export function getParentPath(currentPath: string): string {
 
     // Return parent path with trailing slash
     return baseUrl + cleanPath.substring(0, lastSlash) + '/'
+  }
+
+  // Handle UNC paths (\\server\share or //server/share)
+  if (currentPath.startsWith('\\\\') || currentPath.startsWith('//')) {
+    // Normalize to backslashes for Windows UNC
+    const normalized = currentPath.replace(/\//g, '\\')
+
+    // Remove trailing backslash for processing
+    const cleanPath = normalized.endsWith('\\') ? normalized.slice(0, -1) : normalized
+
+    // Split into parts: ['', '', 'server', 'share', 'folder', ...]
+    const parts = cleanPath.split('\\').filter(p => p)
+
+    // UNC root is \\server\share (2 parts) - can't go higher
+    if (parts.length <= 2) {
+      return cleanPath
+    }
+
+    // Remove last part to get parent
+    parts.pop()
+    return '\\\\' + parts.join('\\')
   }
 
   // Detect OS: Windows paths have drive letters (e.g., "C:\"), Unix paths start with "/"
@@ -104,6 +125,15 @@ export function maskFtpPassword(path: string): string {
  * Check if a path is at root level
  */
 export function isRootPath(path: string): boolean {
+  // Check for UNC root (\\server\share)
+  if (path.startsWith('\\\\') || path.startsWith('//')) {
+    const normalized = path.replace(/\//g, '\\')
+    const cleanPath = normalized.endsWith('\\') ? normalized.slice(0, -1) : normalized
+    const parts = cleanPath.split('\\').filter(p => p)
+    // UNC root has exactly 2 parts: server and share
+    return parts.length <= 2
+  }
+
   const normalizedPath = path.replace(/\\/g, '/').toLowerCase()
   return !!normalizedPath.match(/^[a-z]:\/?\s*$/) || normalizedPath === '/'
 }
