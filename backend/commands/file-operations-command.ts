@@ -1976,16 +1976,43 @@ export class FileOperationsCommand implements ICommand {
         };
       }
     } catch (error: any) {
-      // If rename fails (cross-filesystem), fall back to copy + delete
+      // If rename fails (cross-filesystem), fall back to copy + delete with progress
       if (error.code === 'EXDEV') {
         if (sourceStats.isDirectory()) {
+          // Count total files for progress tracking
+          const totalFiles = await this.countFilesRecursive(absoluteSource);
+          let currentFile = 0;
+
+          console.log(
+            `[Move] Cross-filesystem move: ${totalFiles} files, callback set: ${!!this.progressCallback}`,
+          );
+
+          // Copy with progress tracking
           await this.copyDirectoryRecursive(
             absoluteSource,
             absoluteDestination,
+            (fileName: string) => {
+              currentFile++;
+              if (this.progressCallback) {
+                this.progressCallback(currentFile, totalFiles, fileName);
+              }
+            },
           );
+
+          // Delete source after successful copy
           await this.deleteDirectoryRecursive(absoluteSource);
         } else {
+          // Single file move with progress
+          if (this.progressCallback) {
+            this.progressCallback(0, 1, path.basename(absoluteSource));
+          }
+
           await copyFile(absoluteSource, absoluteDestination);
+
+          if (this.progressCallback) {
+            this.progressCallback(1, 1, path.basename(absoluteSource));
+          }
+
           await unlink(absoluteSource);
         }
 

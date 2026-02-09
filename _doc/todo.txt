@@ -2,18 +2,20 @@ Commander:
 - show progress for move files
 - use property env file for setting env vars like JAVA_HOME, ...
 - set NODE_ENV= when starting cmdline ... !!! Otherwoise we have =production and if we start vscode the deps are incomplete :-o
-- copy and paste (ctrl+c ctrl+v) should create new copy con file / dir
 - drag and drop files / folders
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 - copy from zip (or from zip in zip) doesnt work or is very slow
 - exceptions in read dirs should be captured and not crash the ui to be unusable
 other:
-Commander later:
-- add support for browse into asar files
-- cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
-- test and fix ftps
-- generate tests for all backend features
+- new App (ensure to have restic installed!)
+  - https://media.ccc.de/v/c4.openchaos.2016.01.restic
+    create ui to create a backup, navigate to checkpoints and do other useful stuff
+- Commander later:
+  - add support for browse into asar files
+  - cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
+  - test and fix ftps
+  - generate tests for all backend features
 - GarbageFinder
   - fix delete files function (at least show error message when unsuccessful)
   - option to show files here also
@@ -38,8 +40,6 @@ Commander later:
 - quick launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)
 - integrate more cmdline-Tools
-  - https://media.ccc.de/v/c4.openchaos.2016.01.restic
-    create ui to create a backup, navigate to checkpoints and do other useful stuff
   - dirsorter for jpegs
   - mp3metatagsetter for mp3s
   - imdb finder
