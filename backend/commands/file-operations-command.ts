@@ -21,6 +21,61 @@ const rmdir = promisify(fs.rmdir);
 const unlink = promisify(fs.unlink);
 const execPromise = promisify(exec);
 
+/**
+ * Parse .n2henv file and return environment variables
+ * Searches in the given directory and parent directories up to root
+ * Format: KEY=VALUE (one per line, # for comments)
+ */
+function loadN2hEnvFile(dirPath: string): Record<string, string> {
+  const envVars: Record<string, string> = {};
+  let currentDir = dirPath;
+
+  // Search up the directory tree for .n2henv files
+  while (currentDir) {
+    const envFilePath = path.join(currentDir, '.n2henv');
+    if (fs.existsSync(envFilePath)) {
+      try {
+        const content = fs.readFileSync(envFilePath, 'utf8');
+        const lines = content.split('\n');
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // Skip empty lines and comments
+          if (!trimmed || trimmed.startsWith('#')) continue;
+
+          const eqIndex = trimmed.indexOf('=');
+          if (eqIndex > 0) {
+            const key = trimmed.substring(0, eqIndex).trim();
+            let value = trimmed.substring(eqIndex + 1).trim();
+            // Remove quotes if present
+            if (
+              (value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))
+            ) {
+              value = value.slice(1, -1);
+            }
+            envVars[key] = value;
+          }
+        }
+        console.log(
+          `[n2henv] Loaded from ${envFilePath}:`,
+          Object.keys(envVars),
+        );
+        break; // Stop at first .n2henv file found
+      } catch (error) {
+        console.warn(`[n2henv] Failed to read ${envFilePath}:`, error);
+      }
+    }
+
+    // Move to parent directory
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break; // Reached root
+    currentDir = parentDir;
+  }
+
+  return envVars;
+}
+
 export class FileOperationsCommand implements ICommand {
   private progressCallback?: (
     current: number,
@@ -2733,16 +2788,29 @@ export class FileOperationsCommand implements ICommand {
     }
 
     try {
+      // Load .n2henv environment variables if present
+      const n2hEnv = loadN2hEnvFile(absoluteWorkingDir);
+      const env = { ...process.env, ...n2hEnv };
+
       // Execute the command with a timeout of 30 seconds
       const { stdout, stderr } = await execPromise(command, {
         cwd: absoluteWorkingDir,
         timeout: 30000,
         maxBuffer: 1024 * 1024 * 10, // 10MB buffer
         encoding: 'utf8',
+        env,
       });
 
       // Combine stdout and stderr
-      const output = stdout + (stderr ? '\n--- STDERR ---\n' + stderr : '');
+      let output = stdout + (stderr ? '\n--- STDERR ---\n' + stderr : '');
+
+      // Prepend .n2henv info if variables were loaded
+      const n2hEnvKeys = Object.keys(n2hEnv);
+      if (n2hEnvKeys.length > 0) {
+        output =
+          `--- .n2henv loaded: ${n2hEnvKeys.join(', ')} ---\n\n` +
+          (output || '(Kein Output)');
+      }
 
       return {
         success: true,
@@ -2750,6 +2818,7 @@ export class FileOperationsCommand implements ICommand {
         command: command,
         workingDir: absoluteWorkingDir,
         output: output || '(Kein Output)',
+        n2hEnvLoaded: n2hEnvKeys,
         timestamp: new Date().toISOString(),
       };
     } catch (error: any) {

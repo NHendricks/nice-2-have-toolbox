@@ -14,6 +14,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 - new app garbage-finder
   - find large folders easily
   - show size as relative size in a tree
+- support .n2henv files in a dir when open cmdline (KEY=VALUE)
 - lots of small bug fixes (see commits)
 
 ### v1.7.0 (07.02.2026)

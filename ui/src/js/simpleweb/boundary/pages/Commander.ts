@@ -1731,7 +1731,11 @@ export class Commander extends LitElement {
         pane.currentPath,
       )
       if (response.success) {
-        this.setStatus(`Terminal opened in ${pane.currentPath}`, 'success')
+        let msg = `Terminal opened in ${pane.currentPath}`
+        if (response.n2hEnvLoaded && response.n2hEnvLoaded.length > 0) {
+          msg += ` (.n2henv: ${response.n2hEnvLoaded.join(', ')})`
+        }
+        this.setStatus(msg, 'success')
       } else {
         this.setStatus(`Failed to open terminal: ${response.error}`, 'error')
       }

@@ -22,6 +22,58 @@ const isDev = process.env.NODE_ENV
   ? process.env.NODE_ENV.startsWith('development')
   : false;
 
+/**
+ * Parse .n2henv file and return environment variables
+ * Searches in the given directory and parent directories up to root
+ * Format: KEY=VALUE (one per line, # for comments)
+ */
+function loadN2hEnvFile(dirPath: string): Record<string, string> {
+  const envVars: Record<string, string> = {};
+  let currentDir = dirPath;
+
+  // Search up the directory tree for .n2henv files
+  while (currentDir) {
+    const envFilePath = path.join(currentDir, '.n2henv');
+    if (fs.existsSync(envFilePath)) {
+      try {
+        const content = fs.readFileSync(envFilePath, 'utf8');
+        const lines = content.split('\n');
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // Skip empty lines and comments
+          if (!trimmed || trimmed.startsWith('#')) continue;
+
+          const eqIndex = trimmed.indexOf('=');
+          if (eqIndex > 0) {
+            const key = trimmed.substring(0, eqIndex).trim();
+            let value = trimmed.substring(eqIndex + 1).trim();
+            // Remove quotes if present
+            if (
+              (value.startsWith('"') && value.endsWith('"')) ||
+              (value.startsWith("'") && value.endsWith("'"))
+            ) {
+              value = value.slice(1, -1);
+            }
+            envVars[key] = value;
+          }
+        }
+        console.log(`[n2henv] Loaded from ${envFilePath}:`, Object.keys(envVars));
+        break; // Stop at first .n2henv file found
+      } catch (error) {
+        console.warn(`[n2henv] Failed to read ${envFilePath}:`, error);
+      }
+    }
+
+    // Move to parent directory
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break; // Reached root
+    currentDir = parentDir;
+  }
+
+  return envVars;
+}
+
 let tray: any = null;
 let version = '0.0';
 if (!isDev) {
@@ -249,8 +301,10 @@ ipcMain.handle('show-save-dialog', async (_event: any, options: any) => {
 ipcMain.handle('open-terminal', async (_event: any, dirPath: string) => {
   try {
     const platform = process.platform;
-    // Set up environment with NODE_ENV for development tools
-    const env = { ...process.env, NODE_ENV: 'development' };
+    // Load .n2henv file if present
+    const n2hEnv = loadN2hEnvFile(dirPath);
+    // Set up environment with NODE_ENV and .n2henv variables
+    const env = { ...process.env, NODE_ENV: 'development', ...n2hEnv };
 
     if (platform === 'win32') {
       // Windows: open cmd.exe in the specified directory
@@ -284,7 +338,11 @@ ipcMain.handle('open-terminal', async (_event: any, dirPath: string) => {
         }
       }
     }
-    return { success: true };
+    const n2hEnvKeys = Object.keys(n2hEnv);
+    return {
+      success: true,
+      n2hEnvLoaded: n2hEnvKeys.length > 0 ? n2hEnvKeys : undefined,
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
