@@ -4,8 +4,6 @@ Commander:
 - linux app
   - samba share fix (show dialog directly, continue on linux)
   - fix icon part 2
-- support end and pos1 keys 
-- Ctrl+a should select all files
 - ctrl+pageup/down: select all files between these
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)

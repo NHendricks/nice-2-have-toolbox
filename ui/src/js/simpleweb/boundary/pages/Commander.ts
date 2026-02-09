@@ -1465,6 +1465,20 @@ export class Commander extends LitElement {
     this.updateActivePane({ selectedIndices: newSelected })
   }
 
+  selectAll() {
+    const pane = this.getActivePane()
+    const newSelected = new Set<number>()
+
+    // Select all items except ".."
+    pane.items.forEach((item, index) => {
+      if (item.name !== '..') {
+        newSelected.add(index)
+      }
+    })
+
+    this.updateActivePane({ selectedIndices: newSelected })
+  }
+
   scrollItemIntoView(index: number) {
     setTimeout(() => {
       const paneElement = this.shadowRoot?.querySelector(

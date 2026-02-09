@@ -300,6 +300,11 @@ export class KeyboardHandler {
    */
   private handleCtrlKeys(event: KeyboardEvent): boolean {
     switch (event.key.toLowerCase()) {
+      case 'a':
+        event.preventDefault()
+        this.commander.selectAll()
+        return true
+
       case 's':
         event.preventDefault()
         this.commander.showDirectorySize()
