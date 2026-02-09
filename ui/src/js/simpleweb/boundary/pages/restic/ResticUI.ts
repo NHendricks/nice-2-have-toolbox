@@ -1,0 +1,1644 @@
+/**
+ * ResticUI - Main container component for Restic backup management
+ * Provides a Time Machine-like interface for managing backups
+ */
+
+import { LitElement, css, html } from 'lit'
+import { customElement, property, state } from 'lit/decorators.js'
+import type {
+  ResticBackupProgress,
+  ResticBackupSummary,
+  ResticFileEntry,
+  ResticRepository,
+  ResticRetentionPolicy,
+  ResticSnapshot,
+  ResticStats,
+  ResticTab,
+  SnapshotGroup,
+} from './restic.types.js'
+
+@customElement('nh-restic')
+export class ResticUI extends LitElement {
+  static styles = css`
+    :host {
+      display: block;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #e2e8f0;
+      background: #0f172a;
+      min-height: 100vh;
+    }
+
+    .content {
+      padding: 1rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .repo-config {
+      padding: 1rem;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      margin-bottom: 1rem;
+    }
+
+    .repo-form {
+      display: grid;
+      grid-template-columns: 1fr 200px auto;
+      gap: 0.75rem;
+      align-items: end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .form-group input {
+      padding: 0.5rem 0.75rem;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #0ea5e9;
+    }
+
+    .repo-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding: 0.5rem;
+      background: #0f172a;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.connected {
+      background: #22c55e;
+    }
+
+    .status-dot.disconnected {
+      background: #ef4444;
+    }
+
+    .status-dot.warning {
+      background: #f59e0b;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px 8px 0 0;
+      color: #94a3b8;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .tab.active {
+      background: #0ea5e9;
+      border-color: #0ea5e9;
+      color: white;
+    }
+
+    .tab-content {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0 8px 8px 8px;
+      padding: 1rem;
+      min-height: 400px;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #0ea5e9;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0284c7;
+    }
+
+    .btn-primary:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #475569;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #64748b;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    .btn-small {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    /* Backup Panel Styles */
+    .backup-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .backup-paths {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .backup-paths h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    .path-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .path-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem;
+      background: #1e293b;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .backup-progress {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #0f172a;
+      border-radius: 8px;
+    }
+
+    .progress-bar-container {
+      height: 24px;
+      background: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      margin: 0.5rem 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #0ea5e9, #22c55e);
+      border-radius: 12px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-bar-text {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .progress-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .current-file {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Browse Panel Styles */
+    .browse-panel {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 1rem;
+      height: 500px;
+    }
+
+    .timeline {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .timeline h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    .timeline-group {
+      margin-bottom: 1rem;
+    }
+
+    .timeline-group-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #f59e0b;
+      margin-bottom: 0.5rem;
+      padding-left: 1.5rem;
+    }
+
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .timeline-item:hover {
+      background: #1e293b;
+    }
+
+    .timeline-item.selected {
+      background: #0ea5e9;
+    }
+
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #475569;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .timeline-item.selected .timeline-dot {
+      background: white;
+    }
+
+    .timeline-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .timeline-time {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+    }
+
+    .timeline-paths {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-browser {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .file-browser h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      overflow-x: auto;
+    }
+
+    .breadcrumb-item {
+      padding: 0.25rem 0.5rem;
+      background: #1e293b;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-item:hover {
+      background: #334155;
+    }
+
+    .file-list {
+      flex: 1;
+      overflow-y: auto;
+      background: #1e293b;
+      border-radius: 4px;
+    }
+
+    .file-item {
+      display: grid;
+      grid-template-columns: 1fr 100px 150px;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #0f172a;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .file-item:hover {
+      background: #334155;
+    }
+
+    .file-item.selected {
+      background: #0ea5e9;
+    }
+
+    .file-name {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-size {
+      text-align: right;
+      color: #94a3b8;
+    }
+
+    .file-date {
+      text-align: right;
+      color: #64748b;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: #1e293b;
+      border-radius: 0 0 4px 4px;
+    }
+
+    /* Retention Panel Styles */
+    .retention-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .retention-config {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .retention-config h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    .retention-field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .retention-field label {
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+
+    .retention-field input {
+      width: 80px;
+      padding: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      color: #e2e8f0;
+      text-align: center;
+    }
+
+    .retention-preview {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .retention-preview h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    /* Health Panel Styles */
+    .health-panel {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .health-card {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .health-card h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+
+    .health-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .health-actions {
+      grid-column: span 3;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #0ea5e9;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .message {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .message.success {
+      background: #14532d;
+      color: #86efac;
+      border: 1px solid #22c55e;
+    }
+
+    .message.error {
+      background: #7f1d1d;
+      color: #fca5a5;
+      border: 1px solid #ef4444;
+    }
+
+    .message.info {
+      background: #1e3a5f;
+      color: #93c5fd;
+      border: 1px solid #3b82f6;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: #64748b;
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .not-installed {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .not-installed h2 {
+      color: #f59e0b;
+      margin-bottom: 1rem;
+    }
+
+    .not-installed p {
+      color: #94a3b8;
+      margin-bottom: 1rem;
+    }
+
+    .not-installed a {
+      color: #0ea5e9;
+    }
+  `
+
+  @state() private activeTab: ResticTab = 'backup'
+  @state() private repository: ResticRepository | null = null
+  @state() private repoPath: string = ''
+  @state() private repoPassword: string = ''
+  @state() private snapshots: ResticSnapshot[] = []
+  @state() private selectedSnapshot: ResticSnapshot | null = null
+  @state() private browseEntries: ResticFileEntry[] = []
+  @state() private browsePath: string = '/'
+  @state() private isLoading: boolean = false
+  @state() private loadingMessage: string = ''
+  @state() private message: { type: 'success' | 'error' | 'info'; text: string } | null = null
+  @state() private resticInstalled: boolean | null = null
+  @state() private resticVersion: string = ''
+
+  // Backup state
+  @state() private backupPaths: string[] = []
+  @state() private backupProgress: ResticBackupProgress | null = null
+  @state() private isBackingUp: boolean = false
+
+  // Stats
+  @state() private stats: ResticStats | null = null
+
+  // Retention policy
+  @state() private retentionPolicy: ResticRetentionPolicy = {
+    keepLast: 5,
+    keepDaily: 7,
+    keepWeekly: 4,
+    keepMonthly: 12,
+    keepYearly: 2,
+  }
+
+  connectedCallback() {
+    super.connectedCallback()
+    this.checkResticInstalled()
+
+    // Listen for backup progress events
+    ;(window as any).electron?.ipcRenderer?.on(
+      'restic-backup-progress',
+      (data: any) => {
+        this.backupProgress = data
+        this.requestUpdate()
+      },
+    )
+  }
+
+  private async checkResticInstalled() {
+    try {
+      const response = await this.invokeRestic({ operation: 'check-installed' })
+      if (response.success && response.data) {
+        this.resticInstalled = response.data.installed
+        this.resticVersion = response.data.version || ''
+      }
+    } catch (error) {
+      this.resticInstalled = false
+    }
+  }
+
+  private async invokeRestic(params: any): Promise<any> {
+    return (window as any).electron.ipcRenderer.invoke('cli-execute', 'restic', {
+      ...params,
+      repoPath: params.repoPath || this.repoPath,
+      password: params.password || this.repoPassword,
+    })
+  }
+
+  private async connectRepository() {
+    if (!this.repoPath || !this.repoPassword) {
+      this.showMessage('error', 'Please enter repository path and password')
+      return
+    }
+
+    this.isLoading = true
+    this.loadingMessage = 'Connecting to repository...'
+
+    try {
+      // Try to get snapshots to verify connection
+      const response = await this.invokeRestic({ operation: 'snapshots' })
+
+      if (response.success) {
+        this.repository = {
+          path: this.repoPath,
+          password: this.repoPassword,
+          isInitialized: true,
+        }
+        this.snapshots = response.data?.snapshots || []
+        this.showMessage('success', `Connected! Found ${this.snapshots.length} snapshots.`)
+        await this.loadStats()
+      } else {
+        // Check if repository needs initialization
+        if (response.error?.includes('does not exist') ||
+            response.error?.includes('unable to open')) {
+          this.showMessage('info', 'Repository not found. Click "Initialize" to create a new one.')
+        } else {
+          this.showMessage('error', response.error || 'Failed to connect')
+        }
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async initRepository() {
+    if (!this.repoPath || !this.repoPassword) {
+      this.showMessage('error', 'Please enter repository path and password')
+      return
+    }
+
+    this.isLoading = true
+    this.loadingMessage = 'Initializing repository...'
+
+    try {
+      const response = await this.invokeRestic({ operation: 'init' })
+
+      if (response.success) {
+        this.repository = {
+          path: this.repoPath,
+          password: this.repoPassword,
+          isInitialized: true,
+        }
+        this.snapshots = []
+        this.showMessage('success', 'Repository initialized successfully!')
+      } else {
+        this.showMessage('error', response.error || 'Failed to initialize repository')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async loadSnapshots() {
+    if (!this.repository) return
+
+    this.isLoading = true
+    this.loadingMessage = 'Loading snapshots...'
+
+    try {
+      const response = await this.invokeRestic({ operation: 'snapshots' })
+      if (response.success) {
+        this.snapshots = response.data?.snapshots || []
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async loadStats() {
+    if (!this.repository) return
+
+    try {
+      const response = await this.invokeRestic({ operation: 'stats' })
+      if (response.success) {
+        this.stats = response.data?.stats
+      }
+    } catch (error: any) {
+      console.error('Failed to load stats:', error)
+    }
+  }
+
+  private async selectFolder() {
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'show-open-dialog',
+        {
+          properties: ['openDirectory'],
+        },
+      )
+
+      if (
+        response.success &&
+        !response.canceled &&
+        response.filePaths?.length > 0
+      ) {
+        const newPath = response.filePaths[0]
+        if (!this.backupPaths.includes(newPath)) {
+          this.backupPaths = [...this.backupPaths, newPath]
+        }
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    }
+  }
+
+  private removePath(path: string) {
+    this.backupPaths = this.backupPaths.filter((p) => p !== path)
+  }
+
+  private async startBackup() {
+    if (!this.repository || this.backupPaths.length === 0) {
+      this.showMessage('error', 'Please select folders to backup')
+      return
+    }
+
+    this.isBackingUp = true
+    this.backupProgress = null
+
+    try {
+      const response = await this.invokeRestic({
+        operation: 'backup',
+        paths: this.backupPaths,
+      })
+
+      if (response.success) {
+        this.showMessage('success', 'Backup completed successfully!')
+        await this.loadSnapshots()
+        await this.loadStats()
+      } else {
+        this.showMessage('error', response.error || 'Backup failed')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isBackingUp = false
+      this.backupProgress = null
+    }
+  }
+
+  private async selectSnapshot(snapshot: ResticSnapshot) {
+    this.selectedSnapshot = snapshot
+    this.browsePath = '/'
+    await this.loadSnapshotFiles()
+  }
+
+  private async loadSnapshotFiles() {
+    if (!this.selectedSnapshot) return
+
+    this.isLoading = true
+    this.loadingMessage = 'Loading files...'
+
+    try {
+      const response = await this.invokeRestic({
+        operation: 'ls',
+        snapshotId: this.selectedSnapshot.short_id || this.selectedSnapshot.id,
+        path: this.browsePath,
+      })
+
+      if (response.success) {
+        this.browseEntries = response.data?.entries || []
+      } else {
+        this.showMessage('error', response.error || 'Failed to load files')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async navigateToPath(path: string) {
+    this.browsePath = path
+    await this.loadSnapshotFiles()
+  }
+
+  private async restoreSelected() {
+    if (!this.selectedSnapshot) return
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'show-open-dialog',
+        {
+          properties: ['openDirectory', 'createDirectory'],
+          title: 'Select restore destination',
+        },
+      )
+
+      if (response.success && !response.canceled && response.filePaths?.length > 0) {
+        this.isLoading = true
+        this.loadingMessage = 'Restoring files...'
+
+        const restoreResponse = await this.invokeRestic({
+          operation: 'restore',
+          snapshotId: this.selectedSnapshot.short_id || this.selectedSnapshot.id,
+          targetPath: response.filePaths[0],
+        })
+
+        if (restoreResponse.success) {
+          this.showMessage('success', `Files restored to ${response.filePaths[0]}`)
+        } else {
+          this.showMessage('error', restoreResponse.error || 'Restore failed')
+        }
+
+        this.isLoading = false
+        this.loadingMessage = ''
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+      this.isLoading = false
+    }
+  }
+
+  private async applyRetentionPolicy() {
+    if (!this.repository) return
+
+    this.isLoading = true
+    this.loadingMessage = 'Applying retention policy...'
+
+    try {
+      const response = await this.invokeRestic({
+        operation: 'forget',
+        policy: this.retentionPolicy,
+        prune: true,
+      })
+
+      if (response.success) {
+        this.showMessage('success', 'Retention policy applied successfully')
+        await this.loadSnapshots()
+        await this.loadStats()
+      } else {
+        this.showMessage('error', response.error || 'Failed to apply retention policy')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async runCheck() {
+    if (!this.repository) return
+
+    this.isLoading = true
+    this.loadingMessage = 'Checking repository...'
+
+    try {
+      const response = await this.invokeRestic({ operation: 'check' })
+
+      if (response.success && response.data?.success) {
+        this.showMessage('success', 'Repository check passed!')
+      } else {
+        this.showMessage('error', response.data?.error || response.error || 'Check failed')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async runPrune() {
+    if (!this.repository) return
+
+    this.isLoading = true
+    this.loadingMessage = 'Pruning repository...'
+
+    try {
+      const response = await this.invokeRestic({ operation: 'prune' })
+
+      if (response.success) {
+        this.showMessage('success', 'Repository pruned successfully')
+        await this.loadStats()
+      } else {
+        this.showMessage('error', response.error || 'Prune failed')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private async runUnlock() {
+    if (!this.repository) return
+
+    this.isLoading = true
+    this.loadingMessage = 'Unlocking repository...'
+
+    try {
+      const response = await this.invokeRestic({ operation: 'unlock' })
+
+      if (response.success) {
+        this.showMessage('success', 'Repository unlocked')
+      } else {
+        this.showMessage('error', response.error || 'Unlock failed')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isLoading = false
+      this.loadingMessage = ''
+    }
+  }
+
+  private showMessage(type: 'success' | 'error' | 'info', text: string) {
+    this.message = { type, text }
+    setTimeout(() => {
+      this.message = null
+    }, 5000)
+  }
+
+  private formatSize(bytes: number): string {
+    if (!bytes) return '0 B'
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i]
+  }
+
+  private formatDate(dateStr: string): string {
+    try {
+      const date = new Date(dateStr)
+      return date.toLocaleString()
+    } catch {
+      return dateStr
+    }
+  }
+
+  private formatTime(dateStr: string): string {
+    try {
+      const date = new Date(dateStr)
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return dateStr
+    }
+  }
+
+  private groupSnapshots(): SnapshotGroup[] {
+    const groups: Map<string, SnapshotGroup> = new Map()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    for (const snapshot of this.snapshots) {
+      const date = new Date(snapshot.time)
+      date.setHours(0, 0, 0, 0)
+
+      let label: string
+      if (date.getTime() === today.getTime()) {
+        label = 'Today'
+      } else if (date.getTime() === yesterday.getTime()) {
+        label = 'Yesterday'
+      } else {
+        label = date.toLocaleDateString(undefined, {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      }
+
+      if (!groups.has(label)) {
+        groups.set(label, { label, date, snapshots: [] })
+      }
+      groups.get(label)!.snapshots.push(snapshot)
+    }
+
+    // Sort groups by date descending, then sort snapshots within each group
+    return Array.from(groups.values())
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .map((group) => ({
+        ...group,
+        snapshots: group.snapshots.sort(
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+        ),
+      }))
+  }
+
+  private getBreadcrumbs(): string[] {
+    if (this.browsePath === '/') return ['/']
+    const parts = this.browsePath.split('/').filter((p) => p)
+    return ['/', ...parts]
+  }
+
+  render() {
+    if (this.resticInstalled === null) {
+      return html`
+        <div class="content">
+          <div class="header">
+            <div>
+              <h1>Nice2Have Restic UI</h1>
+              <div class="subtitle">Checking restic installation...</div>
+            </div>
+          </div>
+          <div class="tab-content">
+            <div class="empty-state">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      `
+    }
+
+    if (!this.resticInstalled) {
+      return html`
+        <div class="content">
+          <div class="header">
+            <div>
+              <h1>Nice2Have Restic UI</h1>
+              <div class="subtitle">Time Machine-like backup management</div>
+            </div>
+          </div>
+          <div class="tab-content">
+            <div class="not-installed">
+              <h2>Restic Not Installed</h2>
+              <p>
+                Restic backup tool is not installed on your system.
+                Please install it to use this feature.
+              </p>
+              <p>
+                <a href="https://restic.net" target="_blank">
+                  Download restic from restic.net
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    }
+
+    return html`
+      <div class="content">
+        <div class="header">
+          <div>
+            <h1>Nice2Have Restic UI</h1>
+            <div class="subtitle">Time Machine-like backup management</div>
+          </div>
+          ${this.resticVersion
+            ? html`<span style="color: #64748b; font-size: 0.8rem"
+                >${this.resticVersion}</span
+              >`
+            : ''}
+        </div>
+
+        ${this.message
+          ? html`<div class="message ${this.message.type}">${this.message.text}</div>`
+          : ''}
+
+        <div class="repo-config">
+          <div class="repo-form">
+            <div class="form-group">
+              <label>Repository Path</label>
+              <input
+                type="text"
+                placeholder="/path/to/repo or s3:bucket/path"
+                .value=${this.repoPath}
+                @input=${(e: Event) =>
+                  (this.repoPath = (e.target as HTMLInputElement).value)}
+                ?disabled=${this.isLoading}
+              />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                placeholder="Repository password"
+                .value=${this.repoPassword}
+                @input=${(e: Event) =>
+                  (this.repoPassword = (e.target as HTMLInputElement).value)}
+                ?disabled=${this.isLoading}
+              />
+            </div>
+            <div style="display: flex; gap: 0.5rem">
+              <button
+                class="btn btn-primary"
+                @click=${this.connectRepository}
+                ?disabled=${this.isLoading}
+              >
+                ${this.isLoading ? html`<span class="spinner"></span>` : 'Connect'}
+              </button>
+              <button
+                class="btn btn-secondary"
+                @click=${this.initRepository}
+                ?disabled=${this.isLoading}
+              >
+                Initialize
+              </button>
+            </div>
+          </div>
+          ${this.repository
+            ? html`
+                <div class="repo-status">
+                  <span class="status-dot connected"></span>
+                  <span>Connected to ${this.repository.path}</span>
+                  <span style="margin-left: auto; color: #64748b">
+                    ${this.snapshots.length} snapshots
+                    ${this.stats
+                      ? html` | ${this.formatSize(this.stats.total_size)}`
+                      : ''}
+                  </span>
+                </div>
+              `
+            : ''}
+        </div>
+
+        ${this.repository
+          ? html`
+              <div class="tabs">
+                <div
+                  class="tab ${this.activeTab === 'backup' ? 'active' : ''}"
+                  @click=${() => (this.activeTab = 'backup')}
+                >
+                  Backup
+                </div>
+                <div
+                  class="tab ${this.activeTab === 'browse' ? 'active' : ''}"
+                  @click=${() => {
+                    this.activeTab = 'browse'
+                    this.loadSnapshots()
+                  }}
+                >
+                  Browse History
+                </div>
+                <div
+                  class="tab ${this.activeTab === 'retention' ? 'active' : ''}"
+                  @click=${() => (this.activeTab = 'retention')}
+                >
+                  Retention
+                </div>
+                <div
+                  class="tab ${this.activeTab === 'health' ? 'active' : ''}"
+                  @click=${() => {
+                    this.activeTab = 'health'
+                    this.loadStats()
+                  }}
+                >
+                  Health
+                </div>
+              </div>
+
+              <div class="tab-content">
+                ${this.activeTab === 'backup' ? this.renderBackupPanel() : ''}
+                ${this.activeTab === 'browse' ? this.renderBrowsePanel() : ''}
+                ${this.activeTab === 'retention' ? this.renderRetentionPanel() : ''}
+                ${this.activeTab === 'health' ? this.renderHealthPanel() : ''}
+              </div>
+            `
+          : html`
+              <div class="tab-content">
+                <div class="empty-state">
+                  <div class="empty-state-icon">🔐</div>
+                  <div>Enter repository path and password to connect</div>
+                </div>
+              </div>
+            `}
+      </div>
+    `
+  }
+
+  private renderBackupPanel() {
+    return html`
+      <div class="backup-panel">
+        <div class="backup-paths">
+          <h3>Folders to Backup</h3>
+          <div class="path-list">
+            ${this.backupPaths.length === 0
+              ? html`<div style="color: #64748b; font-size: 0.85rem">
+                  No folders selected
+                </div>`
+              : this.backupPaths.map(
+                  (path) => html`
+                    <div class="path-item">
+                      <span>${path}</span>
+                      <button
+                        class="btn btn-small btn-danger"
+                        @click=${() => this.removePath(path)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  `,
+                )}
+          </div>
+          <button class="btn btn-secondary" @click=${this.selectFolder}>
+            + Add Folder
+          </button>
+        </div>
+
+        <div>
+          ${this.isBackingUp
+            ? html`
+                <div class="backup-progress">
+                  <h3>Backup in Progress</h3>
+                  <div class="progress-bar-container">
+                    <div
+                      class="progress-bar"
+                      style="width: ${(this.backupProgress?.percentDone || 0) * 100}%"
+                    ></div>
+                    <div class="progress-bar-text">
+                      ${Math.round((this.backupProgress?.percentDone || 0) * 100)}%
+                    </div>
+                  </div>
+                  <div class="progress-details">
+                    <span>
+                      ${this.backupProgress?.filesDone || 0} /
+                      ${this.backupProgress?.totalFiles || 0} files
+                    </span>
+                    <span>
+                      ${this.formatSize(this.backupProgress?.bytesDone || 0)} /
+                      ${this.formatSize(this.backupProgress?.totalBytes || 0)}
+                    </span>
+                  </div>
+                  ${this.backupProgress?.currentFile
+                    ? html`<div class="current-file">
+                        ${this.backupProgress.currentFile}
+                      </div>`
+                    : ''}
+                </div>
+              `
+            : html`
+                <div style="padding: 1rem">
+                  <button
+                    class="btn btn-primary"
+                    @click=${this.startBackup}
+                    ?disabled=${this.backupPaths.length === 0}
+                    style="width: 100%; padding: 1rem; font-size: 1rem"
+                  >
+                    Start Backup
+                  </button>
+                </div>
+              `}
+        </div>
+      </div>
+    `
+  }
+
+  private renderBrowsePanel() {
+    const groups = this.groupSnapshots()
+
+    return html`
+      <div class="browse-panel">
+        <div class="timeline">
+          <h3>Snapshots</h3>
+          ${groups.length === 0
+            ? html`<div style="color: #64748b; font-size: 0.85rem">
+                No snapshots yet
+              </div>`
+            : groups.map(
+                (group) => html`
+                  <div class="timeline-group">
+                    <div class="timeline-group-label">${group.label}</div>
+                    ${group.snapshots.map(
+                      (snapshot) => html`
+                        <div
+                          class="timeline-item ${this.selectedSnapshot?.id ===
+                          snapshot.id
+                            ? 'selected'
+                            : ''}"
+                          @click=${() => this.selectSnapshot(snapshot)}
+                        >
+                          <div class="timeline-dot"></div>
+                          <div class="timeline-info">
+                            <div class="timeline-time">
+                              ${this.formatTime(snapshot.time)}
+                            </div>
+                            <div class="timeline-paths">
+                              ${snapshot.paths?.join(', ')}
+                            </div>
+                          </div>
+                        </div>
+                      `,
+                    )}
+                  </div>
+                `,
+              )}
+        </div>
+
+        <div class="file-browser">
+          <h3>
+            ${this.selectedSnapshot
+              ? `Files in ${this.selectedSnapshot.short_id || this.selectedSnapshot.id}`
+              : 'Select a snapshot'}
+          </h3>
+
+          ${this.selectedSnapshot
+            ? html`
+                <div class="breadcrumb">
+                  ${this.getBreadcrumbs().map(
+                    (part, i, arr) => html`
+                      <span
+                        class="breadcrumb-item"
+                        @click=${() => {
+                          const path =
+                            i === 0
+                              ? '/'
+                              : '/' + arr.slice(1, i + 1).join('/')
+                          this.navigateToPath(path)
+                        }}
+                      >
+                        ${part === '/' ? 'Root' : part}
+                      </span>
+                      ${i < arr.length - 1 ? html`<span>/</span>` : ''}
+                    `,
+                  )}
+                </div>
+
+                <div class="file-list">
+                  ${this.isLoading
+                    ? html`<div class="empty-state">
+                        <span class="spinner"></span>
+                      </div>`
+                    : this.browseEntries.length === 0
+                      ? html`<div class="empty-state">No files</div>`
+                      : this.browseEntries.map(
+                          (entry) => html`
+                            <div
+                              class="file-item"
+                              @dblclick=${() => {
+                                if (entry.type === 'dir') {
+                                  this.navigateToPath(entry.path)
+                                }
+                              }}
+                            >
+                              <div class="file-name">
+                                ${entry.type === 'dir' ? '📁' : '📄'}
+                                ${entry.name}
+                              </div>
+                              <div class="file-size">
+                                ${entry.type === 'file'
+                                  ? this.formatSize(entry.size)
+                                  : ''}
+                              </div>
+                              <div class="file-date">
+                                ${this.formatDate(entry.mtime)}
+                              </div>
+                            </div>
+                          `,
+                        )}
+                </div>
+
+                <div class="file-actions">
+                  <button class="btn btn-primary" @click=${this.restoreSelected}>
+                    Restore All
+                  </button>
+                </div>
+              `
+            : html`
+                <div class="empty-state">
+                  <div class="empty-state-icon">📁</div>
+                  <div>Select a snapshot to browse files</div>
+                </div>
+              `}
+        </div>
+      </div>
+    `
+  }
+
+  private renderRetentionPanel() {
+    return html`
+      <div class="retention-panel">
+        <div class="retention-config">
+          <h3>Retention Policy</h3>
+          <div class="retention-field">
+            <label>Keep last</label>
+            <input
+              type="number"
+              min="0"
+              .value=${String(this.retentionPolicy.keepLast || 0)}
+              @input=${(e: Event) => {
+                this.retentionPolicy = {
+                  ...this.retentionPolicy,
+                  keepLast: parseInt((e.target as HTMLInputElement).value) || 0,
+                }
+              }}
+            />
+          </div>
+          <div class="retention-field">
+            <label>Keep daily</label>
+            <input
+              type="number"
+              min="0"
+              .value=${String(this.retentionPolicy.keepDaily || 0)}
+              @input=${(e: Event) => {
+                this.retentionPolicy = {
+                  ...this.retentionPolicy,
+                  keepDaily: parseInt((e.target as HTMLInputElement).value) || 0,
+                }
+              }}
+            />
+          </div>
+          <div class="retention-field">
+            <label>Keep weekly</label>
+            <input
+              type="number"
+              min="0"
+              .value=${String(this.retentionPolicy.keepWeekly || 0)}
+              @input=${(e: Event) => {
+                this.retentionPolicy = {
+                  ...this.retentionPolicy,
+                  keepWeekly: parseInt((e.target as HTMLInputElement).value) || 0,
+                }
+              }}
+            />
+          </div>
+          <div class="retention-field">
+            <label>Keep monthly</label>
+            <input
+              type="number"
+              min="0"
+              .value=${String(this.retentionPolicy.keepMonthly || 0)}
+              @input=${(e: Event) => {
+                this.retentionPolicy = {
+                  ...this.retentionPolicy,
+                  keepMonthly:
+                    parseInt((e.target as HTMLInputElement).value) || 0,
+                }
+              }}
+            />
+          </div>
+          <div class="retention-field">
+            <label>Keep yearly</label>
+            <input
+              type="number"
+              min="0"
+              .value=${String(this.retentionPolicy.keepYearly || 0)}
+              @input=${(e: Event) => {
+                this.retentionPolicy = {
+                  ...this.retentionPolicy,
+                  keepYearly: parseInt((e.target as HTMLInputElement).value) || 0,
+                }
+              }}
+            />
+          </div>
+          <button
+            class="btn btn-danger"
+            @click=${this.applyRetentionPolicy}
+            ?disabled=${this.isLoading}
+            style="margin-top: 1rem; width: 100%"
+          >
+            Apply Policy & Prune
+          </button>
+        </div>
+
+        <div class="retention-preview">
+          <h3>Current Snapshots</h3>
+          <div style="font-size: 0.9rem; color: #94a3b8">
+            Total: ${this.snapshots.length} snapshots
+          </div>
+          <div style="margin-top: 1rem; max-height: 300px; overflow-y: auto">
+            ${this.snapshots.map(
+              (s) => html`
+                <div
+                  style="display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid #334155; font-size: 0.85rem"
+                >
+                  <span>${s.short_id || s.id.substring(0, 8)}</span>
+                  <span style="color: #64748b">${this.formatDate(s.time)}</span>
+                </div>
+              `,
+            )}
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  private renderHealthPanel() {
+    return html`
+      <div class="health-panel">
+        <div class="health-card">
+          <h3>Total Size</h3>
+          <div class="health-value">
+            ${this.stats ? this.formatSize(this.stats.total_size) : '-'}
+          </div>
+        </div>
+
+        <div class="health-card">
+          <h3>Total Files</h3>
+          <div class="health-value">
+            ${this.stats?.total_file_count?.toLocaleString() || '-'}
+          </div>
+        </div>
+
+        <div class="health-card">
+          <h3>Snapshots</h3>
+          <div class="health-value">${this.snapshots.length}</div>
+        </div>
+
+        <div class="health-actions">
+          <button
+            class="btn btn-primary"
+            @click=${this.runCheck}
+            ?disabled=${this.isLoading}
+          >
+            ${this.isLoading && this.loadingMessage.includes('Check')
+              ? html`<span class="spinner"></span>`
+              : ''}
+            Check Repository
+          </button>
+          <button
+            class="btn btn-secondary"
+            @click=${this.runPrune}
+            ?disabled=${this.isLoading}
+          >
+            ${this.isLoading && this.loadingMessage.includes('Prune')
+              ? html`<span class="spinner"></span>`
+              : ''}
+            Prune Unused Data
+          </button>
+          <button
+            class="btn btn-secondary"
+            @click=${this.runUnlock}
+            ?disabled=${this.isLoading}
+          >
+            Unlock Repository
+          </button>
+          <button class="btn btn-secondary" @click=${this.loadStats}>
+            Refresh Stats
+          </button>
+        </div>
+      </div>
+    `
+  }
+}

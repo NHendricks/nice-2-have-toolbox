@@ -13,6 +13,10 @@
       "path": "/moneyfinder"
     },
     {
+      "label": "Restic UI",
+      "path": "/restic"
+    },
+    {
       "label": "Help",
       "path": "/faq"
     }
@@ -33,6 +37,10 @@
       "addBodyClass": "force-portrait"
     },
     "/garbagefinder": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/restic": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }

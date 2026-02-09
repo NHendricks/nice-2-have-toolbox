@@ -106,6 +106,22 @@ export class IpcBridge {
             );
           }
 
+          // If it's a restic command with backup operation, set up progress callback
+          if (
+            toolname === 'restic' &&
+            params.operation === 'backup' &&
+            command
+          ) {
+            console.log(
+              '[IPC] Setting up progress callback for restic backup',
+            );
+
+            // Set up progress callback to send events to renderer
+            (command as any).setProgressCallback?.((progress: any) => {
+              event.sender?.send('restic-backup-progress', progress);
+            });
+          }
+
           const result = await this.handler.execute(toolname, params);
 
           // Clear progress callback after operation completes
@@ -121,6 +137,15 @@ export class IpcBridge {
           if (
             toolname === 'garbage-finder' &&
             params.operation === 'scan' &&
+            command
+          ) {
+            (command as any).setProgressCallback?.(undefined);
+          }
+
+          // Clear restic progress callback after operation completes
+          if (
+            toolname === 'restic' &&
+            params.operation === 'backup' &&
             command
           ) {
             (command as any).setProgressCallback?.(undefined);
@@ -146,6 +171,14 @@ export class IpcBridge {
 
           // Clear garbage-finder progress callback on error
           if (toolname === 'garbage-finder' && params.operation === 'scan') {
+            const command = this.handler.getCommand(toolname);
+            if (command) {
+              (command as any).setProgressCallback?.(undefined);
+            }
+          }
+
+          // Clear restic progress callback on error
+          if (toolname === 'restic' && params.operation === 'backup') {
             const command = this.handler.getCommand(toolname);
             if (command) {
               (command as any).setProgressCallback?.(undefined);

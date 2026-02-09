@@ -1,6 +1,4 @@
 Commander:
-- support direnv when open cmdline or start command like env variables like JAVA_HOME, ...
-- set NODE_ENV= when starting cmdline ... !!! Otherwoise we have =production and if we start vscode the deps are incomplete :-o
 - drag and drop files / folders
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
