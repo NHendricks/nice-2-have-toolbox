@@ -795,7 +795,9 @@ export class FileOperationsCommand implements ICommand {
                 ];
                 const isAlreadyMounted = alreadyMountedIndicators.some(
                   (indicator) =>
-                    mountError.message?.toLowerCase().includes(indicator.toLowerCase()),
+                    mountError.message
+                      ?.toLowerCase()
+                      .includes(indicator.toLowerCase()),
                 );
 
                 // If already mounted, check if the mount point is accessible
@@ -1016,12 +1018,12 @@ export class FileOperationsCommand implements ICommand {
         try {
           // Use stat to get file size and follow symlinks
           const fileStats = await stat(fullPath);
-
           // Check if directory - use both stat and Dirent for robustness
           const isDir =
             fileStats.isDirectory() ||
             entry.isDirectory() ||
-            entry.name.startsWith('OneDrive '); // Windows OneDrive hack
+            entry.name.startsWith('OneDrive ') || // Windows OneDrive hack
+            entry.name.startsWith('SynologyDrive'); // Windows SynologyDrive hack
 
           if (isDir) {
             directoryCount++;
@@ -1265,7 +1267,9 @@ export class FileOperationsCommand implements ICommand {
           isSymbolicLink: isSymlink,
           isDirectory: isSymlink
             ? linkTargetType === 'directory'
-            : entry.isDirectory() || entry.name.startsWith('OneDrive '), // hack because stats doesnt recognize strange OneDrive links on Windows
+            : entry.isDirectory() ||
+              entry.name.startsWith('OneDrive ') ||
+              entry.name.startsWith('SynologyDrive'), // hack because stats doesnt recognize strange OneDrive or SynologyDrive links on Windows
           isFile: isSymlink ? linkTargetType === 'file' : entry.isFile(),
           linkTargetType, // 'file' | 'directory' | null
         };
@@ -1658,7 +1662,8 @@ export class FileOperationsCommand implements ICommand {
     const sourceStats = await stat(absoluteSource);
 
     // Get unique destination path if file/folder already exists
-    const absoluteDestination = this.getUniqueDestinationPath(resolvedDestination);
+    const absoluteDestination =
+      this.getUniqueDestinationPath(resolvedDestination);
 
     if (sourceStats.isDirectory()) {
       // Count total files for progress tracking

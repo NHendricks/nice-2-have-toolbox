@@ -1,9 +1,11 @@
 Commander:
+- use property env file for setting env vars like JAVA_HOME, ...
+- set NODE_ENV= when starting cmdline ... !!! Otherwoise we have =production and if we start vscode the deps are incomplete :-o
+- check why d:\SynologyDrive is not visible in nhcommander
 - copy and paste (ctrl+c ctrl+v) should create new copy con file / dir
 - drag and drop files / folders
 - linux app
   - samba share fix go into dir
-  - fix icon part 2
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 - copy from zip (or from zip in zip) doesnt work or is very slow
@@ -14,9 +16,9 @@ Commander later:
 - cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
 - test and fix ftps
 - generate tests for all backend features
-GarbageFinder
-- fix delete files function (at least show error message when unsuccessful)
-- option to show files here also
+- GarbageFinder
+  - fix delete files function (at least show error message when unsuccessful)
+  - option to show files here also
 - pdf manager
   - define own managed folder
   - scan pdf
