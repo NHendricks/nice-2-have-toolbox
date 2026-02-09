@@ -1,5 +1,4 @@
 Commander:
-- type letter for open c:\ d:\ in driveselction dialog
 - copy and patse
 - drag and drop files / folders
 - button for refresh

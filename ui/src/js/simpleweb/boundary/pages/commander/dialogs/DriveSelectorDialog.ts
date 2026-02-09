@@ -182,6 +182,43 @@ export class DriveSelectorDialog extends LitElement {
   @property({ type: Boolean }) showUncInput = false
   @property({ type: String }) uncPath = ''
 
+  private boundKeyHandler = this.handleKeydown.bind(this)
+
+  connectedCallback() {
+    super.connectedCallback()
+    document.addEventListener('keydown', this.boundKeyHandler)
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    document.removeEventListener('keydown', this.boundKeyHandler)
+  }
+
+  private handleKeydown(e: KeyboardEvent) {
+    // Don't handle if UNC input is active
+    if (this.showUncInput) return
+
+    // Check if it's a single letter key (a-z)
+    if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
+      // Stop propagation to prevent command launcher from opening
+      e.preventDefault()
+      e.stopPropagation()
+
+      const letter = e.key.toUpperCase()
+      const drivePath = `${letter}:\\`
+
+      // Check if this drive exists
+      const driveExists = this.drives.some(
+        (drive) =>
+          drive.letter?.toUpperCase() === letter || drive.path === drivePath
+      )
+
+      if (driveExists) {
+        this.selectDrive(drivePath)
+      }
+    }
+  }
+
   private close() {
     this.dispatchEvent(new CustomEvent('close'))
   }
