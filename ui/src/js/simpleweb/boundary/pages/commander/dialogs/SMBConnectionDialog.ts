@@ -186,6 +186,7 @@ export class SMBConnectionDialog extends LitElement {
 
   @state() private server = ''
   @state() private share = ''
+  @state() private subPath = '' // Subfolder path after \\server\share\subfolder
   @state() private username = ''
   @state() private password = ''
   @state() private domain = ''
@@ -219,10 +220,14 @@ export class SMBConnectionDialog extends LitElement {
       cleanPath = path.substring(6) // Remove 'smb://'
     }
 
-    const parts = cleanPath.split('/')
+    const parts = cleanPath.split('/').filter(p => p)
     if (parts.length >= 2) {
       this.server = parts[0]
       this.share = parts[1]
+      // Store subfolder path if present (e.g., \\server\share\folder\subfolder)
+      if (parts.length > 2) {
+        this.subPath = parts.slice(2).join('/')
+      }
     }
   }
 
@@ -309,10 +314,16 @@ export class SMBConnectionDialog extends LitElement {
 
     const smbUrl = `smb://${userPart}:${encodedPassword}@${this.server}/${this.share}`
 
+    // Build full UNC path including subfolder if present
+    let uncPath = `\\\\${this.server}\\${this.share}`
+    if (this.subPath) {
+      uncPath += `\\${this.subPath.replace(/\//g, '\\')}`
+    }
+
     // Dispatch connect event with SMB URL
     this.dispatchEvent(
       new CustomEvent('connect', {
-        detail: { smbUrl, uncPath: `\\\\${this.server}\\${this.share}` },
+        detail: { smbUrl, uncPath },
         bubbles: true,
         composed: true,
       }),
