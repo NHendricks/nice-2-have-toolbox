@@ -4,7 +4,6 @@ Commander:
 - linux app
   - samba share fix (show dialog directly, continue on linux)
   - fix icon part 2
-- ctrl+pageup/down: select all files between these
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 - copy from zip (or from zip in zip) doesnt work or is very slow

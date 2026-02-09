@@ -1403,15 +1403,6 @@ export class Commander extends LitElement {
     const pane = this.getActivePane()
     const newSelected = new Set(pane.selectedIndices)
 
-    if (withSelection) {
-      // Toggle the CURRENT focused item first
-      if (newSelected.has(pane.focusedIndex)) {
-        newSelected.delete(pane.focusedIndex)
-      } else {
-        newSelected.add(pane.focusedIndex)
-      }
-    }
-
     // Get sorted list to navigate correctly
     let displayItems = pane.items
     if (pane.filterActive && pane.filter) {
@@ -1432,6 +1423,35 @@ export class Commander extends LitElement {
       0,
       Math.min(displayItems.length - 1, currentDisplayIndex + delta),
     )
+
+    if (withSelection) {
+      // Toggle selection for all items between current and new position (inclusive)
+      const startIdx = Math.min(currentDisplayIndex, newDisplayIndex)
+      const endIdx = Math.max(currentDisplayIndex, newDisplayIndex)
+
+      // Check if DESTINATION item is selected to determine toggle direction
+      // This allows extending selection with multiple presses in same direction
+      const destItem = displayItems[newDisplayIndex]
+      const destOriginalIndex = destItem
+        ? pane.items.findIndex((it) => it.path === destItem.path)
+        : -1
+      const shouldSelect = destOriginalIndex === -1 || !newSelected.has(destOriginalIndex)
+
+      for (let i = startIdx; i <= endIdx; i++) {
+        const item = displayItems[i]
+        if (item && item.name !== '..') {
+          // Find original index
+          const originalIndex = pane.items.findIndex((it) => it.path === item.path)
+          if (originalIndex !== -1) {
+            if (shouldSelect) {
+              newSelected.add(originalIndex)
+            } else {
+              newSelected.delete(originalIndex)
+            }
+          }
+        }
+      }
+    }
 
     // Find the new item in the sorted list
     const newItem = displayItems[newDisplayIndex]
