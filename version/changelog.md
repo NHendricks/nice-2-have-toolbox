@@ -9,10 +9,15 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+### v1.8.0 (10.02.2026)
+
+- build linux app
+- new app Garbagefinder - find your space hogs
+- new app ResticUI - manage your backups easily
 - fix file diff in directory compare
 - show free disk space
-- support .n2henv files in a dir when open cmdline (KEY=VALUE)
-- lots of small bug fixes (see commits)
+- support for .n2henv files in a directory when open cmdline from n2h-commander (KEY=VALUE, e.g. for JAVA_HOME / PATH)
+- lots of small bug fixes and improvements (see commits)
 
 ### v1.7.0 (07.02.2026)
 

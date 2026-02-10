@@ -1,1 +1,1 @@
-- prefernces - move to menu (away from commander)
+- store last used app and open this one at next start

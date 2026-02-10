@@ -1,4 +1,2 @@
 - browse with slider and instantly show diff to current files in a tree
 - save and load connections in the preferences (export/import)
-- use default password for unknow connections
-- show files as tree, remove weird first entry (this entry must be an error)
