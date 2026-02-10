@@ -121,5 +121,13 @@ export interface ResticDiffResult {
   }
 }
 
+// Saved connection (password is obfuscated, not stored in plain text)
+export interface SavedResticConnection {
+  name: string
+  repoPath: string
+  passwordObfuscated: string // XOR-obfuscated, base64-encoded password
+  backupPaths?: string[] // Remember last used backup paths
+}
+
 // UI Tab types
 export type ResticTab = 'backup' | 'browse' | 'compare' | 'retention' | 'health'

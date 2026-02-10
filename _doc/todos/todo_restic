@@ -1,5 +1,4 @@
-- browse with ipod wheel show instantly dhow files in tree
-- save connection details (password hashed)
-- remember last folder for this connection to backup
+- browse with slider and instantly show diff to current files in a tree
+- save and load connections in the preferences
 - use default password for unknow connections
 - remove initialize button (too dangerous)

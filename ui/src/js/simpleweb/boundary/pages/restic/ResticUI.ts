@@ -15,8 +15,37 @@ import type {
   ResticSnapshot,
   ResticStats,
   ResticTab,
+  SavedResticConnection,
   SnapshotGroup,
 } from './restic.types.js'
+
+// Obfuscation key for password storage (not cryptographically secure, but prevents plain text storage)
+const OBFUSCATION_KEY = 'nh-restic-conn-key'
+
+function obfuscatePassword(password: string): string {
+  let result = ''
+  for (let i = 0; i < password.length; i++) {
+    result += String.fromCharCode(
+      password.charCodeAt(i) ^ OBFUSCATION_KEY.charCodeAt(i % OBFUSCATION_KEY.length),
+    )
+  }
+  return btoa(result)
+}
+
+function deobfuscatePassword(obfuscated: string): string {
+  try {
+    const decoded = atob(obfuscated)
+    let result = ''
+    for (let i = 0; i < decoded.length; i++) {
+      result += String.fromCharCode(
+        decoded.charCodeAt(i) ^ OBFUSCATION_KEY.charCodeAt(i % OBFUSCATION_KEY.length),
+      )
+    }
+    return result
+  } catch {
+    return obfuscated
+  }
+}
 
 @customElement('nh-restic')
 export class ResticUI extends LitElement {
@@ -830,9 +859,14 @@ export class ResticUI extends LitElement {
   @state() private diffResult: ResticDiffResult | null = null
   @state() private isComparing: boolean = false
 
+  // Saved connections
+  @state() private savedConnections: SavedResticConnection[] = []
+  @state() private connectionName: string = ''
+
   connectedCallback() {
     super.connectedCallback()
     this.checkResticInstalled()
+    this.loadSavedConnections()
 
     // Listen for backup progress events
     ;(window as any).electron?.ipcRenderer?.on(
@@ -842,6 +876,86 @@ export class ResticUI extends LitElement {
         this.requestUpdate()
       },
     )
+  }
+
+  private loadSavedConnections() {
+    try {
+      const saved = localStorage.getItem('restic-connections')
+      if (saved) {
+        this.savedConnections = JSON.parse(saved)
+      }
+    } catch (error) {
+      console.error('Failed to load saved restic connections:', error)
+      this.savedConnections = []
+    }
+  }
+
+  private persistSavedConnections() {
+    localStorage.setItem('restic-connections', JSON.stringify(this.savedConnections))
+  }
+
+  private saveCurrentConnection() {
+    if (!this.connectionName.trim()) {
+      this.showMessage('error', 'Please enter a connection name')
+      return
+    }
+    if (!this.repoPath) {
+      this.showMessage('error', 'Please enter a repository path')
+      return
+    }
+    if (!this.repoPassword) {
+      this.showMessage('error', 'Please enter a password')
+      return
+    }
+
+    const connection: SavedResticConnection = {
+      name: this.connectionName.trim(),
+      repoPath: this.repoPath,
+      passwordObfuscated: obfuscatePassword(this.repoPassword),
+      backupPaths: this.backupPaths.length > 0 ? [...this.backupPaths] : undefined,
+    }
+
+    // Check if connection with same name exists
+    const existingIndex = this.savedConnections.findIndex(c => c.name === connection.name)
+    if (existingIndex >= 0) {
+      this.savedConnections[existingIndex] = connection
+    } else {
+      this.savedConnections = [...this.savedConnections, connection]
+    }
+
+    this.persistSavedConnections()
+    this.showMessage('success', `Connection "${connection.name}" saved`)
+    this.connectionName = ''
+  }
+
+  private loadConnection(connection: SavedResticConnection) {
+    this.repoPath = connection.repoPath
+    this.repoPassword = deobfuscatePassword(connection.passwordObfuscated)
+    this.connectionName = connection.name
+    // Restore saved backup paths
+    if (connection.backupPaths?.length) {
+      this.backupPaths = [...connection.backupPaths]
+    }
+  }
+
+  private deleteConnection(name: string, event: Event) {
+    event.stopPropagation()
+    this.savedConnections = this.savedConnections.filter(c => c.name !== name)
+    this.persistSavedConnections()
+    this.showMessage('info', `Connection "${name}" deleted`)
+  }
+
+  private updateConnectionBackupPaths() {
+    // Auto-save backup paths to the current connection (if one is loaded)
+    if (!this.connectionName) return
+    const index = this.savedConnections.findIndex(c => c.name === this.connectionName)
+    if (index >= 0) {
+      this.savedConnections[index] = {
+        ...this.savedConnections[index],
+        backupPaths: this.backupPaths.length > 0 ? [...this.backupPaths] : undefined,
+      }
+      this.persistSavedConnections()
+    }
   }
 
   private async checkResticInstalled() {
@@ -884,6 +998,17 @@ export class ResticUI extends LitElement {
           isInitialized: true,
         }
         this.snapshots = response.data?.snapshots || []
+        // Auto-load backup paths from last snapshot if none are set
+        if (this.backupPaths.length === 0 && this.snapshots.length > 0) {
+          // Sort by time descending to get the latest snapshot
+          const sorted = [...this.snapshots].sort(
+            (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+          )
+          const lastSnapshot = sorted[0]
+          if (lastSnapshot.paths?.length) {
+            this.backupPaths = [...lastSnapshot.paths]
+          }
+        }
         this.showMessage('success', `Connected! Found ${this.snapshots.length} snapshots.`)
         await this.loadStats()
       } else {
@@ -983,6 +1108,7 @@ export class ResticUI extends LitElement {
         const newPath = response.filePaths[0]
         if (!this.backupPaths.includes(newPath)) {
           this.backupPaths = [...this.backupPaths, newPath]
+          this.updateConnectionBackupPaths()
         }
       }
     } catch (error: any) {
@@ -992,6 +1118,7 @@ export class ResticUI extends LitElement {
 
   private removePath(path: string) {
     this.backupPaths = this.backupPaths.filter((p) => p !== path)
+    this.updateConnectionBackupPaths()
   }
 
   private async startBackup() {
@@ -1375,6 +1502,35 @@ export class ResticUI extends LitElement {
           : ''}
 
         <div class="repo-config">
+          ${this.savedConnections.length > 0
+            ? html`
+                <div style="margin-bottom: 1rem; padding: 0.75rem; background: #0f172a; border-radius: 6px;">
+                  <div style="margin-bottom: 0.5rem; color: #f59e0b; font-weight: 600; font-size: 0.85rem;">
+                    Saved Connections
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    ${this.savedConnections.map(
+                      (conn) => html`
+                        <div
+                          style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #1e293b; border-radius: 4px; cursor: pointer; border: 1px solid #334155;"
+                          @click=${() => this.loadConnection(conn)}
+                        >
+                          <span style="color: #0ea5e9; font-weight: 600;">${conn.name}</span>
+                          <span style="color: #64748b; font-size: 0.8rem;">${conn.repoPath.length > 30 ? conn.repoPath.substring(0, 30) + '...' : conn.repoPath}</span>
+                          <button
+                            style="background: #dc2626; color: white; border: none; padding: 0.15rem 0.4rem; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+                            @click=${(e: Event) => this.deleteConnection(conn.name, e)}
+                            title="Delete connection"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      `,
+                    )}
+                  </div>
+                </div>
+              `
+            : ''}
           <div class="repo-form">
             <div class="form-group">
               <label>Repository Path</label>
@@ -1414,6 +1570,25 @@ export class ResticUI extends LitElement {
                 Initialize
               </button>
             </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #334155;">
+            <input
+              type="text"
+              placeholder="Connection name..."
+              style="flex: 1; padding: 0.4rem 0.6rem; background: #0f172a; border: 1px solid #475569; border-radius: 4px; color: #e2e8f0; font-size: 0.85rem;"
+              .value=${this.connectionName}
+              @input=${(e: Event) =>
+                (this.connectionName = (e.target as HTMLInputElement).value)}
+              ?disabled=${this.isLoading}
+            />
+            <button
+              class="btn btn-secondary"
+              style="white-space: nowrap;"
+              @click=${this.saveCurrentConnection}
+              ?disabled=${this.isLoading || !this.repoPath || !this.repoPassword}
+            >
+              Save Connection
+            </button>
           </div>
           ${this.repository
             ? html`
@@ -1497,77 +1672,76 @@ export class ResticUI extends LitElement {
 
   private renderBackupPanel() {
     return html`
-      <div class="backup-panel">
-        <div class="backup-paths">
-          <h3>Folders to Backup</h3>
-          <div class="path-list">
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Paths section -->
+        <div class="backup-paths" style="background: #0f172a; border-radius: 8px; padding: 1rem;">
+          <div class="path-list" style="margin-bottom: 0.75rem;">
             ${this.backupPaths.length === 0
-              ? html`<div style="color: #64748b; font-size: 0.85rem">
-                  No folders selected
+              ? html`<div style="color: #64748b; font-size: 0.9rem; padding: 1rem; text-align: center;">
+                  No folders selected. Add a folder to backup.
                 </div>`
               : this.backupPaths.map(
                   (path) => html`
-                    <div class="path-item">
-                      <span>${path}</span>
+                    <div class="path-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.75rem; background: #1e293b; border-radius: 4px; margin-bottom: 0.5rem;">
+                      <span style="font-family: monospace; font-size: 0.9rem; color: #e2e8f0;">${path}</span>
                       <button
                         class="btn btn-small btn-danger"
                         @click=${() => this.removePath(path)}
+                        style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
                       >
-                        Remove
+                        ×
                       </button>
                     </div>
                   `,
                 )}
           </div>
-          <button class="btn btn-secondary" @click=${this.selectFolder}>
-            + Add Folder
-          </button>
+          <div style="display: flex; gap: 0.75rem;">
+            <button class="btn btn-secondary" @click=${this.selectFolder} style="flex: 1;">
+              + Add Folder
+            </button>
+            <button
+              class="btn btn-primary"
+              @click=${this.startBackup}
+              ?disabled=${this.backupPaths.length === 0 || this.isBackingUp}
+              style="flex: 2; font-weight: 600;"
+            >
+              ${this.isBackingUp ? 'Backing up...' : 'Backup Now'}
+            </button>
+          </div>
         </div>
 
-        <div>
-          ${this.isBackingUp
-            ? html`
-                <div class="backup-progress">
-                  <h3>Backup in Progress</h3>
-                  <div class="progress-bar-container">
-                    <div
-                      class="progress-bar"
-                      style="width: ${(this.backupProgress?.percentDone || 0) * 100}%"
-                    ></div>
-                    <div class="progress-bar-text">
-                      ${Math.round((this.backupProgress?.percentDone || 0) * 100)}%
-                    </div>
+        <!-- Progress section (only shown when backing up) -->
+        ${this.isBackingUp
+          ? html`
+              <div class="backup-progress" style="background: #0f172a; border-radius: 8px; padding: 1rem;">
+                <h3 style="margin: 0 0 0.75rem 0; font-size: 1rem; color: #e2e8f0;">Backup in Progress</h3>
+                <div class="progress-bar-container">
+                  <div
+                    class="progress-bar"
+                    style="width: ${(this.backupProgress?.percentDone || 0) * 100}%"
+                  ></div>
+                  <div class="progress-bar-text">
+                    ${Math.round((this.backupProgress?.percentDone || 0) * 100)}%
                   </div>
-                  <div class="progress-details">
-                    <span>
-                      ${this.backupProgress?.filesDone || 0} /
-                      ${this.backupProgress?.totalFiles || 0} files
-                    </span>
-                    <span>
-                      ${this.formatSize(this.backupProgress?.bytesDone || 0)} /
-                      ${this.formatSize(this.backupProgress?.totalBytes || 0)}
-                    </span>
-                  </div>
-                  ${this.backupProgress?.currentFile
-                    ? html`<div class="current-file">
-                        ${this.backupProgress.currentFile}
-                      </div>`
-                    : ''}
                 </div>
-              `
-            : html`
-                <div style="padding: 1rem">
-                  <button
-                    class="btn btn-primary"
-                    @click=${this.startBackup}
-                    ?disabled=${this.backupPaths.length === 0}
-                    style="width: 100%; padding: 1rem; font-size: 1rem"
-                  >
-                    Start Backup
-                  </button>
+                <div class="progress-details">
+                  <span>
+                    ${this.backupProgress?.filesDone || 0} /
+                    ${this.backupProgress?.totalFiles || 0} files
+                  </span>
+                  <span>
+                    ${this.formatSize(this.backupProgress?.bytesDone || 0)} /
+                    ${this.formatSize(this.backupProgress?.totalBytes || 0)}
+                  </span>
                 </div>
-              `}
-        </div>
+                ${this.backupProgress?.currentFile
+                  ? html`<div class="current-file">
+                      ${this.backupProgress.currentFile}
+                    </div>`
+                  : ''}
+              </div>
+            `
+          : ''}
       </div>
     `
   }
