@@ -3,9 +3,9 @@
  * Provides backup management using the restic CLI
  */
 
-import { exec, spawn, ChildProcess } from 'child_process';
-import { promisify } from 'util';
+import { ChildProcess, exec, spawn } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
+import { promisify } from 'util';
 import { CommandParameter, ICommand } from './command-interface.js';
 
 const execPromise = promisify(exec);
@@ -89,8 +89,18 @@ export class ResticCommand implements ICommand {
 
     // Check for remote repositories (s3:, sftp:, rest:, b2:, azure:, gs:, rclone:)
     // Windows paths like D:\folder have colon at position 1, remote URLs have it elsewhere
-    const remoteProtocols = ['s3:', 'sftp:', 'rest:', 'b2:', 'azure:', 'gs:', 'rclone:'];
-    const isRemote = remoteProtocols.some(protocol => repoPath.toLowerCase().startsWith(protocol));
+    const remoteProtocols = [
+      's3:',
+      'sftp:',
+      'rest:',
+      'b2:',
+      'azure:',
+      'gs:',
+      'rclone:',
+    ];
+    const isRemote = remoteProtocols.some((protocol) =>
+      repoPath.toLowerCase().startsWith(protocol),
+    );
     if (isRemote) {
       return { success: true, safe: true, reason: 'remote' };
     }
@@ -125,7 +135,8 @@ export class ResticCommand implements ICommand {
       return {
         success: true,
         installed: false,
-        error: 'restic is not installed. Please install it from https://restic.net',
+        error:
+          'restic is not installed. Please install it from https://restic.net',
       };
     }
   }
@@ -155,7 +166,6 @@ export class ResticCommand implements ICommand {
 
       // Send initial progress event to confirm the callback chain works
       if (this.progressCallback) {
-        console.log('[Restic] Sending initial progress event');
         this.progressCallback({
           type: 'progress',
           percentDone: 0,
@@ -197,9 +207,7 @@ export class ResticCommand implements ICommand {
           if (line.trim()) {
             try {
               const progress = JSON.parse(line);
-              console.log('[Restic] Parsed JSON:', progress.message_type);
               if (progress.message_type === 'status') {
-                console.log('[Restic] Status message, progressCallback exists:', !!this.progressCallback);
                 if (this.progressCallback) {
                   const progressData = {
                     type: 'progress',
@@ -210,7 +218,6 @@ export class ResticCommand implements ICommand {
                     bytesDone: progress.bytes_done || 0,
                     currentFile: progress.current_files?.[0] || '',
                   };
-                  console.log('[Restic] Calling progressCallback with:', progressData);
                   this.progressCallback(progressData);
                 }
               }
@@ -273,7 +280,10 @@ export class ResticCommand implements ICommand {
     const cmd = `restic ls --json "${snapshotId}" "${targetPath}"`;
 
     try {
-      const { stdout } = await execPromise(cmd, { env, maxBuffer: 50 * 1024 * 1024 });
+      const { stdout } = await execPromise(cmd, {
+        env,
+        maxBuffer: 50 * 1024 * 1024,
+      });
 
       // Parse NDJSON output
       const entries = stdout
@@ -386,12 +396,18 @@ export class ResticCommand implements ICommand {
     env: NodeJS.ProcessEnv,
   ): Promise<any> {
     if (!snapshotId1 || !snapshotId2) {
-      return { success: false, error: 'Two snapshot IDs are required for comparison' };
+      return {
+        success: false,
+        error: 'Two snapshot IDs are required for comparison',
+      };
     }
 
     try {
       const cmd = `restic diff "${snapshotId1}" "${snapshotId2}"`;
-      const { stdout } = await execPromise(cmd, { env, maxBuffer: 50 * 1024 * 1024 });
+      const { stdout } = await execPromise(cmd, {
+        env,
+        maxBuffer: 50 * 1024 * 1024,
+      });
 
       // Parse the diff output
       // Format: +    /path/to/added/file
