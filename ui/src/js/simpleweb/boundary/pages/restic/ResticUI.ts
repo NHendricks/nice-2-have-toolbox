@@ -1398,8 +1398,10 @@ export class ResticUI extends LitElement {
 
       if (response.success) {
         this.browseEntries = response.data?.entries || []
-        // Reset expanded paths when loading new snapshot
-        this.expandedPaths = new Set()
+        // Build tree and auto-expand single-child paths
+        const tree = this.buildFileTree(this.browseEntries)
+        const rootEntries = this.getRootEntries(tree)
+        this.expandedPaths = this.computeAutoExpandPaths(tree, rootEntries)
       } else {
         this.showMessage('error', response.error || 'Failed to load files')
       }
@@ -1816,6 +1818,39 @@ export class ResticUI extends LitElement {
     })
 
     return rootEntries
+  }
+
+  /**
+   * Auto-expand directories that have only one child until reaching
+   * a directory with multiple children
+   */
+  private computeAutoExpandPaths(
+    tree: Map<string, ResticFileEntry[]>,
+    rootEntries: ResticFileEntry[],
+  ): Set<string> {
+    const expanded = new Set<string>()
+
+    const expandSingleChildPath = (entry: ResticFileEntry) => {
+      if (entry.type !== 'dir') return
+
+      const children = tree.get(entry.path) || []
+      // Only auto-expand if there's exactly 1 child
+      if (children.length === 1) {
+        expanded.add(entry.path)
+        // Continue expanding if the single child is also a directory
+        expandSingleChildPath(children[0])
+      } else if (children.length > 1) {
+        // Stop here - user will manually expand further
+        return
+      }
+    }
+
+    // Start from each root entry
+    for (const entry of rootEntries) {
+      expandSingleChildPath(entry)
+    }
+
+    return expanded
   }
 
   render() {
