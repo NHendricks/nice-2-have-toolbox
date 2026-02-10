@@ -96,6 +96,23 @@ export class ZipHelper {
   }
 
   /**
+   * Check if an entry exists in a ZIP file
+   */
+  static entryExistsInZip(zipFilePath: string, entryPath: string): boolean {
+    if (!fs.existsSync(zipFilePath)) {
+      return false;
+    }
+    try {
+      const zip = new AdmZip(zipFilePath);
+      const normalizedPath = entryPath.replace(/\\/g, '/');
+      const entry = zip.getEntry(normalizedPath);
+      return entry !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Extract nested ZIP to temp directory and return the temp path
    */
   private static extractNestedZipToTemp(

@@ -1659,8 +1659,23 @@ export class FileOperationsCommand implements ICommand {
     if (!sourceZip.isZipPath && destZip.isZipPath) {
       const sourceFilePath = path.resolve(sourcePath);
 
-      // Handle nested dest ZIP
-      if (destZip.isNestedZip) {
+      // Handle nested dest ZIP - but only if the nested ZIP actually exists
+      // If copying a .zip file INTO another .zip, and the inner .zip doesn't exist yet,
+      // treat it as adding a regular file, not navigating into a nested ZIP
+      let treatAsNestedZip = destZip.isNestedZip;
+      if (treatAsNestedZip && destZip.nestedZips.length > 0) {
+        // Check if the first nested ZIP exists in the outer ZIP
+        const firstNestedZip = destZip.nestedZips[0];
+        if (!ZipHelper.entryExistsInZip(destZip.zipFile, firstNestedZip)) {
+          // The nested ZIP doesn't exist - we're adding a new file that happens to be a .zip
+          treatAsNestedZip = false;
+          console.log(
+            `[Copy] Nested ZIP ${firstNestedZip} doesn't exist in ${destZip.zipFile}, treating as regular file add`,
+          );
+        }
+      }
+
+      if (treatAsNestedZip) {
         const resolved = (ZipHelper as any).resolveNestedZipPath(destZip);
         try {
           // Add to the innermost ZIP
