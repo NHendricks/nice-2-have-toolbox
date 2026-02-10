@@ -933,6 +933,7 @@ export class ResticUI extends LitElement {
 
   // Tree view state for file browser
   @state() private expandedPaths: Set<string> = new Set()
+  @state() private selectedFiles: Set<string> = new Set()
 
   connectedCallback() {
     super.connectedCallback()
@@ -1405,6 +1406,8 @@ export class ResticUI extends LitElement {
         const tree = this.buildFileTree(this.browseEntries)
         const rootEntries = this.getRootEntries(tree)
         this.expandedPaths = this.computeAutoExpandPaths(tree, rootEntries)
+        // Reset file selection
+        this.selectedFiles = new Set()
       } else {
         this.showMessage('error', response.error || 'Failed to load files')
       }
@@ -1421,7 +1424,18 @@ export class ResticUI extends LitElement {
     await this.loadSnapshotFiles()
   }
 
-  private async restoreSelected() {
+  private toggleFileSelection(path: string, event: Event) {
+    event.stopPropagation()
+    const newSelected = new Set(this.selectedFiles)
+    if (newSelected.has(path)) {
+      newSelected.delete(path)
+    } else {
+      newSelected.add(path)
+    }
+    this.selectedFiles = newSelected
+  }
+
+  private async restoreAll() {
     if (!this.selectedSnapshot) return
 
     try {
@@ -1453,6 +1467,53 @@ export class ResticUI extends LitElement {
             'success',
             `Files restored to ${response.filePaths[0]}`,
           )
+        } else {
+          this.showMessage('error', restoreResponse.error || 'Restore failed')
+        }
+
+        this.isLoading = false
+        this.loadingMessage = ''
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+      this.isLoading = false
+    }
+  }
+
+  private async restoreSelectedFiles() {
+    if (!this.selectedSnapshot || this.selectedFiles.size === 0) return
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'show-open-dialog',
+        {
+          properties: ['openDirectory', 'createDirectory'],
+          title: 'Select restore destination',
+        },
+      )
+
+      if (
+        response.success &&
+        !response.canceled &&
+        response.filePaths?.length > 0
+      ) {
+        this.isLoading = true
+        this.loadingMessage = `Restoring ${this.selectedFiles.size} files...`
+
+        const restoreResponse = await this.invokeRestic({
+          operation: 'restore',
+          snapshotId:
+            this.selectedSnapshot.short_id || this.selectedSnapshot.id,
+          targetPath: response.filePaths[0],
+          includePaths: Array.from(this.selectedFiles),
+        })
+
+        if (restoreResponse.success) {
+          this.showMessage(
+            'success',
+            `${this.selectedFiles.size} files restored to ${response.filePaths[0]}`,
+          )
+          this.selectedFiles = new Set()
         } else {
           this.showMessage('error', restoreResponse.error || 'Restore failed')
         }
@@ -1750,13 +1811,14 @@ export class ResticUI extends LitElement {
   ): any {
     const isDir = entry.type === 'dir'
     const isExpanded = this.expandedPaths.has(entry.path)
+    const isSelected = this.selectedFiles.has(entry.path)
     const children = isDir ? tree.get(entry.path) || [] : []
     const indent = depth * 20
 
     return html`
       <div class="tree-node">
         <div
-          class="tree-item ${isDir ? 'directory' : 'file'}"
+          class="tree-item ${isDir ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}"
           style="padding-left: ${indent + 8}px"
           @click=${() => isDir && this.toggleTreeNode(entry.path)}
         >
@@ -1768,6 +1830,14 @@ export class ResticUI extends LitElement {
           >
             ${isExpanded ? '▼' : '▶'}
           </span>
+          ${!isDir
+            ? html`<input
+                type="checkbox"
+                .checked=${isSelected}
+                @click=${(e: Event) => this.toggleFileSelection(entry.path, e)}
+                style="margin-right: 0.25rem; cursor: pointer;"
+              />`
+            : ''}
           <span class="tree-icon">${isDir ? '📁' : '📄'}</span>
           <span class="tree-name">${entry.name}</span>
           ${!isDir
@@ -2318,7 +2388,14 @@ export class ResticUI extends LitElement {
                 <div class="file-actions">
                   <button
                     class="btn btn-primary"
-                    @click=${this.restoreSelected}
+                    @click=${this.restoreSelectedFiles}
+                    ?disabled=${this.selectedFiles.size === 0}
+                  >
+                    Restore Selected (${this.selectedFiles.size})
+                  </button>
+                  <button
+                    class="btn btn-secondary"
+                    @click=${this.restoreAll}
                   >
                     Restore All
                   </button>
