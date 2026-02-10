@@ -6,6 +6,7 @@ import './simpleweb/boundary/pages/Faq'
 import './simpleweb/boundary/pages/MoneyFinder'
 import './simpleweb/boundary/pages/GarbageFinder'
 import './simpleweb/boundary/pages/restic/ResticUI'
+import './simpleweb/boundary/pages/taskboard/TaskBoard'
 
 const LAST_APP_KEY = 'nh-toolbox-last-app'
 
@@ -17,6 +18,7 @@ const validPaths = [
   '/moneyfinder',
   '/garbagefinder',
   '/restic',
+  '/taskboard',
 ]
 
 const outlet = document.querySelector('.view')
@@ -31,6 +33,7 @@ router.setRoutes([
   { path: '/moneyfinder', component: 'nh-moneyfinder' },
   { path: '/garbagefinder', component: 'nh-garbagefinder' },
   { path: '/restic', component: 'nh-restic' },
+  { path: '/taskboard', component: 'nh-taskboard' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 

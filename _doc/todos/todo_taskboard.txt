@@ -1,3 +1,4 @@
-- taskboard (jira-like)
-  - save tasks as textfiles here in repo
-  - prevent merge conflicts - not too much metadata
+- taskboard
+  - add categories (create folders for it)
+  - filter possibility for category
+  - ...

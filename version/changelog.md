@@ -26,6 +26,8 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
   - show date of files
   - fix date sort toggle
   - fix: copy zip into zip did not work
+- new app Taskboard
+  - manage tasks
 
 ### v1.8.0 (10.02.2026)
 
