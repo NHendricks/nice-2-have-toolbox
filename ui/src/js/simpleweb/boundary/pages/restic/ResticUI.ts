@@ -1001,15 +1001,17 @@ export class ResticUI extends LitElement {
           isInitialized: true,
         }
         this.snapshots = result.snapshots || []
-        // Auto-load backup paths from last snapshot if none are set
-        if (this.backupPaths.length === 0 && this.snapshots.length > 0) {
-          // Sort by time descending to get the latest snapshot
-          const sorted = [...this.snapshots].sort(
-            (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
-          )
-          const lastSnapshot = sorted[0]
-          if (lastSnapshot.paths?.length) {
-            this.backupPaths = [...lastSnapshot.paths]
+        // Always load all unique backup paths from ALL snapshots
+        if (this.snapshots.length > 0) {
+          // Collect all unique paths from all snapshots
+          const allPaths = new Set<string>()
+          for (const snapshot of this.snapshots) {
+            if (snapshot.paths?.length) {
+              snapshot.paths.forEach((p: string) => allPaths.add(p))
+            }
+          }
+          if (allPaths.size > 0) {
+            this.backupPaths = Array.from(allPaths).sort()
           }
         }
         this.showMessage('success', `Connected! Found ${this.snapshots.length} snapshots.`)

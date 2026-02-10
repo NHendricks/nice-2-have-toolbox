@@ -3,4 +3,3 @@
 - use default password for unknow connections
 - fix progress bar [DONE]
 - show files as tree, remove weird first entry (this entry must be an error)
-- when i change the connection read all backed up folders and show them in ui
