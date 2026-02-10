@@ -2288,7 +2288,12 @@ export class ResticUI extends LitElement {
         <div class="file-browser">
           <h3>
             ${this.selectedSnapshot
-              ? `Files in ${this.selectedSnapshot.short_id || this.selectedSnapshot.id}`
+              ? html`Files in ${this.selectedSnapshot.short_id || this.selectedSnapshot.id}
+                  ${this.browseEntries.length > 0
+                    ? html`<span style="color: #64748b; font-weight: normal; font-size: 0.85rem; margin-left: 0.5rem;">
+                        (${this.browseEntries.filter((e) => e.type === 'file').length} files)
+                      </span>`
+                    : ''}`
               : 'Select a snapshot'}
           </h3>
 
