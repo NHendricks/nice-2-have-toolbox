@@ -166,7 +166,7 @@ export const commanderStyles = css`
     padding: 0rem 0rem;
     cursor: pointer;
     display: grid;
-    grid-template-columns: 20px 1fr auto;
+    grid-template-columns: 20px 1fr 75px 55px;
     gap: 0.8rem;
     align-items: center;
     border-radius: 4px;
@@ -206,8 +206,14 @@ export const commanderStyles = css`
   }
 
   .file-size {
-    font-size: 0.85rem;
+    font-size: 0.65rem;
     color: #94a3b8;
+    text-align: right;
+  }
+
+  .file-date {
+    font-size: 0.75rem;
+    color: #64748b;
     text-align: right;
   }
 

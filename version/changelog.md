@@ -19,6 +19,8 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 - commander
   - confirm delete of files
   - createdir, set marker on it to directly navigate into
+  - fix marker Strg+down marks 2 files
+  - show date of files
 
 ### v1.8.0 (10.02.2026)
 

@@ -19,7 +19,7 @@ import { KeyboardHandler } from './commander/services/KeyboardHandler.js'
 import { PaneManager } from './commander/services/PaneManager.js'
 import { settingsService } from './commander/services/SettingsService.js'
 import { FILE_ICONS } from './commander/utils/file-utils.js'
-import { formatFileSize } from './commander/utils/FormatUtils.js'
+import { formatFileSize, formatCompactDate } from './commander/utils/FormatUtils.js'
 import {
   getParentPath,
   getPathSeparator,
@@ -2662,6 +2662,7 @@ export class Commander extends LitElement {
 
   // Delegate to imported utilities
   formatFileSize = formatFileSize
+  formatCompactDate = formatCompactDate
   sortItems = sortItems
 
   toggleSort(sortBy: 'name' | 'size' | 'modified' | 'extension') {
@@ -3248,6 +3249,7 @@ export class Commander extends LitElement {
                 <span class="file-name ${item.isDirectory ? 'directory' : ''}"
                   >${item.name}</span
                 >
+                <span class="file-date">${this.formatCompactDate(item.modified)}</span>
                 <span class="file-size">${this.formatFileSize(item.size)}</span>
               </div>
             `,

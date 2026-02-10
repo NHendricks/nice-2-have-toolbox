@@ -34,6 +34,21 @@ export function formatShortDate(date: Date): string {
 }
 
 /**
+ * Format a date compactly for file listings (DD.MM.YY)
+ * @param date - Date, string, or timestamp to format
+ * @returns Compact date string (e.g., "15.01.24")
+ */
+export function formatCompactDate(date: Date | string | number): string {
+  if (!date) return '-'
+  const d = date instanceof Date ? date : new Date(date)
+  if (isNaN(d.getTime())) return '-'
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = String(d.getFullYear()).slice(-2)
+  return `${day}.${month}.${year}`
+}
+
+/**
  * Format a number with thousand separators
  * @param num - Number to format
  * @returns Formatted string (e.g., "1,234,567")
