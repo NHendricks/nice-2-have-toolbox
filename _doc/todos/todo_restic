@@ -1,4 +1,7 @@
 - browse with slider and instantly show diff to current files in a tree
-- save and load connections in the preferences
+- save and load connections in the preferences (export/import)
 - use default password for unknow connections
-- remove initialize button (too dangerous)
+- when connection cannot be established (wrong password) not exist you say connected and show 0 snapshots [DONE]
+- initialize only when empty folder or non existing folder [DONE]
+- fix progress
+- show files as tree, remove weitrd first entry (must be an error)

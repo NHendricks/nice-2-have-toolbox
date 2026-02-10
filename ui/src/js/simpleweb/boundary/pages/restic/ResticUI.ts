@@ -990,14 +990,15 @@ export class ResticUI extends LitElement {
     try {
       // Try to get snapshots to verify connection
       const response = await this.invokeRestic({ operation: 'snapshots' })
+      const result = response.data || response
 
-      if (response.success) {
+      if (response.success && result.success) {
         this.repository = {
           path: this.repoPath,
           password: this.repoPassword,
           isInitialized: true,
         }
-        this.snapshots = response.data?.snapshots || []
+        this.snapshots = result.snapshots || []
         // Auto-load backup paths from last snapshot if none are set
         if (this.backupPaths.length === 0 && this.snapshots.length > 0) {
           // Sort by time descending to get the latest snapshot
@@ -1012,12 +1013,14 @@ export class ResticUI extends LitElement {
         this.showMessage('success', `Connected! Found ${this.snapshots.length} snapshots.`)
         await this.loadStats()
       } else {
+        const errorMsg = result.error || response.error || 'Failed to connect'
         // Check if repository needs initialization
-        if (response.error?.includes('does not exist') ||
-            response.error?.includes('unable to open')) {
+        if (errorMsg.includes('does not exist') || errorMsg.includes('unable to open')) {
           this.showMessage('info', 'Repository not found. Click "Initialize" to create a new one.')
+        } else if (errorMsg.includes('wrong password') || errorMsg.includes('no key found')) {
+          this.showMessage('error', 'Wrong password. Please check your credentials.')
         } else {
-          this.showMessage('error', response.error || 'Failed to connect')
+          this.showMessage('error', errorMsg)
         }
       }
     } catch (error: any) {
@@ -1035,9 +1038,20 @@ export class ResticUI extends LitElement {
     }
 
     this.isLoading = true
-    this.loadingMessage = 'Initializing repository...'
+    this.loadingMessage = 'Checking if safe to initialize...'
 
     try {
+      // First check if the path is safe for initialization
+      const safeCheck = await this.invokeRestic({ operation: 'check-init-safe' })
+      if (safeCheck.success && safeCheck.data && !safeCheck.data.safe) {
+        this.showMessage(
+          'error',
+          `Cannot initialize: folder contains ${safeCheck.data.fileCount} files. Use an empty folder or connect to existing repository.`,
+        )
+        return
+      }
+
+      this.loadingMessage = 'Initializing repository...'
       const response = await this.invokeRestic({ operation: 'init' })
 
       if (response.success) {

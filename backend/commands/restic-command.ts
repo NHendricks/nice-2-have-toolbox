@@ -5,6 +5,7 @@
 
 import { exec, spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
+import { existsSync, readdirSync } from 'fs';
 import { CommandParameter, ICommand } from './command-interface.js';
 
 const execPromise = promisify(exec);
@@ -49,6 +50,8 @@ export class ResticCommand implements ICommand {
       switch (operation) {
         case 'check-installed':
           return await this.checkInstalled();
+        case 'check-init-safe':
+          return this.checkInitSafe(repoPath);
         case 'init':
           return await this.initRepo(env);
         case 'backup':
@@ -74,6 +77,40 @@ export class ResticCommand implements ICommand {
         default:
           return { success: false, error: `Unknown operation: ${operation}` };
       }
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  private checkInitSafe(repoPath: string): any {
+    if (!repoPath) {
+      return { success: true, safe: true, reason: 'no_path' };
+    }
+
+    // Check for remote repositories (s3:, sftp:, rest:, b2:, azure:, gs:, rclone:)
+    // Windows paths like D:\folder have colon at position 1, remote URLs have it elsewhere
+    const remoteProtocols = ['s3:', 'sftp:', 'rest:', 'b2:', 'azure:', 'gs:', 'rclone:'];
+    const isRemote = remoteProtocols.some(protocol => repoPath.toLowerCase().startsWith(protocol));
+    if (isRemote) {
+      return { success: true, safe: true, reason: 'remote' };
+    }
+
+    // For local paths, check if folder doesn't exist or is empty
+    if (!existsSync(repoPath)) {
+      return { success: true, safe: true, reason: 'not_exists' };
+    }
+
+    try {
+      const contents = readdirSync(repoPath);
+      if (contents.length === 0) {
+        return { success: true, safe: true, reason: 'empty' };
+      }
+      return {
+        success: true,
+        safe: false,
+        reason: 'not_empty',
+        fileCount: contents.length,
+      };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
