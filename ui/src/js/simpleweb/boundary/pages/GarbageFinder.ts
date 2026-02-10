@@ -1,6 +1,10 @@
 import { LitElement, css, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import '../navigation/ResponsiveMenu'
+import {
+  getGarbageFinderState,
+  saveGarbageFinderState,
+} from '../../services/SessionState.js'
 
 interface FolderNode {
   name: string
@@ -522,8 +526,22 @@ export class GarbageFinder extends LitElement {
   connectedCallback() {
     super.connectedCallback()
 
-    // Load available drives
-    this.loadDrives()
+    // Restore session state
+    const savedState = getGarbageFinderState()
+    if (savedState.sortBySize !== undefined) {
+      this.sortBySize = savedState.sortBySize
+    }
+    if (savedState.treeData && savedState.treeData.length > 0) {
+      this.treeData = savedState.treeData
+    }
+    if (savedState.expandedPaths) {
+      this.expandedPaths = new Set(savedState.expandedPaths)
+    }
+
+    // Load available drives only if no saved tree data
+    if (!savedState.treeData || savedState.treeData.length === 0) {
+      this.loadDrives()
+    }
 
     // Listen for scan progress events
     ;(window as any).electron?.ipcRenderer?.on(
@@ -545,6 +563,16 @@ export class GarbageFinder extends LitElement {
         this.requestUpdate()
       },
     )
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    // Save session state when navigating away
+    saveGarbageFinderState({
+      sortBySize: this.sortBySize,
+      treeData: this.treeData,
+      expandedPaths: Array.from(this.expandedPaths),
+    })
   }
 
   async loadDrives() {
@@ -1028,6 +1056,7 @@ export class GarbageFinder extends LitElement {
               class="btn-toggle ${this.sortBySize ? 'active' : ''}"
               @click=${() => {
                 this.sortBySize = !this.sortBySize
+                saveGarbageFinderState({ sortBySize: this.sortBySize })
               }}
               title="Sort folders by size (largest first)"
             >

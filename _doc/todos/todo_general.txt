@@ -1,4 +1,3 @@
-- save current values in apps (garbage, restic)
 - quick launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)
 

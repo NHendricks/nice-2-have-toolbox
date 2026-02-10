@@ -17,6 +17,10 @@ import type {
   SavedResticConnection,
   SnapshotGroup,
 } from './restic.types.js'
+import {
+  getResticState,
+  saveResticState,
+} from '../../../services/SessionState.js'
 
 // Obfuscation key for password storage (not cryptographically secure, but prevents plain text storage)
 const OBFUSCATION_KEY = 'nh-restic-conn-key'
@@ -940,6 +944,17 @@ export class ResticUI extends LitElement {
     this.checkResticInstalled()
     this.loadSavedConnections()
 
+    // Restore session state
+    const savedState = getResticState()
+    if (savedState.activeTab) this.activeTab = savedState.activeTab as ResticTab
+    if (savedState.repoPath) this.repoPath = savedState.repoPath
+    if (savedState.repoPassword) this.repoPassword = savedState.repoPassword
+    if (savedState.backupPaths) this.backupPaths = savedState.backupPaths
+    if (savedState.connectionName) this.connectionName = savedState.connectionName
+    if (savedState.retentionPolicy) {
+      this.retentionPolicy = { ...this.retentionPolicy, ...savedState.retentionPolicy }
+    }
+
     // Listen for backup progress events
     // Note: preload strips the event, so we only receive the data
     ;(window as any).electron?.ipcRenderer?.on(
@@ -950,6 +965,26 @@ export class ResticUI extends LitElement {
         this.requestUpdate()
       },
     )
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    // Save session state when navigating away
+    saveResticState({
+      activeTab: this.activeTab,
+      repoPath: this.repoPath,
+      repoPassword: this.repoPassword,
+      backupPaths: this.backupPaths,
+      connectionName: this.connectionName,
+      retentionPolicy: {
+        keepLast: this.retentionPolicy.keepLast,
+        keepHourly: this.retentionPolicy.keepHourly,
+        keepDaily: this.retentionPolicy.keepDaily,
+        keepWeekly: this.retentionPolicy.keepWeekly,
+        keepMonthly: this.retentionPolicy.keepMonthly,
+        keepYearly: this.retentionPolicy.keepYearly,
+      },
+    })
   }
 
   private loadSavedConnections() {

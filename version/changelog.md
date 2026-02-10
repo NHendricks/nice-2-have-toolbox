@@ -11,6 +11,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 
 - general
   - store last used app and open this one at next start
+  - save current values in apps (garbage, restic)
 - restic
   - export / import settings
   - auto unfold folders in snapshot views
