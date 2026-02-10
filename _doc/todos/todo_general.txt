@@ -1,0 +1,1 @@
+- prefernces - move to menu (away from commander)

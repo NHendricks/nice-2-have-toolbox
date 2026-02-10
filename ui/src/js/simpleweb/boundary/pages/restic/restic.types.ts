@@ -109,5 +109,17 @@ export interface SnapshotGroup {
   snapshots: ResticSnapshot[]
 }
 
+// Diff result from comparing two snapshots
+export interface ResticDiffResult {
+  added: string[]
+  removed: string[]
+  modified: string[]
+  summary: {
+    addedCount: number
+    removedCount: number
+    modifiedCount: number
+  }
+}
+
 // UI Tab types
-export type ResticTab = 'backup' | 'browse' | 'retention' | 'health'
+export type ResticTab = 'backup' | 'browse' | 'compare' | 'retention' | 'health'

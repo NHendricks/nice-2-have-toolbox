@@ -69,6 +69,8 @@ export class ResticCommand implements ICommand {
           return await this.stats(env);
         case 'unlock':
           return await this.unlock(env);
+        case 'diff':
+          return await this.diff(params.snapshotId1, params.snapshotId2, env);
         default:
           return { success: false, error: `Unknown operation: ${operation}` };
       }
@@ -319,6 +321,58 @@ export class ResticCommand implements ICommand {
   private async unlock(env: NodeJS.ProcessEnv): Promise<any> {
     const { stdout } = await execPromise('restic unlock', { env });
     return { success: true, message: stdout };
+  }
+
+  private async diff(
+    snapshotId1: string,
+    snapshotId2: string,
+    env: NodeJS.ProcessEnv,
+  ): Promise<any> {
+    if (!snapshotId1 || !snapshotId2) {
+      return { success: false, error: 'Two snapshot IDs are required for comparison' };
+    }
+
+    try {
+      const cmd = `restic diff "${snapshotId1}" "${snapshotId2}"`;
+      const { stdout } = await execPromise(cmd, { env, maxBuffer: 50 * 1024 * 1024 });
+
+      // Parse the diff output
+      // Format: +    /path/to/added/file
+      //         -    /path/to/removed/file
+      //         M    /path/to/modified/file
+      const lines = stdout.split('\n').filter((line: string) => line.trim());
+
+      const added: string[] = [];
+      const removed: string[] = [];
+      const modified: string[] = [];
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('+')) {
+          added.push(trimmed.substring(1).trim());
+        } else if (trimmed.startsWith('-')) {
+          removed.push(trimmed.substring(1).trim());
+        } else if (trimmed.startsWith('M')) {
+          modified.push(trimmed.substring(1).trim());
+        }
+      }
+
+      return {
+        success: true,
+        diff: {
+          added,
+          removed,
+          modified,
+          summary: {
+            addedCount: added.length,
+            removedCount: removed.length,
+            modifiedCount: modified.length,
+          },
+        },
+      };
+    } catch (error: any) {
+      throw error;
+    }
   }
 
   getDescription(): string {

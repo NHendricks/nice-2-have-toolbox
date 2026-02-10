@@ -8,6 +8,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import type {
   ResticBackupProgress,
   ResticBackupSummary,
+  ResticDiffResult,
   ResticFileEntry,
   ResticRepository,
   ResticRetentionPolicy,
@@ -628,6 +629,168 @@ export class ResticUI extends LitElement {
     .not-installed a {
       color: #0ea5e9;
     }
+
+    /* Compare Panel Styles */
+    .compare-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .compare-selectors {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 1rem;
+      align-items: start;
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .compare-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .compare-selector h4 {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+
+    .compare-selector select {
+      padding: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+    }
+
+    .compare-selector select:focus {
+      outline: none;
+      border-color: #0ea5e9;
+    }
+
+    .compare-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: #64748b;
+      padding-top: 1.5rem;
+    }
+
+    .compare-actions {
+      display: flex;
+      justify-content: center;
+    }
+
+    .diff-results {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .diff-section {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .diff-section h4 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .diff-section.added h4 {
+      color: #22c55e;
+    }
+
+    .diff-section.removed h4 {
+      color: #ef4444;
+    }
+
+    .diff-section.modified h4 {
+      color: #f59e0b;
+    }
+
+    .diff-count {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      background: currentColor;
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .diff-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .diff-item {
+      font-family: monospace;
+      font-size: 0.8rem;
+      padding: 0.25rem 0.5rem;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .diff-item.added {
+      border-left: 3px solid #22c55e;
+    }
+
+    .diff-item.removed {
+      border-left: 3px solid #ef4444;
+    }
+
+    .diff-item.modified {
+      border-left: 3px solid #f59e0b;
+    }
+
+    .compare-summary {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      padding: 1rem;
+      background: #0f172a;
+      border-radius: 8px;
+    }
+
+    .summary-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .summary-stat.added {
+      color: #22c55e;
+    }
+
+    .summary-stat.removed {
+      color: #ef4444;
+    }
+
+    .summary-stat.modified {
+      color: #f59e0b;
+    }
+
+    .summary-stat .count {
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
   `
 
   @state() private activeTab: ResticTab = 'backup'
@@ -660,6 +823,12 @@ export class ResticUI extends LitElement {
     keepMonthly: 12,
     keepYearly: 2,
   }
+
+  // Compare state
+  @state() private compareSnapshot1: ResticSnapshot | null = null
+  @state() private compareSnapshot2: ResticSnapshot | null = null
+  @state() private diffResult: ResticDiffResult | null = null
+  @state() private isComparing: boolean = false
 
   connectedCallback() {
     super.connectedCallback()
@@ -1024,6 +1193,44 @@ export class ResticUI extends LitElement {
     }
   }
 
+  private async compareSnapshots() {
+    if (!this.compareSnapshot1 || !this.compareSnapshot2) {
+      this.showMessage('error', 'Please select two snapshots to compare')
+      return
+    }
+
+    if (this.compareSnapshot1.id === this.compareSnapshot2.id) {
+      this.showMessage('error', 'Please select two different snapshots')
+      return
+    }
+
+    this.isComparing = true
+    this.diffResult = null
+
+    try {
+      const response = await this.invokeRestic({
+        operation: 'diff',
+        snapshotId1: this.compareSnapshot1.short_id || this.compareSnapshot1.id,
+        snapshotId2: this.compareSnapshot2.short_id || this.compareSnapshot2.id,
+      })
+
+      if (response.success && response.data?.diff) {
+        this.diffResult = response.data.diff
+        const total =
+          this.diffResult.summary.addedCount +
+          this.diffResult.summary.removedCount +
+          this.diffResult.summary.modifiedCount
+        this.showMessage('success', `Comparison complete: ${total} changes found`)
+      } else {
+        this.showMessage('error', response.error || 'Comparison failed')
+      }
+    } catch (error: any) {
+      this.showMessage('error', error.message)
+    } finally {
+      this.isComparing = false
+    }
+  }
+
   private showMessage(type: 'success' | 'error' | 'info', text: string) {
     this.message = { type, text }
     setTimeout(() => {
@@ -1243,6 +1450,15 @@ export class ResticUI extends LitElement {
                   Browse History
                 </div>
                 <div
+                  class="tab ${this.activeTab === 'compare' ? 'active' : ''}"
+                  @click=${() => {
+                    this.activeTab = 'compare'
+                    this.loadSnapshots()
+                  }}
+                >
+                  Compare
+                </div>
+                <div
                   class="tab ${this.activeTab === 'retention' ? 'active' : ''}"
                   @click=${() => (this.activeTab = 'retention')}
                 >
@@ -1262,6 +1478,7 @@ export class ResticUI extends LitElement {
               <div class="tab-content">
                 ${this.activeTab === 'backup' ? this.renderBackupPanel() : ''}
                 ${this.activeTab === 'browse' ? this.renderBrowsePanel() : ''}
+                ${this.activeTab === 'compare' ? this.renderComparePanel() : ''}
                 ${this.activeTab === 'retention' ? this.renderRetentionPanel() : ''}
                 ${this.activeTab === 'health' ? this.renderHealthPanel() : ''}
               </div>
@@ -1472,6 +1689,168 @@ export class ResticUI extends LitElement {
                 </div>
               `}
         </div>
+      </div>
+    `
+  }
+
+  private renderComparePanel() {
+    return html`
+      <div class="compare-panel">
+        <div class="compare-selectors">
+          <div class="compare-selector">
+            <h4>Snapshot 1 (older)</h4>
+            <select
+              @change=${(e: Event) => {
+                const id = (e.target as HTMLSelectElement).value
+                this.compareSnapshot1 = this.snapshots.find((s) => s.id === id) || null
+                this.diffResult = null
+              }}
+            >
+              <option value="">Select a snapshot...</option>
+              ${this.snapshots.map(
+                (s) => html`
+                  <option
+                    value=${s.id}
+                    ?selected=${this.compareSnapshot1?.id === s.id}
+                  >
+                    ${s.short_id || s.id.substring(0, 8)} - ${this.formatDate(s.time)}
+                  </option>
+                `,
+              )}
+            </select>
+            ${this.compareSnapshot1
+              ? html`
+                  <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem">
+                    ${this.compareSnapshot1.paths?.join(', ')}
+                  </div>
+                `
+              : ''}
+          </div>
+
+          <div class="compare-arrow">→</div>
+
+          <div class="compare-selector">
+            <h4>Snapshot 2 (newer)</h4>
+            <select
+              @change=${(e: Event) => {
+                const id = (e.target as HTMLSelectElement).value
+                this.compareSnapshot2 = this.snapshots.find((s) => s.id === id) || null
+                this.diffResult = null
+              }}
+            >
+              <option value="">Select a snapshot...</option>
+              ${this.snapshots.map(
+                (s) => html`
+                  <option
+                    value=${s.id}
+                    ?selected=${this.compareSnapshot2?.id === s.id}
+                  >
+                    ${s.short_id || s.id.substring(0, 8)} - ${this.formatDate(s.time)}
+                  </option>
+                `,
+              )}
+            </select>
+            ${this.compareSnapshot2
+              ? html`
+                  <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem">
+                    ${this.compareSnapshot2.paths?.join(', ')}
+                  </div>
+                `
+              : ''}
+          </div>
+        </div>
+
+        <div class="compare-actions">
+          <button
+            class="btn btn-primary"
+            @click=${this.compareSnapshots}
+            ?disabled=${!this.compareSnapshot1 || !this.compareSnapshot2 || this.isComparing}
+            style="padding: 0.75rem 2rem"
+          >
+            ${this.isComparing ? html`<span class="spinner"></span>` : ''}
+            Compare Snapshots
+          </button>
+        </div>
+
+        ${this.diffResult
+          ? html`
+              <div class="compare-summary">
+                <div class="summary-stat added">
+                  <span class="count">${this.diffResult.summary.addedCount}</span>
+                  <span>Added</span>
+                </div>
+                <div class="summary-stat removed">
+                  <span class="count">${this.diffResult.summary.removedCount}</span>
+                  <span>Removed</span>
+                </div>
+                <div class="summary-stat modified">
+                  <span class="count">${this.diffResult.summary.modifiedCount}</span>
+                  <span>Modified</span>
+                </div>
+              </div>
+
+              <div class="diff-results">
+                <div class="diff-section added">
+                  <h4>
+                    Added
+                    <span class="diff-count">${this.diffResult.summary.addedCount}</span>
+                  </h4>
+                  <div class="diff-list">
+                    ${this.diffResult.added.length === 0
+                      ? html`<div style="color: #64748b; font-size: 0.85rem">
+                          No files added
+                        </div>`
+                      : this.diffResult.added.map(
+                          (path) => html`
+                            <div class="diff-item added" title=${path}>${path}</div>
+                          `,
+                        )}
+                  </div>
+                </div>
+
+                <div class="diff-section removed">
+                  <h4>
+                    Removed
+                    <span class="diff-count">${this.diffResult.summary.removedCount}</span>
+                  </h4>
+                  <div class="diff-list">
+                    ${this.diffResult.removed.length === 0
+                      ? html`<div style="color: #64748b; font-size: 0.85rem">
+                          No files removed
+                        </div>`
+                      : this.diffResult.removed.map(
+                          (path) => html`
+                            <div class="diff-item removed" title=${path}>${path}</div>
+                          `,
+                        )}
+                  </div>
+                </div>
+
+                <div class="diff-section modified">
+                  <h4>
+                    Modified
+                    <span class="diff-count">${this.diffResult.summary.modifiedCount}</span>
+                  </h4>
+                  <div class="diff-list">
+                    ${this.diffResult.modified.length === 0
+                      ? html`<div style="color: #64748b; font-size: 0.85rem">
+                          No files modified
+                        </div>`
+                      : this.diffResult.modified.map(
+                          (path) => html`
+                            <div class="diff-item modified" title=${path}>${path}</div>
+                          `,
+                        )}
+                  </div>
+                </div>
+              </div>
+            `
+          : html`
+              <div class="empty-state">
+                <div class="empty-state-icon">🔍</div>
+                <div>Select two snapshots and click Compare to see the differences</div>
+              </div>
+            `}
       </div>
     `
   }
