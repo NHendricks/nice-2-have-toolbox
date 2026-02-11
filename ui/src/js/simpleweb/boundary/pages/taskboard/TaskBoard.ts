@@ -966,13 +966,25 @@ export class TaskBoard extends LitElement {
     if (draggedTaskIndex === -1) return
 
     const draggedTask = this.tasks[draggedTaskIndex]
+    const dropTargetIndexBeforeRemoval = this.tasks.findIndex(
+      (t) => t.id === dropOnTask.id,
+    )
+
     const newTasks = [...this.tasks]
+
+    // Determine if dragging down (to a later position)
+    const isDraggingDown = draggedTaskIndex < dropTargetIndexBeforeRemoval
 
     // Remove dragged task from array
     newTasks.splice(draggedTaskIndex, 1)
 
-    // Find new position (where to insert)
-    const dropTargetIndex = newTasks.findIndex((t) => t.id === dropOnTask.id)
+    // Find new position after removal
+    let dropTargetIndex = newTasks.findIndex((t) => t.id === dropOnTask.id)
+
+    // If dragging down, insert after the target; if dragging up, insert before
+    if (isDraggingDown) {
+      dropTargetIndex += 1
+    }
 
     // Update status if moving to different column
     const updatedTask: Task = {
@@ -981,7 +993,7 @@ export class TaskBoard extends LitElement {
       updated: new Date().toISOString(),
     }
 
-    // Insert at the drop target position
+    // Insert at the calculated position
     newTasks.splice(dropTargetIndex, 0, updatedTask)
 
     // Reassign order numbers for all tasks in affected columns
