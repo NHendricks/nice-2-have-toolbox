@@ -186,6 +186,11 @@ export class TaskBoard extends LitElement {
       border-color: #3b82f6;
     }
 
+    .task-card.drag-over {
+      border: 2px solid #3b82f6;
+      background: rgba(59, 130, 246, 0.1);
+    }
+
     .task-priority {
       display: inline-block;
       padding: 0.125rem 0.5rem;
@@ -444,6 +449,7 @@ export class TaskBoard extends LitElement {
   @state() private editCategory: string = DEFAULT_CATEGORY
   @state() private editPriority: TaskPriority = 'medium'
   @state() private draggedTaskId: string | null = null
+  @state() private dragOverTaskId: string | null = null
   @state() private categories: Category[] = []
   @state() private selectedCategory: string | null = null // null = show all
   @state() private addingCategory: boolean = false
@@ -928,6 +934,77 @@ export class TaskBoard extends LitElement {
 
   private onDragEnd() {
     this.draggedTaskId = null
+    this.dragOverTaskId = null
+  }
+
+  private onTaskDragOver(e: DragEvent, task: Task) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (this.draggedTaskId && this.draggedTaskId !== task.id) {
+      this.dragOverTaskId = task.id
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'move'
+      }
+    }
+  }
+
+  private onTaskDragLeave(e: DragEvent, task: Task) {
+    if (this.dragOverTaskId === task.id) {
+      this.dragOverTaskId = null
+    }
+  }
+
+  private async onTaskDrop(e: DragEvent, dropOnTask: Task) {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!this.draggedTaskId || this.draggedTaskId === dropOnTask.id) return
+
+    const draggedTaskIndex = this.tasks.findIndex(
+      (t) => t.id === this.draggedTaskId,
+    )
+    if (draggedTaskIndex === -1) return
+
+    const draggedTask = this.tasks[draggedTaskIndex]
+    const newTasks = [...this.tasks]
+
+    // Remove dragged task from array
+    newTasks.splice(draggedTaskIndex, 1)
+
+    // Find new position (where to insert)
+    const dropTargetIndex = newTasks.findIndex((t) => t.id === dropOnTask.id)
+
+    // Update status if moving to different column
+    const updatedTask: Task = {
+      ...draggedTask,
+      status: dropOnTask.status,
+      updated: new Date().toISOString(),
+    }
+
+    // Insert at the drop target position
+    newTasks.splice(dropTargetIndex, 0, updatedTask)
+
+    // Reassign order numbers for all tasks in affected columns
+    const affectedStatuses = new Set([draggedTask.status, dropOnTask.status])
+
+    affectedStatuses.forEach((status) => {
+      const tasksInColumn = newTasks.filter((t) => t.status === status)
+
+      tasksInColumn.forEach((t, index) => {
+        t.order = index
+      })
+    })
+
+    this.tasks = newTasks
+    this.dragOverTaskId = null
+
+    // Save all affected tasks
+    const tasksToSave = newTasks.filter((t) => affectedStatuses.has(t.status))
+    for (const t of tasksToSave) {
+      await this.saveTask(t)
+    }
+
+    this.draggedTaskId = null
   }
 
   private onDragOver(e: DragEvent) {
@@ -945,6 +1022,14 @@ export class TaskBoard extends LitElement {
 
   private onDragLeave(e: DragEvent) {
     const target = e.currentTarget as HTMLElement
+    const relatedTarget = e.relatedTarget as HTMLElement
+
+    // Only remove drag-over if we're actually leaving the column-content
+    // (not just moving over a child element like a task card)
+    if (relatedTarget && target.contains(relatedTarget)) {
+      return
+    }
+
     target.classList.remove('drag-over')
   }
 
@@ -960,27 +1045,37 @@ export class TaskBoard extends LitElement {
 
     const task = this.tasks[taskIndex]
 
-    // Get max order in new column (excluding the dragged task)
-    const tasksInColumn = this.tasks.filter(
-      (t) => t.status === newStatus && t.id !== this.draggedTaskId,
-    )
-    const maxOrder =
-      tasksInColumn.length > 0
-        ? Math.max(...tasksInColumn.map((t) => t.order))
-        : -1
-
+    // Update task status and place at end of column
     const updatedTask: Task = {
       ...task,
       status: newStatus,
-      order: maxOrder + 1,
       updated: new Date().toISOString(),
     }
 
     const newTasks = [...this.tasks]
     newTasks[taskIndex] = updatedTask
+
+    // Reassign order numbers for all tasks in affected columns
+    const affectedStatuses = new Set([task.status, newStatus])
+
+    affectedStatuses.forEach((status) => {
+      const tasksInColumn = newTasks
+        .filter((t) => t.status === status)
+        .sort((a, b) => a.order - b.order)
+
+      tasksInColumn.forEach((t, index) => {
+        t.order = index
+      })
+    })
+
     this.tasks = newTasks
 
-    await this.saveTask(updatedTask)
+    // Save all affected tasks
+    const tasksToSave = newTasks.filter((t) => affectedStatuses.has(t.status))
+    for (const t of tasksToSave) {
+      await this.saveTask(t)
+    }
+
     this.draggedTaskId = null
   }
 
@@ -994,16 +1089,20 @@ export class TaskBoard extends LitElement {
   private renderTask(task: Task) {
     const isEditing = this.editingTaskId === task.id
     const isDragging = this.draggedTaskId === task.id
+    const isDragOver = this.dragOverTaskId === task.id
     const categoryColor = this.getCategoryColor(task.category)
 
     return html`
       <div
         class="task-card ${isDragging ? 'dragging' : ''} ${isEditing
           ? 'editing'
-          : ''}"
+          : ''} ${isDragOver ? 'drag-over' : ''}"
         draggable=${isEditing ? 'false' : 'true'}
         @dragstart=${(e: DragEvent) => this.onDragStart(e, task)}
         @dragend=${this.onDragEnd}
+        @dragover=${(e: DragEvent) => this.onTaskDragOver(e, task)}
+        @dragleave=${(e: DragEvent) => this.onTaskDragLeave(e, task)}
+        @drop=${(e: DragEvent) => this.onTaskDrop(e, task)}
       >
         ${!isEditing
           ? html`

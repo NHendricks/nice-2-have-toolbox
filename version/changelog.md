@@ -27,7 +27,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
   - fix date sort toggle
   - fix: copy zip into zip did not work
 - new app Taskboard
-  - manage tasks
+  - manage your tasks in a kanban board (reate, edit, delete, move up/down, use categories)
 
 ### v1.8.0 (10.02.2026)
 
