@@ -1,5 +1,7 @@
 Commander:
-- copy from zip (or from zip in zip) doesnt work or is very slow
+- explain .n2henv in help
+- move up/down favorites
+- create zip in memory, not in filesystem (if not yet so)
 - drag and drop files / folders from or to another app should work
 - add examples for replace in texteditor (e.g. line feeds)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)

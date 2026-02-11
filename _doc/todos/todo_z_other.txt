@@ -1,1 +1,4 @@
 - simple db show and edit tool for sql databases
+- check gnu-tools
+- check licence
+- create own www.nice2have.de (ask owner) or http://www.nicetohave.de/ 

@@ -25,13 +25,13 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
   - restore single files
 - commander
   - confirm delete of files
-  - createdir, set marker on it to directly navigate into
-  - fix marker Strg+down marks 2 files
+  - create dir: set marker on it to directly navigate into
+  - fix marker CTRL+down marks 2 files
   - show date of files
   - fix date sort toggle
   - fix: copy zip into zip did not work
 - new app Taskboard
-  - manage your tasks in a kanban board (reate, edit, delete, move up/down, use categories)
+  - manage your tasks in a kanban board (create, edit, delete, move up/down, use categories)
 
 ### v1.8.0 (10.02.2026)
 
