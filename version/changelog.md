@@ -13,6 +13,8 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
   - fix mac samba connection needs to be started multiple time to work
   - fix install restic detection on mac
   - set a default path for restic backup repo when not specified
+- restic
+  - create nicer checkboxes
     ...
 
 ### v1.9.0 (11.02.2026)

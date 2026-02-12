@@ -1,4 +1,7 @@
 Commander:
+- ftp copy dir does not work
+- quick launch ENTER doesnt work
+- cleanup UI (remove header)
 - explain .n2henv in help
 - move up/down favorites
 - create zip in memory, not in filesystem (if not yet so)

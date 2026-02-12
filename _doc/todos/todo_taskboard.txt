@@ -1,4 +1,3 @@
 - taskboard
-  - add categories (create folders for it)
-  - filter possibility for category
-  - dragndrop should save its order in board
+  - add persons
+  - cleanup usability (ui fixes)
