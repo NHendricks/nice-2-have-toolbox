@@ -47,7 +47,10 @@ export class KeyboardHandler {
         this.commander.executeZip()
         return
       }
-      // quickLaunchDialog handles ENTER internally
+      if (this.commander.quickLaunchDialog) {
+        // Let the dialog handle ENTER internally
+        return
+      }
     }
 
     // Ignore other keys if typing in an input field

@@ -11,14 +11,15 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 
 - commander
   - fix mac samba connection needs to be started multiple time to work
-  - fix install restic detection on mac
-  - set a default path for restic backup repo when not specified
+  - fix: quick command launch ENTER doesnt work
   - fix: ftp copy dir does not work
   - show progress bar when copy using ftp
 - restic
+  - fix install restic detection on mac
   - create nicer checkboxes
   - restore folders (not only files) from backups
   - show called restic commands in history tab
+  - set a default path for restic backup repo when not specified
 
 ### v1.9.0 (11.02.2026)
 
