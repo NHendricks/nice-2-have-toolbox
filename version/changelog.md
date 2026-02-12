@@ -11,7 +11,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 
 ...
 
-### v1.9.0 (11.02.2026)
+### v2.0.0 (12.02.2026)
 
 - commander
   - fix mac samba connection needs to be started multiple time to work
