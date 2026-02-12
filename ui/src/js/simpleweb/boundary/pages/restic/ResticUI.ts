@@ -978,8 +978,16 @@ export class ResticUI extends LitElement {
     if (savedState.selectedFiles)
       this.selectedFiles = new Set(savedState.selectedFiles)
 
-      // Listen for backup progress events
-      // Note: preload strips the event, so we only receive the data
+    // Set default repository path if none exists
+    if (!this.repoPath) {
+      // Fire and forget - will set path asynchronously
+      this.setDefaultRepositoryPath().catch((err) =>
+        console.error('[ResticUI] Failed to set default path:', err),
+      )
+    }
+
+    // Listen for backup progress events
+    // Note: preload strips the event, so we only receive the data
     ;(window as any).electron?.ipcRenderer?.on(
       'restic-backup-progress',
       (data: any) => {
@@ -988,6 +996,35 @@ export class ResticUI extends LitElement {
         this.requestUpdate()
       },
     )
+  }
+
+  private async setDefaultRepositoryPath() {
+    // Get the actual user home directory from the main process
+    try {
+      const homePath = await (window as any).electron.ipcRenderer.invoke(
+        'get-home-path',
+      )
+      this.repoPath = `${homePath}/backup_restic`
+      console.log('[ResticUI] Set default repository path:', this.repoPath)
+    } catch (error) {
+      console.error('[ResticUI] Failed to get home path:', error)
+      // Fallback to generic path
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0
+
+      if (isMac) {
+        this.repoPath = '/Users/user/backup_restic'
+      } else if (isWindows) {
+        this.repoPath = 'C:/Users/user/backup_restic'
+      } else {
+        // Linux
+        this.repoPath = '/home/user/backup_restic'
+      }
+      console.log(
+        '[ResticUI] Set fallback repository path:',
+        this.repoPath,
+      )
+    }
   }
 
   disconnectedCallback() {

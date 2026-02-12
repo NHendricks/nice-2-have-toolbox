@@ -20,6 +20,7 @@ function getCommandHandler() {
 export function registerCommands(ipcMain: any, version: string) {
   ipcMain.handle('ping', () => 'Pong');
   ipcMain.handle('getVersion', () => version);
+  ipcMain.handle('get-home-path', () => app.getPath('home'));
 
   // Backend CLI Commands - dynamically load available commands
   ipcMain.handle('cli-getCommands', async () => {
