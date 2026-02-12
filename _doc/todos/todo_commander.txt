@@ -1,6 +1,8 @@
 Commander:
+
 - open cmdline - reset NODE_ENV, better dont inherit any env from my process, only standard vars 
 - compare files 
+- ftp update connection - update saved connection when changes are made
 - fix: quick command launch ENTER doesnt work
 - cleanup UI (remove header)
 - explain .n2henv in www.nice2havetoolbox.de

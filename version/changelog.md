@@ -1,7 +1,7 @@
 # nh-toolbox (https://github.com/NHendricks/nice-2-have-toolbox)
 
 For use on MAC please read the readme at https://github.com/NHendricks/nice-2-have-toolbox
-ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/releases
+You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/releases
 
 ## changelog
 
@@ -24,6 +24,8 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
   - restore folders (not only files) from backups
   - show called restic commands in history tab
   - set a default path for restic backup repo when not specified
+
+see [changelog ](https://github.com/NHendricks/nice-2-have-toolbox/blob/main/version/changelog.md) for all details
 
 ### v1.9.0 (11.02.2026)
 
