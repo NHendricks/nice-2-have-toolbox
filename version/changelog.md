@@ -16,6 +16,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
 - restic
   - create nicer checkboxes
   - restore folders (not only files) from backups
+  - show called restic commands in history tab
 
 ### v1.9.0 (11.02.2026)
 

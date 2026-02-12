@@ -129,5 +129,24 @@ export interface SavedResticConnection {
   backupPaths?: string[] // Remember last used backup paths
 }
 
+// Command history entry
+export interface ResticCommandHistory {
+  id: string // Unique identifier for the command
+  timestamp: Date // When the command was executed
+  operation: string // The operation type (backup, restore, snapshots, etc.)
+  commandLine?: string // The actual CLI command executed (with password masked)
+  params: any // Parameters passed to the command (sanitized - no passwords)
+  success: boolean // Whether the command succeeded
+  duration?: number // Duration in milliseconds
+  output?: string // Command output (truncated if too long)
+  error?: string // Error message if failed
+}
+
 // UI Tab types
-export type ResticTab = 'backup' | 'browse' | 'compare' | 'retention' | 'health'
+export type ResticTab =
+  | 'backup'
+  | 'browse'
+  | 'compare'
+  | 'retention'
+  | 'health'
+  | 'history'

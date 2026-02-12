@@ -1,4 +1,5 @@
 Commander:
+- open cmdline - reset NODE_ENV
 - ftp copy dir does not work
 - quick launch ENTER doesnt work
 - cleanup UI (remove header)

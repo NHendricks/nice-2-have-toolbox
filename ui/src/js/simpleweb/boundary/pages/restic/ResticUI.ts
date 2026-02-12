@@ -11,6 +11,7 @@ import {
 } from '../../../services/SessionState.js'
 import type {
   ResticBackupProgress,
+  ResticCommandHistory,
   ResticDiffResult,
   ResticFileEntry,
   ResticRepository,
@@ -685,6 +686,123 @@ export class ResticUI extends LitElement {
       gap: 1rem;
     }
 
+    /* History Panel Styles */
+    .history-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .history-entry {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+      border-left: 4px solid;
+    }
+
+    .history-entry.success {
+      border-left-color: #22c55e;
+    }
+
+    .history-entry.error {
+      border-left-color: #ef4444;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .history-operation {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1rem;
+      flex: 1;
+      overflow-x: auto;
+    }
+
+    .history-operation code {
+      color: #e2e8f0;
+      background: #1e293b;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .history-icon {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .history-entry.success .history-icon {
+      color: #22c55e;
+    }
+
+    .history-entry.error .history-icon {
+      color: #ef4444;
+    }
+
+    .history-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .history-time {
+      color: #64748b;
+    }
+
+    .history-duration {
+      color: #0ea5e9;
+      font-family: monospace;
+    }
+
+    .history-params {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .param-tag {
+      background: #1e293b;
+      color: #94a3b8;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: monospace;
+    }
+
+    .history-output,
+    .history-error {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #1e293b;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-family: monospace;
+    }
+
+    .history-output {
+      color: #94a3b8;
+    }
+
+    .history-error {
+      color: #fca5a5;
+      background: #7f1d1d;
+    }
+
     .spinner {
       display: inline-block;
       width: 16px;
@@ -969,6 +1087,10 @@ export class ResticUI extends LitElement {
   // Tree view state for file browser
   @state() private expandedPaths: Set<string> = new Set()
   @state() private selectedFiles: Set<string> = new Set()
+
+  // Command history
+  @state() private commandHistory: ResticCommandHistory[] = []
+  private readonly MAX_HISTORY_ENTRIES = 100 // Maximum number of history entries to keep
 
   connectedCallback() {
     super.connectedCallback()
@@ -1299,15 +1421,93 @@ export class ResticUI extends LitElement {
   }
 
   private async invokeRestic(params: any): Promise<any> {
-    return (window as any).electron.ipcRenderer.invoke(
-      'cli-execute',
-      'restic',
-      {
-        ...params,
-        repoPath: params.repoPath || this.repoPath,
-        password: params.password || this.repoPassword,
-      },
+    const commandId = `cmd-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const startTime = Date.now()
+
+    // Sanitize params for history (remove sensitive data)
+    const sanitizedParams = {
+      ...params,
+      password: params.password ? '***' : undefined,
+      repoPath: params.repoPath || this.repoPath,
+    }
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'restic',
+        {
+          ...params,
+          repoPath: params.repoPath || this.repoPath,
+          password: params.password || this.repoPassword,
+        },
+      )
+
+      const duration = Date.now() - startTime
+      const success = response?.success !== false
+
+      // Extract command line from response
+      const commandLine =
+        response?.data?.commandLine || response?.commandLine || undefined
+
+      // Add to command history
+      this.addCommandToHistory({
+        id: commandId,
+        timestamp: new Date(startTime),
+        operation: params.operation || 'unknown',
+        commandLine,
+        params: sanitizedParams,
+        success,
+        duration,
+        output: this.formatCommandOutput(response),
+        error: success ? undefined : response?.error || 'Unknown error',
+      })
+
+      return response
+    } catch (error: any) {
+      const duration = Date.now() - startTime
+
+      // Add failed command to history
+      this.addCommandToHistory({
+        id: commandId,
+        timestamp: new Date(startTime),
+        operation: params.operation || 'unknown',
+        params: sanitizedParams,
+        success: false,
+        duration,
+        error: error.message || 'Unknown error',
+      })
+
+      throw error
+    }
+  }
+
+  private addCommandToHistory(entry: ResticCommandHistory) {
+    // Add new entry at the beginning
+    this.commandHistory = [entry, ...this.commandHistory].slice(
+      0,
+      this.MAX_HISTORY_ENTRIES,
     )
+  }
+
+  private formatCommandOutput(response: any): string | undefined {
+    if (!response) return undefined
+
+    // Try to create a readable summary of the response
+    if (response.data) {
+      const data = response.data
+      if (data.snapshots) return `Found ${data.snapshots.length} snapshots`
+      if (data.entries) return `Listed ${data.entries.length} entries`
+      if (data.summary)
+        return `${data.summary.total_files_processed || 0} files processed`
+      if (data.stats)
+        return `Total size: ${this.formatSize(data.stats.total_size || 0)}`
+      if (typeof data === 'string') return data.substring(0, 500)
+    }
+
+    if (response.message) return response.message.substring(0, 500)
+    if (response.success) return 'Command completed successfully'
+
+    return undefined
   }
 
   private async connectRepository() {
@@ -2409,6 +2609,12 @@ export class ResticUI extends LitElement {
                 >
                   Health
                 </div>
+                <div
+                  class="tab ${this.activeTab === 'history' ? 'active' : ''}"
+                  @click=${() => (this.activeTab = 'history')}
+                >
+                  History
+                </div>
               </div>
 
               <div class="tab-content">
@@ -2419,6 +2625,7 @@ export class ResticUI extends LitElement {
                   ? this.renderRetentionPanel()
                   : ''}
                 ${this.activeTab === 'health' ? this.renderHealthPanel() : ''}
+                ${this.activeTab === 'history' ? this.renderHistoryPanel() : ''}
               </div>
             `
           : html`
@@ -2993,5 +3200,114 @@ export class ResticUI extends LitElement {
         </div>
       </div>
     `
+  }
+
+  private renderHistoryPanel() {
+    return html`
+      <div class="history-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="margin: 0;">Command History</h3>
+          <button
+            class="btn btn-secondary"
+            @click=${() => (this.commandHistory = [])}
+            ?disabled=${this.commandHistory.length === 0}
+          >
+            Clear History
+          </button>
+        </div>
+
+        ${this.commandHistory.length === 0
+          ? html`
+              <div class="empty-state">
+                <div class="empty-state-icon">📜</div>
+                <div>No commands executed yet</div>
+              </div>
+            `
+          : html`
+              <div class="history-list">
+                ${this.commandHistory.map(
+                  (cmd) => html`
+                    <div class="history-entry ${cmd.success ? 'success' : 'error'}">
+                      <div class="history-header">
+                        <div class="history-operation">
+                          <span class="history-icon">${cmd.success ? '✓' : '✗'}</span>
+                          <code style="font-family: monospace; font-size: 0.9rem;"
+                            >${cmd.commandLine || cmd.operation}</code
+                          >
+                        </div>
+                        <div class="history-meta">
+                          <span class="history-time"
+                            >${this.formatHistoryTime(cmd.timestamp)}</span
+                          >
+                          ${cmd.duration
+                            ? html`<span class="history-duration"
+                                >${cmd.duration}ms</span
+                              >`
+                            : ''}
+                        </div>
+                      </div>
+
+                      ${!cmd.commandLine &&
+                      cmd.params &&
+                      Object.keys(cmd.params).length > 0
+                        ? html`
+                            <div class="history-params">
+                              ${Object.entries(cmd.params)
+                                .filter(([key]) => key !== 'password')
+                                .map(
+                                  ([key, value]) => html`
+                                    <span class="param-tag"
+                                      >${key}: ${this.formatParamValue(value)}</span
+                                    >
+                                  `,
+                                )}
+                            </div>
+                          `
+                        : ''}
+
+                      ${cmd.output
+                        ? html`
+                            <div class="history-output">
+                              <strong>Output:</strong> ${cmd.output}
+                            </div>
+                          `
+                        : ''}
+
+                      ${cmd.error
+                        ? html`
+                            <div class="history-error">
+                              <strong>Error:</strong> ${cmd.error}
+                            </div>
+                          `
+                        : ''}
+                    </div>
+                  `,
+                )}
+              </div>
+            `}
+      </div>
+    `
+  }
+
+  private formatHistoryTime(timestamp: Date): string {
+    const now = new Date()
+    const diffMs = now.getTime() - timestamp.getTime()
+    const diffSec = Math.floor(diffMs / 1000)
+    const diffMin = Math.floor(diffSec / 60)
+    const diffHour = Math.floor(diffMin / 60)
+
+    if (diffSec < 60) return 'just now'
+    if (diffMin < 60) return `${diffMin}m ago`
+    if (diffHour < 24) return `${diffHour}h ago`
+
+    return timestamp.toLocaleString()
+  }
+
+  private formatParamValue(value: any): string {
+    if (value === undefined || value === null) return '-'
+    if (typeof value === 'boolean') return value ? 'yes' : 'no'
+    if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '[]'
+    if (typeof value === 'object') return JSON.stringify(value)
+    return String(value)
   }
 }

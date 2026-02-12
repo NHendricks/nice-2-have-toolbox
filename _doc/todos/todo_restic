@@ -1,7 +1,5 @@
-x add checkbox and folder checkout opportunity
-- open folder in commander when clicking a file in the diff view
-- show recent commands and output
 - test linux
-- show better help for non experts (quick doenload, rename .exe on windows, extend PATH)
+- show better help (link to www.nice2havetoolbox.de)
+  - quick download, rename .exe on windows, extend PATH
 - test ftps
 - browse with slider and instantly show diff to current files in a tree

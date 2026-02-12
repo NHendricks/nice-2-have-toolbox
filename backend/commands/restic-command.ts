@@ -14,6 +14,7 @@ export class ResticCommand implements ICommand {
   private progressCallback?: (progress: any) => void;
   private cancelled: boolean = false;
   private currentProcess: ChildProcess | null = null;
+  private lastCommandLine: string = ''; // Store the last executed command line
 
   /**
    * Get extended PATH for macOS to find restic in common locations
@@ -48,6 +49,29 @@ export class ResticCommand implements ICommand {
       ...baseEnv,
       PATH: this.getExtendedPath(),
     };
+  }
+
+  /**
+   * Build a command line string for display purposes (with password masked)
+   */
+  private buildCommandLine(cmd: string, env?: NodeJS.ProcessEnv): string {
+    const parts: string[] = [];
+
+    // Add environment variables
+    if (env?.RESTIC_REPOSITORY) {
+      parts.push(`RESTIC_REPOSITORY="${env.RESTIC_REPOSITORY}"`);
+    }
+    if (env?.RESTIC_PASSWORD) {
+      parts.push(`RESTIC_PASSWORD="***"`);
+    }
+    if (env?.RESTIC_PASSWORD_FILE) {
+      parts.push(`RESTIC_PASSWORD_FILE="${env.RESTIC_PASSWORD_FILE}"`);
+    }
+
+    // Add the command
+    parts.push(cmd);
+
+    return parts.join(' ');
   }
 
   setProgressCallback(callback: (progress: any) => void) {
@@ -163,17 +187,20 @@ export class ResticCommand implements ICommand {
 
   private async checkInstalled(): Promise<any> {
     try {
-      const { stdout } = await execPromise('restic version', {
+      const cmd = 'restic version';
+      this.lastCommandLine = cmd;
+      const { stdout } = await execPromise(cmd, {
         env: this.getExtendedEnv(),
       });
       const version = stdout.trim();
-      return { success: true, installed: true, version };
+      return { success: true, installed: true, version, commandLine: cmd };
     } catch (error) {
       return {
         success: true,
         installed: false,
         error:
           'restic is not installed. Please install it from https://restic.net',
+        commandLine: 'restic version',
       };
     }
   }
@@ -213,7 +240,9 @@ export class ResticCommand implements ICommand {
         console.log('[Restic] Directory created successfully');
       }
 
-      const { stdout, stderr } = await execPromise('restic init', {
+      const cmd = 'restic init';
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
+      const { stdout, stderr } = await execPromise(cmd, {
         env: this.getExtendedEnv(env),
       });
 
@@ -230,21 +259,31 @@ export class ResticCommand implements ICommand {
             error:
               'Repository initialization failed: config file not created at ' +
               configPath,
+            commandLine: this.lastCommandLine,
           };
         }
         console.log('[Restic] Config file verified');
       }
 
-      return { success: true, message: stdout || stderr };
+      return {
+        success: true,
+        message: stdout || stderr,
+        commandLine: this.lastCommandLine,
+      };
     } catch (error: any) {
       console.error('[Restic] Init error:', error.message);
       // Check if already initialized
       if (error.message?.includes('already initialized')) {
-        return { success: true, message: 'Repository already initialized' };
+        return {
+          success: true,
+          message: 'Repository already initialized',
+          commandLine: this.lastCommandLine,
+        };
       }
       return {
         success: false,
         error: error.message,
+        commandLine: this.lastCommandLine,
       };
     }
   }
@@ -291,6 +330,13 @@ export class ResticCommand implements ICommand {
 
       console.log('[Restic] Running backup with args:', args);
 
+      // Build command line for display
+      const cmdParts = ['restic', ...args];
+      const cmd = cmdParts
+        .map((part) => (part.includes(' ') ? `"${part}"` : part))
+        .join(' ');
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
+
       this.currentProcess = spawn('restic', args, {
         env: this.getExtendedEnv(env),
       });
@@ -335,9 +381,17 @@ export class ResticCommand implements ICommand {
       this.currentProcess.on('close', (code: number) => {
         this.currentProcess = null;
         if (this.cancelled) {
-          resolve({ success: false, cancelled: true });
+          resolve({
+            success: false,
+            cancelled: true,
+            commandLine: this.lastCommandLine,
+          });
         } else if (code === 0) {
-          resolve({ success: true, summary });
+          resolve({
+            success: true,
+            summary,
+            commandLine: this.lastCommandLine,
+          });
         } else {
           reject(new Error(`Backup failed with code ${code}: ${errorOutput}`));
         }
@@ -353,7 +407,9 @@ export class ResticCommand implements ICommand {
   private async listSnapshots(env: NodeJS.ProcessEnv): Promise<any> {
     try {
       console.log('[Restic] Listing snapshots...');
-      const { stdout, stderr } = await execPromise('restic snapshots --json', {
+      const cmd = 'restic snapshots --json';
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
+      const { stdout, stderr } = await execPromise(cmd, {
         env: this.getExtendedEnv(env),
       });
       console.log('[Restic] Snapshots stdout:', stdout);
@@ -362,12 +418,20 @@ export class ResticCommand implements ICommand {
       // Handle empty output
       if (!stdout || stdout.trim() === '') {
         console.log('[Restic] Empty stdout, returning empty array');
-        return { success: true, snapshots: [] };
+        return {
+          success: true,
+          snapshots: [],
+          commandLine: this.lastCommandLine,
+        };
       }
 
       const snapshots = JSON.parse(stdout);
       console.log('[Restic] Parsed snapshots:', snapshots?.length || 0);
-      return { success: true, snapshots: snapshots || [] };
+      return {
+        success: true,
+        snapshots: snapshots || [],
+        commandLine: this.lastCommandLine,
+      };
     } catch (error: any) {
       console.error('[Restic] Error listing snapshots:', error.message);
 
@@ -381,12 +445,17 @@ export class ResticCommand implements ICommand {
           success: false,
           error: error.message,
           snapshots: [],
+          commandLine: this.lastCommandLine,
         };
       }
 
       // Handle empty repository (exists but no snapshots) - this is OK
       if (error.message?.includes('no snapshots found')) {
-        return { success: true, snapshots: [] };
+        return {
+          success: true,
+          snapshots: [],
+          commandLine: this.lastCommandLine,
+        };
       }
 
       // All other errors
@@ -394,6 +463,7 @@ export class ResticCommand implements ICommand {
         success: false,
         error: error.message,
         snapshots: [],
+        commandLine: this.lastCommandLine,
       };
     }
   }
@@ -414,6 +484,7 @@ export class ResticCommand implements ICommand {
       : `restic ls --json "${snapshotId}"`;
 
     try {
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
       const { stdout } = await execPromise(cmd, {
         env: this.getExtendedEnv(env),
         maxBuffer: 50 * 1024 * 1024,
@@ -443,7 +514,11 @@ export class ResticCommand implements ICommand {
           );
         });
 
-      return { success: true, entries };
+      return {
+        success: true,
+        entries,
+        commandLine: this.lastCommandLine,
+      };
     } catch (error: any) {
       throw error;
     }
@@ -467,10 +542,15 @@ export class ResticCommand implements ICommand {
       });
     }
 
+    this.lastCommandLine = this.buildCommandLine(cmd, env);
     const { stdout } = await execPromise(cmd, {
       env: this.getExtendedEnv(env),
     });
-    return { success: true, message: stdout };
+    return {
+      success: true,
+      message: stdout,
+      commandLine: this.lastCommandLine,
+    };
   }
 
   private async forget(params: any, env: NodeJS.ProcessEnv): Promise<any> {
@@ -499,52 +579,68 @@ export class ResticCommand implements ICommand {
       cmd += ' --prune';
     }
 
+    this.lastCommandLine = this.buildCommandLine(cmd, env);
     const { stdout } = await execPromise(cmd, {
       env: this.getExtendedEnv(env),
     });
-    return { success: true, message: stdout };
+    return { success: true, message: stdout, commandLine: this.lastCommandLine };
   }
 
   private async prune(env: NodeJS.ProcessEnv): Promise<any> {
-    const { stdout } = await execPromise('restic prune', {
+    const cmd = 'restic prune';
+    this.lastCommandLine = this.buildCommandLine(cmd, env);
+    const { stdout } = await execPromise(cmd, {
       env: this.getExtendedEnv(env),
     });
-    return { success: true, message: stdout };
+    return { success: true, message: stdout, commandLine: this.lastCommandLine };
   }
 
   private async check(env: NodeJS.ProcessEnv): Promise<any> {
     try {
-      const { stdout } = await execPromise('restic check', {
+      const cmd = 'restic check';
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
+      const { stdout } = await execPromise(cmd, {
         env: this.getExtendedEnv(env),
       });
-      return { success: true, message: stdout, errors: [], warnings: [] };
+      return {
+        success: true,
+        message: stdout,
+        errors: [],
+        warnings: [],
+        commandLine: this.lastCommandLine,
+      };
     } catch (error: any) {
       return {
         success: false,
         error: error.message,
         errors: [error.message],
         warnings: [],
+        commandLine: this.lastCommandLine,
       };
     }
   }
 
   private async stats(env: NodeJS.ProcessEnv): Promise<any> {
     try {
-      const { stdout } = await execPromise('restic stats --json', {
+      const cmd = 'restic stats --json';
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
+      const { stdout } = await execPromise(cmd, {
         env: this.getExtendedEnv(env),
       });
       const stats = JSON.parse(stdout);
-      return { success: true, stats };
+      return { success: true, stats, commandLine: this.lastCommandLine };
     } catch (error: any) {
       throw error;
     }
   }
 
   private async unlock(env: NodeJS.ProcessEnv): Promise<any> {
-    const { stdout } = await execPromise('restic unlock', {
+    const cmd = 'restic unlock';
+    this.lastCommandLine = this.buildCommandLine(cmd, env);
+    const { stdout } = await execPromise(cmd, {
       env: this.getExtendedEnv(env),
     });
-    return { success: true, message: stdout };
+    return { success: true, message: stdout, commandLine: this.lastCommandLine };
   }
 
   private async diff(
@@ -561,6 +657,7 @@ export class ResticCommand implements ICommand {
 
     try {
       const cmd = `restic diff "${snapshotId1}" "${snapshotId2}"`;
+      this.lastCommandLine = this.buildCommandLine(cmd, env);
       const { stdout } = await execPromise(cmd, {
         env: this.getExtendedEnv(env),
         maxBuffer: 50 * 1024 * 1024,
@@ -599,6 +696,7 @@ export class ResticCommand implements ICommand {
             modifiedCount: modified.length,
           },
         },
+        commandLine: this.lastCommandLine,
       };
     } catch (error: any) {
       throw error;
