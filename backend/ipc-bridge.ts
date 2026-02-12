@@ -33,11 +33,13 @@ export class IpcBridge {
       'cli-execute',
       async (event: IpcEvent, toolname: string, params: any) => {
         try {
-          console.log('[IPC] cli-execute called:', { toolname, params });
+          console.log('[IPC] ========================================');
+          console.log('[IPC] cli-execute called:', { toolname, operation: params?.operation });
           console.log('[IPC] params.operation:', params?.operation);
 
           // Get command instance to set up progress callback for zip operations
           const command = this.handler.getCommand(toolname);
+          console.log('[IPC] Command retrieved:', !!command, 'toolname:', toolname);
 
           console.log('[IPC] Command retrieved:', !!command);
           console.log('[IPC] Check backup condition:', toolname === 'restic', params?.operation === 'backup', !!command);
@@ -134,6 +136,37 @@ export class IpcBridge {
             console.log('[IPC] Progress callback set, verifying:', !!(command as any).progressCallback);
           }
 
+          // If it's an FTP command with download or upload operation, set up progress callback
+          if (
+            toolname === 'ftp' &&
+            (params.operation === 'download' || params.operation === 'upload') &&
+            command
+          ) {
+            const eventName = params.operation === 'download' ? 'ftp-download-progress' : 'ftp-upload-progress';
+
+            console.log(
+              `[IPC] Setting up progress callback for FTP ${params.operation} operation, event: ${eventName}`,
+            );
+
+            // Set up progress callback to send events to renderer
+            (command as any).setProgressCallback?.(
+              (current: number, total: number, fileName: string) => {
+                console.log(
+                  `[IPC] Sending ${eventName}:`,
+                  current,
+                  total,
+                  fileName,
+                );
+                event.sender?.send(eventName, {
+                  current,
+                  total,
+                  fileName,
+                  percentage: total > 0 ? Math.round((current / total) * 100) : 0,
+                });
+              },
+            );
+          }
+
           const result = await this.handler.execute(toolname, params);
 
           // Clear progress callback after operation completes
@@ -158,6 +191,15 @@ export class IpcBridge {
           if (
             toolname === 'restic' &&
             params.operation === 'backup' &&
+            command
+          ) {
+            (command as any).setProgressCallback?.(undefined);
+          }
+
+          // Clear FTP progress callback after operation completes
+          if (
+            toolname === 'ftp' &&
+            (params.operation === 'download' || params.operation === 'upload') &&
             command
           ) {
             (command as any).setProgressCallback?.(undefined);
@@ -191,6 +233,14 @@ export class IpcBridge {
 
           // Clear restic progress callback on error
           if (toolname === 'restic' && params.operation === 'backup') {
+            const command = this.handler.getCommand(toolname);
+            if (command) {
+              (command as any).setProgressCallback?.(undefined);
+            }
+          }
+
+          // Clear FTP progress callback on error
+          if (toolname === 'ftp' && (params.operation === 'download' || params.operation === 'upload')) {
             const command = this.handler.getCommand(toolname);
             if (command) {
               (command as any).setProgressCallback?.(undefined);

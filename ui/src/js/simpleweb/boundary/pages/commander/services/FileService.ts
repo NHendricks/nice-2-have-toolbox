@@ -204,7 +204,9 @@ export class FileService {
       | 'copy-progress'
       | 'compare-progress'
       | 'directory-size-progress'
-      | 'search-progress',
+      | 'search-progress'
+      | 'ftp-download-progress'
+      | 'ftp-upload-progress',
     callback: (data: any) => void,
   ) {
     ;(window as any).electron.ipcRenderer.on(channel, callback)

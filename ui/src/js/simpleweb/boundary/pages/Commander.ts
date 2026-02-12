@@ -187,6 +187,22 @@ export class Commander extends LitElement {
     percentage: number
   } | null = null
 
+  @property({ type: Object })
+  ftpDownloadProgress: {
+    current: number
+    total: number
+    fileName: string
+    percentage: number
+  } | null = null
+
+  @property({ type: Object })
+  ftpUploadProgress: {
+    current: number
+    total: number
+    fileName: string
+    percentage: number
+  } | null = null
+
   // Clipboard state for file operations
   clipboardFiles: { files: string[]; operation: 'copy' | 'cut' } | null = null
 
@@ -315,6 +331,20 @@ export class Commander extends LitElement {
     // Add IPC listener for copy progress
     ;(window as any).electron.ipcRenderer.on('copy-progress', (data: any) => {
       this.copyProgress = data
+      // Force UI update
+      this.requestUpdate()
+    })
+
+    // Add IPC listener for FTP download progress
+    ;(window as any).electron.ipcRenderer.on('ftp-download-progress', (data: any) => {
+      this.ftpDownloadProgress = data
+      // Force UI update
+      this.requestUpdate()
+    })
+
+    // Add IPC listener for FTP upload progress
+    ;(window as any).electron.ipcRenderer.on('ftp-upload-progress', (data: any) => {
+      this.ftpUploadProgress = data
       // Force UI update
       this.requestUpdate()
     })
@@ -500,7 +530,8 @@ export class Commander extends LitElement {
       } else {
         this.setStatus(`Loading ${path}`, 'normal')
       }
-      console.log(`Loading directory for ${pane}: ${path}`)
+      // Don't log paths as FTP URLs contain passwords
+      // console.log(`Loading directory for ${pane}: ${path}`)
 
       // Check if this is an FTP path
       if (path.startsWith('ftp://')) {
@@ -951,6 +982,11 @@ export class Commander extends LitElement {
     return this.paneManager.getInactivePane()
   }
 
+  getOperationProgress(): { current: number; total: number; fileName: string; percentage: number } | null {
+    // Return the active progress (FTP download, FTP upload, or regular copy)
+    return this.ftpDownloadProgress || this.ftpUploadProgress || this.copyProgress
+  }
+
   updateActivePane(updates: Partial<PaneState>) {
     // Sync activePane with PaneManager
     this.paneManager.setActivePane(this.activePane)
@@ -1013,7 +1049,8 @@ export class Commander extends LitElement {
   }
 
   async navigateToDirectory(path: string, addToHistory = true) {
-    console.log('navigateToDirectory called with:', path)
+    // Don't log paths as FTP URLs contain passwords
+    // console.log('navigateToDirectory called with:', path)
     const currentPath = this.getActivePane().currentPath
 
     // Add to history if requested and path is different
@@ -1714,6 +1751,8 @@ export class Commander extends LitElement {
 
     const { type, files, destination } = this.operationDialog
     this.copyProgress = null
+    this.ftpDownloadProgress = null
+    this.ftpUploadProgress = null
 
     this.setStatus(
       `${type === 'copy' ? 'Copying' : 'Moving'} ${files.length} file(s)...`,
@@ -1722,6 +1761,8 @@ export class Commander extends LitElement {
 
     const result = await executeFileOperation(type, files, destination)
     this.copyProgress = null
+    this.ftpDownloadProgress = null
+    this.ftpUploadProgress = null
 
     this.setStatus(result.message, result.success ? 'success' : 'error')
 
@@ -1749,6 +1790,8 @@ export class Commander extends LitElement {
     await cancelOperation()
     this.operationDialog = null
     this.copyProgress = null
+    this.ftpDownloadProgress = null
+    this.ftpUploadProgress = null
   }
 
   handleF8() {
@@ -2817,7 +2860,7 @@ export class Commander extends LitElement {
         ${this.operationDialog
           ? html`<operation-dialog
               .data=${this.operationDialog}
-              .progress=${this.copyProgress}
+              .progress=${this.getOperationProgress()}
               @close=${this.cancelOperation}
               @execute=${this.executeOperation}
               @update-destination=${(e: CustomEvent) =>

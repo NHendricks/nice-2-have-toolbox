@@ -14,6 +14,7 @@ ou can find the binary downloads here: https://github.com/NHendricks/nh-toolbox/
   - fix install restic detection on mac
   - set a default path for restic backup repo when not specified
   - fix: ftp copy dir does not work
+  - show progress bar when copy using ftp
 - restic
   - create nicer checkboxes
   - restore folders (not only files) from backups

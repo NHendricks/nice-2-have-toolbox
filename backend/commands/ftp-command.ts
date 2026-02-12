@@ -32,6 +32,15 @@ const activeSessions = new Map<
 const SESSION_TIMEOUT = 5 * 60 * 1000;
 
 export class FTPCommand implements ICommand {
+  private progressCallback?: (current: number, total: number, fileName: string) => void;
+
+  /**
+   * Set progress callback for upload/download operations
+   */
+  setProgressCallback(callback?: (current: number, total: number, fileName: string) => void) {
+    this.progressCallback = callback;
+  }
+
   /**
    * Parse FTP URL: ftp://user:pass@host:port/path
    * Returns connection info and path
@@ -40,7 +49,8 @@ export class FTPCommand implements ICommand {
     connection: FTPConnectionInfo;
     remotePath: string;
   } {
-    console.log('[FTP] Parsing URL:', ftpUrl);
+    // Don't log the full URL as it contains passwords
+    // console.log('[FTP] Parsing URL:', ftpUrl);
     // Remove ftp:// prefix
     const url = ftpUrl.replace(/^ftp:\/\//, '');
 
@@ -353,8 +363,29 @@ export class FTPCommand implements ICommand {
           await mkdir(localPath, { recursive: true });
         }
 
-        // Download directory recursively
-        await client.downloadToDir(localPath, remotePath);
+        // Set up progress tracking if callback is available
+        if (this.progressCallback) {
+          console.log('[FTP] Setting up progress tracking for directory download');
+          let fileCount = 0;
+          client.trackProgress((info) => {
+            console.log('[FTP] Download progress:', JSON.stringify(info));
+            fileCount++;
+            const fileName = info.name || 'file';
+            // Report progress with file count as both current and total (since we don't know total upfront)
+            this.progressCallback?.(fileCount, fileCount, fileName);
+          });
+        }
+
+        try {
+          // Download directory recursively
+          await client.downloadToDir(localPath, remotePath);
+        } finally {
+          // Stop tracking progress
+          if (this.progressCallback) {
+            console.log('[FTP] Stopping progress tracking');
+            client.trackProgress();
+          }
+        }
 
         return {
           success: true,
@@ -374,8 +405,27 @@ export class FTPCommand implements ICommand {
           await mkdir(localDir, { recursive: true });
         }
 
-        // Download file
-        await client.downloadTo(localPath, remotePath);
+        // Set up progress tracking if callback is available
+        if (this.progressCallback) {
+          const fileName = path.basename(localPath);
+          console.log('[FTP] Setting up progress tracking for file download:', fileName);
+          client.trackProgress((info) => {
+            console.log('[FTP] File download progress:', JSON.stringify(info));
+            // Report progress: bytes transferred, total bytes, file name
+            this.progressCallback?.(info.bytes, info.bytesOverall || info.bytes, fileName);
+          });
+        }
+
+        try {
+          // Download file
+          await client.downloadTo(localPath, remotePath);
+        } finally {
+          // Stop tracking progress
+          if (this.progressCallback) {
+            console.log('[FTP] Stopping file download progress tracking');
+            client.trackProgress();
+          }
+        }
 
         const stats = fs.statSync(localPath);
         fileSize = stats.size;
@@ -417,8 +467,29 @@ export class FTPCommand implements ICommand {
         // Ensure remote directory exists
         await client.ensureDir(remotePath);
 
-        // Upload directory recursively
-        await client.uploadFromDir(localPath, remotePath);
+        // Set up progress tracking if callback is available
+        if (this.progressCallback) {
+          console.log('[FTP] Setting up progress tracking for directory upload');
+          let fileCount = 0;
+          client.trackProgress((info) => {
+            console.log('[FTP] Upload progress:', JSON.stringify(info));
+            fileCount++;
+            const fileName = info.name || 'file';
+            // Report progress with file count
+            this.progressCallback?.(fileCount, fileCount, fileName);
+          });
+        }
+
+        try {
+          // Upload directory recursively
+          await client.uploadFromDir(localPath, remotePath);
+        } finally {
+          // Stop tracking progress
+          if (this.progressCallback) {
+            console.log('[FTP] Stopping upload progress tracking');
+            client.trackProgress();
+          }
+        }
 
         return {
           success: true,
@@ -432,8 +503,27 @@ export class FTPCommand implements ICommand {
         // Upload single file
         console.log('[FTP] Uploading file:', localPath, 'to', remotePath);
 
-        // Upload file
-        await client.uploadFrom(localPath, remotePath);
+        // Set up progress tracking if callback is available
+        if (this.progressCallback) {
+          const fileName = path.basename(localPath);
+          console.log('[FTP] Setting up progress tracking for file upload:', fileName);
+          client.trackProgress((info) => {
+            console.log('[FTP] File upload progress:', JSON.stringify(info));
+            // Report progress: bytes transferred, total bytes, file name
+            this.progressCallback?.(info.bytes, info.bytesOverall || info.bytes, fileName);
+          });
+        }
+
+        try {
+          // Upload file
+          await client.uploadFrom(localPath, remotePath);
+        } finally {
+          // Stop tracking progress
+          if (this.progressCallback) {
+            console.log('[FTP] Stopping file upload progress tracking');
+            client.trackProgress();
+          }
+        }
 
         return {
           success: true,

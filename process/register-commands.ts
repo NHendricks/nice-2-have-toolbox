@@ -150,6 +150,27 @@ export function registerCommands(ipcMain: any, version: string) {
           });
         }
 
+        // If it's an FTP command with download or upload operation, set up progress callback
+        if (
+          toolname === 'ftp' &&
+          (params.operation === 'download' || params.operation === 'upload') &&
+          command
+        ) {
+          const eventName = params.operation === 'download' ? 'ftp-download-progress' : 'ftp-upload-progress';
+
+          // Set up progress callback to send events to renderer
+          (command as any).setProgressCallback?.(
+            (current: number, total: number, fileName: string) => {
+              event.sender?.send(eventName, {
+                current,
+                total,
+                fileName,
+                percentage: total > 0 ? Math.round((current / total) * 100) : 0,
+              });
+            },
+          );
+        }
+
         // Execute command directly
         const result = await handler.execute(toolname, params);
 
@@ -179,6 +200,15 @@ export function registerCommands(ipcMain: any, version: string) {
         if (
           toolname === 'restic' &&
           params.operation === 'backup' &&
+          command
+        ) {
+          (command as any).setProgressCallback?.(undefined);
+        }
+
+        // Clear FTP progress callback after operation completes
+        if (
+          toolname === 'ftp' &&
+          (params.operation === 'download' || params.operation === 'upload') &&
           command
         ) {
           (command as any).setProgressCallback?.(undefined);
@@ -218,6 +248,15 @@ export function registerCommands(ipcMain: any, version: string) {
 
         // Clear restic progress callback on error
         if (toolname === 'restic' && params.operation === 'backup') {
+          const handler = getCommandHandler();
+          const command = handler.getCommand(toolname);
+          if (command) {
+            (command as any).setProgressCallback?.(undefined);
+          }
+        }
+
+        // Clear FTP progress callback on error
+        if (toolname === 'ftp' && (params.operation === 'download' || params.operation === 'upload')) {
           const handler = getCommandHandler();
           const command = handler.getCommand(toolname);
           if (command) {
