@@ -39,6 +39,20 @@ export interface ResticState {
   // File browser state
   expandedPaths?: string[]
   selectedFiles?: string[]
+  // Timeline diff mode state
+  timelineDiffMode?: boolean
+  timelineDiffSnapshot?: any // ResticSnapshot
+  timelineDiffResult?: {
+    snapshotTree: any[] // Serialized Map entries
+    currentFsTree: any[] // Serialized Map entries
+    comparison: {
+      added: string[]
+      removed: string[]
+      modified: string[]
+      unchanged: string[]
+    }
+  }
+  timelineSliderPosition?: number
 }
 
 // All app states

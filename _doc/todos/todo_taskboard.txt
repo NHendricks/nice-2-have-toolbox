@@ -1,3 +1,5 @@
 - taskboard
   - add persons
   - cleanup usability (ui fixes)
+    - cards should not overlap borders
+    - title first, then metadata, as last description

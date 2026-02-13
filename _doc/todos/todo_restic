@@ -1,5 +1,13 @@
+restic:
+
 - test linux
-- show better help (link to www.nice2havetoolbox.de)
-  - quick download, rename .exe on windows, extend PATH
-- test ftps
-- browse with slider and instantly show diff to current files in a tree
+  - i can only select files, not folders. i want to be able to only select folders on ubuntu
+- test ftps => klappt
+  - prepare:
+    - Terminal (on Windows: use Git Bash):
+      - ssh-keygen
+      - ssh-copy-id user@host
+- restic -r sftp:user@host:/.../backup_restic init
+  vorschlagen statt s3:
+- click on added, remove or changed and fiter trees
+  - remove snapshot details below timeline

@@ -10,6 +10,9 @@ import {
   saveResticState,
 } from '../../../services/SessionState.js'
 import type {
+  CurrentFileEntry,
+  DiffStatus,
+  DiffTreeEntry,
   ResticBackupProgress,
   ResticCommandHistory,
   ResticDiffResult,
@@ -344,6 +347,22 @@ export class ResticUI extends LitElement {
       height: 500px;
     }
 
+    .browse-panel.diff-mode {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+    }
+
+    .browse-panel.diff-mode .timeline {
+      max-height: 200px;
+      margin-bottom: 1rem;
+    }
+
+    .browse-panel.diff-mode .file-browser {
+      flex: 1;
+      min-height: 600px;
+    }
+
     .timeline {
       background: #0f172a;
       border-radius: 8px;
@@ -600,6 +619,191 @@ export class ResticUI extends LitElement {
 
     .tree-children {
       /* Children are indented via padding-left in renderTreeNode */
+    }
+
+    /* Timeline Diff Mode Styles */
+    .diff-mode-toggle {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: #0f172a;
+      border-radius: 6px;
+      align-items: center;
+    }
+
+    .timeline-slider-container {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #0f172a;
+      border-radius: 6px;
+    }
+
+    .timeline-slider {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: #475569;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .timeline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #0ea5e9;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .timeline-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: #0ea5e9;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+
+    .timeline-label {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .timeline-ticks {
+      position: relative;
+      height: 20px;
+      margin-top: 0.5rem;
+    }
+
+    .timeline-tick {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #475569;
+      border: 2px solid #0f172a;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .timeline-tick:hover {
+      background: #0ea5e9;
+      transform: translate(-50%, -50%) scale(1.3);
+    }
+
+    .timeline-tick.active {
+      background: #0ea5e9;
+      box-shadow: 0 0 8px rgba(14, 165, 233, 0.6);
+    }
+
+    .timeline-tick-tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.25rem 0.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #e2e8f0;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      margin-bottom: 0.5rem;
+    }
+
+    .timeline-tick:hover .timeline-tick-tooltip {
+      opacity: 1;
+    }
+
+    .diff-trees-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      min-height: 600px;
+      height: auto;
+    }
+
+    .diff-tree-panel {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .diff-tree-panel h4 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1rem;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .diff-stats {
+      font-size: 0.75rem;
+      color: #64748b;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .diff-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .diff-stat-added {
+      color: #22c55e;
+    }
+
+    .diff-stat-removed {
+      color: #ef4444;
+    }
+
+    .diff-stat-modified {
+      color: #f59e0b;
+    }
+
+    .tree-item.diff-added {
+      background: rgba(34, 197, 94, 0.1);
+      border-left: 3px solid #22c55e;
+    }
+
+    .tree-item.diff-removed {
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 3px solid #ef4444;
+      opacity: 0.7;
+      text-decoration: line-through;
+    }
+
+    .tree-item.diff-modified {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 3px solid #f59e0b;
+    }
+
+    .tree-item.diff-unchanged {
+      opacity: 0.6;
+    }
+
+    .tree-scroll {
+      flex: 1;
+      overflow-y: auto;
+      background: #1e293b;
+      border-radius: 4px;
+      padding: 0.5rem;
     }
 
     /* Retention Panel Styles */
@@ -1092,6 +1296,23 @@ export class ResticUI extends LitElement {
   @state() private commandHistory: ResticCommandHistory[] = []
   private readonly MAX_HISTORY_ENTRIES = 100 // Maximum number of history entries to keep
 
+  // Timeline diff mode state
+  @state() private timelineDiffMode: boolean = false
+  @state() private timelineDiffSnapshot: ResticSnapshot | null = null
+  @state() private timelineDiffResult: {
+    snapshotTree: Map<string, ResticFileEntry[]>
+    currentFsTree: Map<string, DiffTreeEntry[]>
+    comparison: {
+      added: Set<string>
+      removed: Set<string>
+      modified: Set<string>
+      unchanged: Set<string>
+    }
+  } | null = null
+  @state() private timelineSliderPosition: number = 0
+  @state() private isDiffLoading: boolean = false
+  private sliderDebounceTimer: any = null
+
   connectedCallback() {
     super.connectedCallback()
     this.checkResticInstalled()
@@ -1130,6 +1351,30 @@ export class ResticUI extends LitElement {
       this.expandedPaths = new Set(savedState.expandedPaths)
     if (savedState.selectedFiles)
       this.selectedFiles = new Set(savedState.selectedFiles)
+    // Timeline diff mode state
+    if (savedState.timelineDiffMode) {
+      this.timelineDiffMode = savedState.timelineDiffMode
+    }
+    if (savedState.timelineDiffSnapshot) {
+      this.timelineDiffSnapshot = savedState.timelineDiffSnapshot
+    }
+    if (savedState.timelineDiffResult) {
+      // Reconstruct Maps from serialized arrays and Sets from arrays
+      const comp = savedState.timelineDiffResult.comparison
+      this.timelineDiffResult = {
+        snapshotTree: new Map(savedState.timelineDiffResult.snapshotTree),
+        currentFsTree: new Map(savedState.timelineDiffResult.currentFsTree),
+        comparison: {
+          added: new Set(comp.added),
+          removed: new Set(comp.removed),
+          modified: new Set(comp.modified),
+          unchanged: new Set(comp.unchanged),
+        },
+      }
+    }
+    if (savedState.timelineSliderPosition !== undefined) {
+      this.timelineSliderPosition = savedState.timelineSliderPosition
+    }
 
     // Set default repository path if none exists
     if (!this.repoPath) {
@@ -2084,6 +2329,158 @@ export class ResticUI extends LitElement {
     }
   }
 
+  /**
+   * Toggle between normal browse mode and timeline diff mode
+   */
+  private async toggleDiffMode() {
+    this.timelineDiffMode = !this.timelineDiffMode
+
+    if (this.timelineDiffMode) {
+      // Entering diff mode - ensure snapshots are loaded
+      if (this.snapshots.length === 0) {
+        // Load snapshots first if not already loaded
+        await this.loadSnapshots()
+      }
+
+      // Set slider to most recent snapshot and load comparison
+      if (this.snapshots.length > 0) {
+        this.timelineSliderPosition = 0 // Most recent is at index 0
+        const snapshot = this.snapshots[0]
+        await this.loadTimelineSnapshot(snapshot)
+      } else {
+        this.showMessage('error', 'No snapshots available for comparison')
+        this.timelineDiffMode = false // Exit diff mode if no snapshots
+      }
+    } else {
+      // Exiting diff mode - clear diff data
+      this.timelineDiffResult = null
+      this.timelineDiffSnapshot = null
+    }
+
+    saveResticState({ timelineDiffMode: this.timelineDiffMode })
+  }
+
+  /**
+   * Handle timeline slider input (debounced)
+   */
+  private handleTimelineSlider(e: Event) {
+    const position = parseInt((e.target as HTMLInputElement).value)
+    this.timelineSliderPosition = position
+
+    // Debounce: use setTimeout to avoid too many updates while dragging
+    if (this.sliderDebounceTimer) {
+      clearTimeout(this.sliderDebounceTimer)
+    }
+
+    this.sliderDebounceTimer = setTimeout(() => {
+      const snapshot = this.snapshots[position]
+      if (snapshot) {
+        this.loadTimelineSnapshot(snapshot)
+      }
+    }, 300) // 300ms debounce
+  }
+
+  /**
+   * Load a snapshot for timeline diff comparison
+   */
+  private async loadTimelineSnapshot(snapshot: ResticSnapshot) {
+    this.timelineDiffSnapshot = snapshot
+    this.isDiffLoading = true
+
+    try {
+      // 1. Load snapshot files
+      const snapshotResult = await this.invokeRestic({
+        operation: 'ls',
+        snapshotId: snapshot.short_id || snapshot.id,
+      })
+
+      if (!snapshotResult.success) {
+        throw new Error(snapshotResult.error || 'Failed to load snapshot files')
+      }
+
+      // 2. Load current filesystem files
+      const currentFsResult = await this.invokeRestic({
+        operation: 'list-current-fs',
+        paths: snapshot.paths, // Compare same paths that were backed up
+      })
+
+      if (!currentFsResult.success) {
+        throw new Error(
+          currentFsResult.error || 'Failed to load current filesystem',
+        )
+      }
+
+      // 3. Build trees and compute diff
+      const snapshotEntries: ResticFileEntry[] =
+        snapshotResult.data?.entries || []
+      const currentEntries: CurrentFileEntry[] =
+        currentFsResult.data?.entries || []
+
+      // Normalize Restic paths (/C/Users/... -> C:/Users/...) for consistent tree structure
+      const normalizedSnapshotEntries = snapshotEntries.map((e) => ({
+        ...e,
+        path: this.normalizeResticPath(e.path),
+      }))
+
+      // Filter snapshot entries: only keep entries STRICTLY INSIDE the backed-up paths
+      // restic ls returns ancestor dirs (/D, /D/SynologyDrive) AND the backup path
+      // dir itself, but the current FS scan only returns CONTENTS of the backup path.
+      // Filter to only contents so both trees show the same level.
+      const backupPathsNormalized = snapshot.paths.map((p) =>
+        this.normalizePathForComparison(this.normalizeResticPath(p)),
+      )
+      const filteredSnapshotEntries = normalizedSnapshotEntries.filter((e) => {
+        const normalized = this.normalizePathForComparison(e.path)
+        return backupPathsNormalized.some((bp) =>
+          normalized.startsWith(bp + '/'),
+        )
+      })
+
+      const snapshotTree = this.buildFileTree(filteredSnapshotEntries)
+      const currentFsTree = this.buildCurrentFileTree(currentEntries)
+
+      const comparison = this.computeDiff(
+        filteredSnapshotEntries,
+        currentEntries,
+      )
+
+      this.timelineDiffResult = {
+        snapshotTree,
+        currentFsTree,
+        comparison,
+      }
+
+      saveResticState({
+        timelineDiffSnapshot: snapshot,
+        timelineDiffResult: {
+          snapshotTree: Array.from(snapshotTree.entries()),
+          currentFsTree: Array.from(currentFsTree.entries()),
+          comparison: {
+            added: Array.from(comparison.added),
+            removed: Array.from(comparison.removed),
+            modified: Array.from(comparison.modified),
+            unchanged: Array.from(comparison.unchanged),
+          },
+        },
+      })
+    } catch (error: any) {
+      this.showMessage('error', `Failed to load timeline: ${error.message}`)
+    } finally {
+      this.isDiffLoading = false
+    }
+  }
+
+  /**
+   * Select a snapshot by index (for clicking on timeline ticks)
+   */
+  private selectSnapshotByIndex(index: number) {
+    this.timelineSliderPosition = index
+    const snapshot = this.snapshots[index]
+    if (snapshot) {
+      this.loadTimelineSnapshot(snapshot)
+    }
+  }
+
   private showMessage(type: 'success' | 'error' | 'info', text: string) {
     this.message = { type, text }
     setTimeout(() => {
@@ -2168,10 +2565,21 @@ export class ResticUI extends LitElement {
     // Handle both Windows (C:\foo\bar) and Unix (/foo/bar) paths
     // Normalize to forward slashes for consistency
     const normalized = path.replace(/\\/g, '/')
+
+    // Handle Windows drive roots like C:/ - they have no parent (return empty string)
+    if (/^[A-Za-z]:\/$/.test(normalized)) {
+      return ''
+    }
+
     const lastSlash = normalized.lastIndexOf('/')
 
-    // Handle Windows drive roots like C:/ or D:/
+    // Handle Unix root /
+    if (normalized === '/') return ''
+
+    // Handle paths with no slashes
     if (lastSlash <= 0) return '/'
+
+    // Handle files directly in drive root like C:/file
     if (lastSlash === 2 && normalized[1] === ':') {
       // Path like C:/file - parent is C:/
       return normalized.substring(0, 3)
@@ -2228,7 +2636,9 @@ export class ResticUI extends LitElement {
     const isExpanded = this.expandedPaths.has(entry.path)
     const isSelected = this.selectedFiles.has(entry.path)
     const isPartiallySelected =
-      isDir && !isSelected && this.isDirectoryPartiallySelected(entry.path, tree)
+      isDir &&
+      !isSelected &&
+      this.isDirectoryPartiallySelected(entry.path, tree)
     const children = isDir ? tree.get(entry.path) || [] : []
     const indent = depth * 20
 
@@ -2293,12 +2703,18 @@ export class ResticUI extends LitElement {
 
     // Find entries that don't have their parent in allPaths (they are roots)
     tree.forEach((entries, parentPath) => {
-      // Root conditions: Unix root '/', Windows drive root like 'C:/', or parent not in tree
+      // Root conditions: empty parent, Unix root '/', Windows drive root like 'C:/', or parent not in tree
+      const isEmptyParent = parentPath === ''
       const isUnixRoot = parentPath === '/'
       const isWindowsDriveRoot = /^[A-Za-z]:\/$/.test(parentPath)
       const parentNotInTree = !allPaths.has(parentPath)
 
-      if (isUnixRoot || isWindowsDriveRoot || parentNotInTree) {
+      if (
+        isEmptyParent ||
+        isUnixRoot ||
+        isWindowsDriveRoot ||
+        parentNotInTree
+      ) {
         rootEntries.push(...entries)
       }
     })
@@ -2344,6 +2760,221 @@ export class ResticUI extends LitElement {
     }
 
     return expanded
+  }
+
+  /**
+   * Get all parent paths from a path up to the root
+   */
+  private getAllParentPathsToRoot(path: string): string[] {
+    const normalized = path.replace(/\\/g, '/')
+    const parts = normalized.split('/').filter((p) => p)
+    const parents: string[] = []
+
+    // For Windows paths (C:/Users/...)
+    if (normalized.match(/^[A-Za-z]:\//)) {
+      const drive = normalized.substring(0, 3) // e.g., "C:/"
+      parents.push(drive)
+
+      for (let i = 1; i <= parts.length - 1; i++) {
+        const parentPath = drive + parts.slice(1, i + 1).join('/')
+        parents.push(parentPath)
+      }
+    }
+    // For Unix paths (/home/user/...)
+    else if (normalized.startsWith('/')) {
+      parents.push('/')
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        const parentPath = '/' + parts.slice(0, i + 1).join('/')
+        parents.push(parentPath)
+      }
+    }
+
+    return parents
+  }
+
+  /**
+   * Normalize Restic path format to OS path format
+   * Converts /C/Users/... -> C:/Users/... on Windows
+   * Converts /C or /D -> C:/ or D:/ (drive root)
+   * Leaves Unix paths unchanged
+   */
+  private normalizeResticPath(path: string): string {
+    // Convert Restic's Unix-style Windows paths: /C/Users/... -> C:/Users/...
+    // Also handle drive root like /C or /D -> C:/ or D:/
+    if (path.match(/^\/[A-Za-z](\/|$)/)) {
+      const drive = path.substring(1, 2) + ':'
+      const rest = path.substring(2)
+      return rest ? drive + rest : drive + '/'
+    }
+    return path
+  }
+
+  /**
+   * Normalize path for comparison (handles Windows/Unix and Restic path formats)
+   */
+  private normalizePathForComparison(path: string): string {
+    // Normalize to forward slashes
+    let normalized = path.replace(/\\/g, '/')
+
+    // Handle Restic's Unix-style Windows paths: /C/Users/... -> C:/Users/...
+    // Also handle drive root like /C or /D -> C:/ or D:/
+    if (normalized.match(/^\/[A-Za-z](\/|$)/)) {
+      const drive = normalized.substring(1, 2) + ':'
+      const rest = normalized.substring(2)
+      normalized = rest ? drive + rest : drive + '/'
+    }
+
+    // Convert to lowercase for case-insensitive comparison on Windows
+    normalized = normalized.toLowerCase()
+
+    return normalized
+  }
+
+  /**
+   * Add missing parent directories to tree up to the root
+   */
+  private addParentDirectoriesToRoot(
+    tree: Map<string, any[]>,
+    entries: any[],
+  ): void {
+    const allPaths = new Set<string>()
+
+    // Collect all existing paths
+    entries.forEach((e) => {
+      allPaths.add(e.path.replace(/\\/g, '/'))
+    })
+
+    // For each path, ensure all parents exist up to root
+    const parentsToAdd = new Set<string>()
+    entries.forEach((entry) => {
+      const parents = this.getAllParentPathsToRoot(entry.path)
+      parents.forEach((parent) => {
+        if (!allPaths.has(parent)) {
+          parentsToAdd.add(parent)
+        }
+      })
+    })
+
+    // Add missing parent directories to the tree
+    parentsToAdd.forEach((parentPath) => {
+      const grandParentPath = this.getParentPath(parentPath)
+      const name =
+        parentPath
+          .split('/')
+          .filter((p) => p)
+          .pop() || parentPath
+
+      if (!tree.has(grandParentPath)) {
+        tree.set(grandParentPath, [])
+      }
+
+      // Add as a directory entry
+      tree.get(grandParentPath)!.push({
+        path: parentPath,
+        name: name,
+        type: 'dir' as const,
+        status: 'unchanged' as DiffStatus,
+      })
+    })
+
+    // Sort all children after adding parents
+    tree.forEach((children) => {
+      children.sort((a, b) => {
+        if (a.type === 'dir' && b.type !== 'dir') return -1
+        if (a.type !== 'dir' && b.type === 'dir') return 1
+        return a.name.localeCompare(b.name)
+      })
+    })
+  }
+
+  /**
+   * Build tree structure from current filesystem entries
+   */
+  private buildCurrentFileTree(
+    entries: CurrentFileEntry[],
+  ): Map<string, DiffTreeEntry[]> {
+    const tree = new Map<string, DiffTreeEntry[]>()
+
+    for (const entry of entries) {
+      const normalizedPath = entry.path.replace(/\\/g, '/')
+      const parentPath = this.getParentPath(normalizedPath)
+
+      if (!tree.has(parentPath)) {
+        tree.set(parentPath, [])
+      }
+
+      tree.get(parentPath)!.push({
+        path: normalizedPath,
+        name: entry.name,
+        type: entry.type,
+        status: 'unchanged',
+        currentEntry: entry,
+      })
+    }
+
+    return tree
+  }
+
+  /**
+   * Compute diff between snapshot and current filesystem
+   */
+  private computeDiff(
+    snapshotEntries: ResticFileEntry[],
+    currentEntries: CurrentFileEntry[],
+  ): {
+    added: Set<string>
+    removed: Set<string>
+    modified: Set<string>
+    unchanged: Set<string>
+  } {
+    const snapshotMap = new Map<string, ResticFileEntry>()
+    const currentMap = new Map<string, CurrentFileEntry>()
+
+    // Build lookup maps (normalize paths for comparison)
+    snapshotEntries.forEach((e) => {
+      const normalizedPath = this.normalizePathForComparison(e.path)
+      snapshotMap.set(normalizedPath, e)
+    })
+    currentEntries.forEach((e) => {
+      const normalizedPath = this.normalizePathForComparison(e.path)
+      currentMap.set(normalizedPath, e)
+    })
+
+    const added = new Set<string>()
+    const removed = new Set<string>()
+    const modified = new Set<string>()
+    const unchanged = new Set<string>()
+
+    // Find removed and modified
+    snapshotMap.forEach((snapEntry, path) => {
+      const currEntry = currentMap.get(path)
+
+      if (!currEntry) {
+        removed.add(path)
+      } else {
+        // Check if modified (compare size and mtime)
+        const sizeChanged = snapEntry.size !== currEntry.size
+        const mtimeChanged =
+          new Date(snapEntry.mtime).getTime() !==
+          new Date(currEntry.mtime).getTime()
+
+        if (sizeChanged || mtimeChanged) {
+          modified.add(path)
+        } else {
+          unchanged.add(path)
+        }
+      }
+    })
+
+    // Find added
+    currentMap.forEach((currEntry, path) => {
+      if (!snapshotMap.has(path)) {
+        added.add(path)
+      }
+    })
+
+    return { added, removed, modified, unchanged }
   }
 
   render() {
@@ -2491,7 +3122,7 @@ export class ResticUI extends LitElement {
               <label>Repository Path</label>
               <input
                 type="text"
-                placeholder="/path/to/repo or s3:bucket/path"
+                placeholder="/path2/repo or sftp:user@host:/path2/restic"
                 .value=${this.repoPath}
                 @input=${(e: Event) =>
                   (this.repoPath = (e.target as HTMLInputElement).value)}
@@ -2741,101 +3372,419 @@ export class ResticUI extends LitElement {
     `
   }
 
+  /**
+   * Render normal timeline with mode toggle button
+   */
+  private renderNormalTimeline(groups: SnapshotGroup[]) {
+    return html`
+      ${groups.length > 0
+        ? html`
+            <div class="diff-mode-toggle">
+              <button
+                class="btn btn-small btn-secondary"
+                @click=${this.toggleDiffMode}
+              >
+                📊 Timeline Compare
+              </button>
+            </div>
+          `
+        : ''}
+      ${groups.length === 0
+        ? html`<div style="color: #64748b; font-size: 0.85rem">
+            No snapshots yet
+          </div>`
+        : groups.map(
+            (group) => html`
+              <div class="timeline-group">
+                <div class="timeline-group-label">${group.label}</div>
+                ${group.snapshots.map(
+                  (snapshot) => html`
+                    <div
+                      class="timeline-item ${this.selectedSnapshot?.id ===
+                      snapshot.id
+                        ? 'selected'
+                        : ''}"
+                      @click=${() => this.selectSnapshot(snapshot)}
+                    >
+                      <div class="timeline-dot"></div>
+                      <div class="timeline-info">
+                        <div class="timeline-time">
+                          ${this.formatTime(snapshot.time)}
+                        </div>
+                        <div class="timeline-paths">
+                          ${snapshot.paths?.join(', ')}
+                        </div>
+                      </div>
+                    </div>
+                  `,
+                )}
+              </div>
+            `,
+          )}
+    `
+  }
+
+  /**
+   * Render diff mode timeline with slider
+   */
+  private renderDiffModeTimeline(groups: SnapshotGroup[]) {
+    return html`
+      <div class="diff-mode-toggle">
+        <button
+          class="btn btn-small btn-secondary"
+          @click=${this.toggleDiffMode}
+        >
+          ← Back to Normal View
+        </button>
+      </div>
+
+      ${this.snapshots.length === 0
+        ? html`<div style="color: #64748b; font-size: 0.85rem">
+            No snapshots
+          </div>`
+        : html`
+            <div class="timeline-slider-container">
+              <label
+                style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"
+              >
+                Browse Timeline
+              </label>
+              <input
+                type="range"
+                class="timeline-slider"
+                min="0"
+                max="${this.snapshots.length - 1}"
+                step="1"
+                .value="${String(this.timelineSliderPosition)}"
+                @input=${this.handleTimelineSlider}
+                style="margin-bottom: 0;"
+              />
+              <div class="timeline-ticks">
+                ${this.snapshots.map(
+                  (snapshot, index) => html`
+                    <div
+                      class="timeline-tick ${this.timelineSliderPosition ===
+                      index
+                        ? 'active'
+                        : ''}"
+                      style="left: ${(index /
+                        Math.max(this.snapshots.length - 1, 1)) *
+                      100}%; top: 50%;"
+                      @click=${() => this.selectSnapshotByIndex(index)}
+                    >
+                      <div class="timeline-tick-tooltip">
+                        ${this.formatDate(snapshot.time)}
+                      </div>
+                    </div>
+                  `,
+                )}
+              </div>
+            </div>
+
+            ${this.timelineDiffSnapshot
+              ? html`
+                  <div
+                    style="padding: 0.75rem; background: #1e293b; border-radius: 4px; margin-top: 0.5rem;"
+                  >
+                    <div
+                      style="font-size: 0.9rem; font-weight: 600; color: #0ea5e9; margin-bottom: 0.25rem;"
+                    >
+                      ${this.timelineDiffSnapshot.short_id ||
+                      this.timelineDiffSnapshot.id.substring(0, 8)}
+                    </div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">
+                      ${this.formatDate(this.timelineDiffSnapshot.time)}
+                    </div>
+                    <div
+                      style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;"
+                    >
+                      ${this.timelineDiffSnapshot.paths?.join(', ')}
+                    </div>
+                  </div>
+                `
+              : ''}
+          `}
+    `
+  }
+
+  /**
+   * Render diff mode header with stats
+   */
+  private renderDiffModeHeader() {
+    if (!this.timelineDiffResult) {
+      return html`<h3>Loading comparison...</h3>`
+    }
+
+    const stats = this.timelineDiffResult.comparison
+
+    return html`
+      <div style="margin-bottom: 1rem;">
+        <h3 style="margin: 0 0 0.5rem 0;">Timeline Comparison</h3>
+        <div class="diff-stats">
+          <div class="diff-stat diff-stat-added">
+            <span>●</span>
+            <span>${stats.added.size} Added</span>
+          </div>
+          <div class="diff-stat diff-stat-removed">
+            <span>●</span>
+            <span>${stats.removed.size} Removed</span>
+          </div>
+          <div class="diff-stat diff-stat-modified">
+            <span>●</span>
+            <span>${stats.modified.size} Modified</span>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  /**
+   * Render normal browse header
+   */
+  private renderNormalBrowseHeader() {
+    return html`
+      <h3>
+        ${this.selectedSnapshot
+          ? html`Files in
+            ${this.selectedSnapshot.short_id || this.selectedSnapshot.id}
+            ${this.browseEntries.length > 0
+              ? html`<span
+                  style="color: #64748b; font-weight: normal; font-size: 0.85rem; margin-left: 0.5rem;"
+                >
+                  (${this.browseEntries.filter((e) => e.type === 'file').length}
+                  files)
+                </span>`
+              : ''}`
+          : 'Select a snapshot'}
+      </h3>
+    `
+  }
+
+  /**
+   * Render normal tree view
+   */
+  private renderNormalTree() {
+    return html`
+      <div class="tree-container">
+        ${this.isLoading
+          ? html`<div class="empty-state"><span class="spinner"></span></div>`
+          : this.browseEntries.length === 0
+            ? html`<div class="empty-state">No files</div>`
+            : (() => {
+                const tree = this.buildFileTree(this.browseEntries)
+                const rootEntries = this.getRootEntries(tree)
+                return rootEntries.map((entry) =>
+                  this.renderTreeNode(entry, tree, 0),
+                )
+              })()}
+      </div>
+    `
+  }
+
+  /**
+   * Render side-by-side diff trees
+   */
+  private renderDiffTrees() {
+    if (this.isDiffLoading) {
+      return html`
+        <div class="empty-state">
+          <span class="spinner"></span>
+          <div>Computing differences...</div>
+        </div>
+      `
+    }
+
+    if (!this.timelineDiffResult) {
+      return html`<div class="empty-state">No comparison data</div>`
+    }
+
+    const snapshotRootEntries = this.getRootEntries(
+      this.timelineDiffResult.snapshotTree,
+    )
+    const currentRootEntries = this.getRootEntries(
+      this.timelineDiffResult.currentFsTree as any,
+    )
+
+    return html`
+      <div class="diff-trees-container">
+        <div class="diff-tree-panel">
+          <h4>
+            <span>Snapshot (${this.timelineDiffSnapshot?.short_id})</span>
+          </h4>
+          <div class="tree-scroll">
+            ${snapshotRootEntries.map((entry) =>
+              this.renderDiffTreeNode(
+                entry,
+                this.timelineDiffResult!.snapshotTree,
+                0,
+                'snapshot',
+              ),
+            )}
+          </div>
+        </div>
+
+        <div class="diff-tree-panel">
+          <h4>
+            <span>Current Filesystem</span>
+          </h4>
+          <div class="tree-scroll">
+            ${currentRootEntries.map((entry) =>
+              this.renderDiffTreeNode(
+                entry,
+                this.timelineDiffResult!.currentFsTree as any,
+                0,
+                'current',
+              ),
+            )}
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  /**
+   * Check if a directory has any changed children recursively
+   */
+  private hasChangedChildrenRecursive(
+    dirPath: string,
+    tree: Map<string, any[]>,
+    side: 'snapshot' | 'current',
+  ): boolean {
+    if (!this.timelineDiffResult) return false
+
+    const comp = this.timelineDiffResult.comparison
+    const normalizedDirPath = this.normalizePathForComparison(dirPath)
+    const prefix = normalizedDirPath + '/'
+
+    // Check if any changed path starts with this directory path
+    const setsToCheck: Set<string>[] = [comp.modified]
+    if (side === 'current') setsToCheck.push(comp.added)
+    if (side === 'snapshot') setsToCheck.push(comp.removed)
+
+    for (const pathSet of setsToCheck) {
+      for (const changedPath of pathSet) {
+        if (changedPath.startsWith(prefix)) return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Render a single tree node in diff mode
+   */
+  private renderDiffTreeNode(
+    entry: ResticFileEntry | DiffTreeEntry,
+    tree: Map<string, any[]>,
+    depth: number,
+    side: 'snapshot' | 'current',
+  ): any {
+    const isDir = entry.type === 'dir'
+    const isExpanded = this.expandedPaths.has(entry.path)
+    const children = isDir ? tree.get(entry.path) || [] : []
+    const indent = depth * 20
+
+    // Determine diff status - ALWAYS look up in comparison arrays
+    // (don't use the 'status' field from tree building as it's never updated)
+    const comp = this.timelineDiffResult!.comparison
+    const normalizedEntryPath = this.normalizePathForComparison(entry.path)
+    let diffStatus: DiffStatus = 'unchanged'
+    if (comp.added.has(normalizedEntryPath)) diffStatus = 'added'
+    else if (comp.removed.has(normalizedEntryPath)) diffStatus = 'removed'
+    else if (comp.modified.has(normalizedEntryPath)) diffStatus = 'modified'
+
+    // Filter: only show relevant items for each side
+    if (side === 'snapshot' && diffStatus === 'added') return null
+    if (side === 'current' && diffStatus === 'removed') return null
+
+    // Hide unchanged files (but keep directories that might contain changed files)
+    if (diffStatus === 'unchanged' && !isDir) return null
+
+    // Hide unchanged directories that don't have any changed children
+    if (diffStatus === 'unchanged' && isDir) {
+      const hasChangedChildren = this.hasChangedChildrenRecursive(
+        entry.path,
+        tree,
+        side,
+      )
+      if (!hasChangedChildren) return null
+    }
+
+    return html`
+      <div class="tree-node">
+        <div
+          class="tree-item ${isDir ? 'directory' : 'file'} diff-${diffStatus}"
+          style="padding-left: ${indent + 8}px"
+          @click=${() => isDir && this.toggleTreeNode(entry.path)}
+        >
+          <span
+            class="tree-toggle"
+            style="visibility: ${isDir && children.length > 0
+              ? 'visible'
+              : 'hidden'}"
+          >
+            ${isExpanded ? '▼' : '▶'}
+          </span>
+          <span class="tree-icon">${isDir ? '📁' : '📄'}</span>
+          <span class="tree-name">${entry.name}</span>
+          ${!isDir && 'size' in entry
+            ? html`<span class="tree-size"
+                >${this.formatSize(entry.size)}</span
+              >`
+            : ''}
+        </div>
+        ${isDir && isExpanded
+          ? html`
+              <div class="tree-children">
+                ${children.map((child) =>
+                  this.renderDiffTreeNode(child, tree, depth + 1, side),
+                )}
+              </div>
+            `
+          : ''}
+      </div>
+    `
+  }
+
   private renderBrowsePanel() {
     const groups = this.groupSnapshots()
 
     return html`
-      <div class="browse-panel">
+      <div class="browse-panel ${this.timelineDiffMode ? 'diff-mode' : ''}">
         <div class="timeline">
           <h3>Snapshots</h3>
-          ${groups.length === 0
-            ? html`<div style="color: #64748b; font-size: 0.85rem">
-                No snapshots yet
-              </div>`
-            : groups.map(
-                (group) => html`
-                  <div class="timeline-group">
-                    <div class="timeline-group-label">${group.label}</div>
-                    ${group.snapshots.map(
-                      (snapshot) => html`
-                        <div
-                          class="timeline-item ${this.selectedSnapshot?.id ===
-                          snapshot.id
-                            ? 'selected'
-                            : ''}"
-                          @click=${() => this.selectSnapshot(snapshot)}
-                        >
-                          <div class="timeline-dot"></div>
-                          <div class="timeline-info">
-                            <div class="timeline-time">
-                              ${this.formatTime(snapshot.time)}
-                            </div>
-                            <div class="timeline-paths">
-                              ${snapshot.paths?.join(', ')}
-                            </div>
-                          </div>
-                        </div>
-                      `,
-                    )}
-                  </div>
-                `,
-              )}
+
+          ${!this.timelineDiffMode ? this.renderNormalTimeline(groups) : ''}
+          ${this.timelineDiffMode ? this.renderDiffModeTimeline(groups) : ''}
         </div>
 
         <div class="file-browser">
-          <h3>
-            ${this.selectedSnapshot
-              ? html`Files in
-                ${this.selectedSnapshot.short_id || this.selectedSnapshot.id}
-                ${this.browseEntries.length > 0
-                  ? html`<span
-                      style="color: #64748b; font-weight: normal; font-size: 0.85rem; margin-left: 0.5rem;"
+          ${this.timelineDiffMode
+            ? this.renderDiffModeHeader()
+            : this.renderNormalBrowseHeader()}
+          ${this.timelineDiffMode
+            ? this.renderDiffTrees()
+            : this.selectedSnapshot
+              ? html`
+                  ${this.renderNormalTree()}
+                  <div class="file-actions">
+                    <button
+                      class="btn btn-primary"
+                      @click=${this.restoreSelectedFiles}
+                      ?disabled=${this.selectedFiles.size === 0}
                     >
-                      (${this.browseEntries.filter((e) => e.type === 'file')
-                        .length}
-                      files)
-                    </span>`
-                  : ''}`
-              : 'Select a snapshot'}
-          </h3>
-
-          ${this.selectedSnapshot
-            ? html`
-                <div class="tree-container">
-                  ${this.isLoading
-                    ? html`<div class="empty-state">
-                        <span class="spinner"></span>
-                      </div>`
-                    : this.browseEntries.length === 0
-                      ? html`<div class="empty-state">No files</div>`
-                      : (() => {
-                          const tree = this.buildFileTree(this.browseEntries)
-                          const rootEntries = this.getRootEntries(tree)
-                          return rootEntries.map((entry) =>
-                            this.renderTreeNode(entry, tree, 0),
-                          )
-                        })()}
-                </div>
-
-                <div class="file-actions">
-                  <button
-                    class="btn btn-primary"
-                    @click=${this.restoreSelectedFiles}
-                    ?disabled=${this.selectedFiles.size === 0}
-                  >
-                    Restore Selected (${this.selectedFiles.size})
-                  </button>
-                  <button class="btn btn-secondary" @click=${this.restoreAll}>
-                    Restore All
-                  </button>
-                </div>
-              `
-            : html`
-                <div class="empty-state">
-                  <div class="empty-state-icon">📁</div>
-                  <div>Select a snapshot to browse files</div>
-                </div>
-              `}
+                      Restore Selected (${this.selectedFiles.size})
+                    </button>
+                    <button class="btn btn-secondary" @click=${this.restoreAll}>
+                      Restore All
+                    </button>
+                  </div>
+                `
+              : html`
+                  <div class="empty-state">
+                    <div class="empty-state-icon">📁</div>
+                    <div>Select a snapshot to browse files</div>
+                  </div>
+                `}
         </div>
       </div>
     `
@@ -3205,7 +4154,9 @@ export class ResticUI extends LitElement {
   private renderHistoryPanel() {
     return html`
       <div class="history-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;"
+        >
           <h3 style="margin: 0;">Command History</h3>
           <button
             class="btn btn-secondary"
@@ -3227,11 +4178,16 @@ export class ResticUI extends LitElement {
               <div class="history-list">
                 ${this.commandHistory.map(
                   (cmd) => html`
-                    <div class="history-entry ${cmd.success ? 'success' : 'error'}">
+                    <div
+                      class="history-entry ${cmd.success ? 'success' : 'error'}"
+                    >
                       <div class="history-header">
                         <div class="history-operation">
-                          <span class="history-icon">${cmd.success ? '✓' : '✗'}</span>
-                          <code style="font-family: monospace; font-size: 0.9rem;"
+                          <span class="history-icon"
+                            >${cmd.success ? '✓' : '✗'}</span
+                          >
+                          <code
+                            style="font-family: monospace; font-size: 0.9rem;"
                             >${cmd.commandLine || cmd.operation}</code
                           >
                         </div>
@@ -3257,14 +4213,14 @@ export class ResticUI extends LitElement {
                                 .map(
                                   ([key, value]) => html`
                                     <span class="param-tag"
-                                      >${key}: ${this.formatParamValue(value)}</span
+                                      >${key}:
+                                      ${this.formatParamValue(value)}</span
                                     >
                                   `,
                                 )}
                             </div>
                           `
                         : ''}
-
                       ${cmd.output
                         ? html`
                             <div class="history-output">
@@ -3272,7 +4228,6 @@ export class ResticUI extends LitElement {
                             </div>
                           `
                         : ''}
-
                       ${cmd.error
                         ? html`
                             <div class="history-error">

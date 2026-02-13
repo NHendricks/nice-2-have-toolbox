@@ -1,7 +1,3 @@
-- add installation instructions for n2h toolbox for mac/windows/linux
-
-
-
 - quick app launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)
 

@@ -4,7 +4,8 @@
  */
 
 import { ChildProcess, exec, spawn } from 'child_process';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
+import { join, resolve } from 'path';
 import { promisify } from 'util';
 import { CommandParameter, ICommand } from './command-interface.js';
 
@@ -133,6 +134,8 @@ export class ResticCommand implements ICommand {
           return await this.unlock(env);
         case 'diff':
           return await this.diff(params.snapshotId1, params.snapshotId2, env);
+        case 'list-current-fs':
+          return await this.listCurrentFilesystem(params.paths);
         default:
           return { success: false, error: `Unknown operation: ${operation}` };
       }
@@ -699,6 +702,91 @@ export class ResticCommand implements ICommand {
         commandLine: this.lastCommandLine,
       };
     } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * List files in the current filesystem recursively
+   */
+  private async listCurrentFilesystem(paths: string[]): Promise<any> {
+    if (!paths || paths.length === 0) {
+      return {
+        success: false,
+        error: 'At least one path is required for list-current-fs operation',
+      };
+    }
+
+    try {
+      const entries: any[] = [];
+
+      for (const rootPath of paths) {
+        const resolvedPath = resolve(rootPath);
+
+        // Check if path exists
+        if (!existsSync(resolvedPath)) {
+          console.warn(
+            `[Restic] Path does not exist, skipping: ${resolvedPath}`,
+          );
+          continue;
+        }
+
+        await this.walkDirectory(resolvedPath, entries);
+      }
+
+      return {
+        success: true,
+        entries,
+        commandLine: `fs.readdir (recursive) ${paths.join(', ')}`,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Recursively walk a directory and collect file entries
+   */
+  private async walkDirectory(dirPath: string, entries: any[]): Promise<void> {
+    try {
+      const items = readdirSync(dirPath, { withFileTypes: true });
+
+      for (const item of items) {
+        const fullPath = join(dirPath, item.name);
+
+        try {
+          const stats = statSync(fullPath);
+
+          // Normalize path to forward slashes for cross-platform compatibility
+          const normalizedPath = fullPath.replace(/\\/g, '/');
+
+          entries.push({
+            name: item.name,
+            path: normalizedPath,
+            type: item.isDirectory()
+              ? 'dir'
+              : item.isSymbolicLink()
+                ? 'symlink'
+                : 'file',
+            size: stats.size,
+            mtime: stats.mtime.toISOString(),
+            exists: true,
+          });
+
+          // Recurse into directories
+          if (item.isDirectory()) {
+            await this.walkDirectory(fullPath, entries);
+          }
+        } catch (err) {
+          // Skip files we can't access (permissions, etc.)
+          console.warn(`[Restic] Cannot access ${fullPath}:`, err);
+        }
+      }
+    } catch (error) {
+      console.error(`[Restic] Error reading directory ${dirPath}:`, error);
       throw error;
     }
   }

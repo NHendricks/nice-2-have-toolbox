@@ -150,3 +150,26 @@ export type ResticTab =
   | 'retention'
   | 'health'
   | 'history'
+
+// Current filesystem entry for timeline diff comparison
+export interface CurrentFileEntry {
+  name: string
+  path: string
+  type: 'file' | 'dir' | 'symlink'
+  size: number
+  mtime: string // ISO string
+  exists: boolean // Always true for current FS entries
+}
+
+// Diff status for timeline diff feature
+export type DiffStatus = 'added' | 'removed' | 'modified' | 'unchanged'
+
+// Combined entry for side-by-side diff rendering
+export interface DiffTreeEntry {
+  path: string
+  name: string
+  type: 'file' | 'dir' | 'symlink'
+  status: DiffStatus
+  snapshotEntry?: ResticFileEntry // Present if exists in snapshot
+  currentEntry?: CurrentFileEntry // Present if exists in current FS
+}

@@ -1,16 +1,13 @@
 Commander:
-
-- open cmdline - reset NODE_ENV, better dont inherit any env from my process, only standard vars 
 - compare files 
 - ftp update connection - update saved connection when changes are made
 - fix: quick command launch ENTER doesnt work
 - cleanup UI (remove header)
-- explain .n2henv in www.nice2havetoolbox.de
 - move up/down favorites
-- create zip in memory, not in filesystem (if not yet so)
 - drag and drop files / folders from or to another app should work
-- add examples for replace in texteditor (e.g. line feeds)
+- add examples for replace in texteditor (e.g. line feed replacement with line feed and something)
 - new dos2unix and unix2dos actions in text editor (show current format bottom right)
 
+- create zip in memory, not in filesystem (if not yet so)
 - add support for browse into asar files
 - test and fix ftps
