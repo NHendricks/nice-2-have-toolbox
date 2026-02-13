@@ -223,36 +223,70 @@ export class FileOperationsCommand implements ICommand {
   private async listDrives(): Promise<any> {
     const drives: any[] = [];
 
-    // Start from C (67) to skip A: and B: floppy drives which are slow to check
-    const driveCheckPromises: Promise<{
-      letter: string;
-      path: string;
-    } | null>[] = [];
+    if (process.platform === 'win32') {
+      // Windows: Check drive letters from C to Z
+      // Start from C (67) to skip A: and B: floppy drives which are slow to check
+      const driveCheckPromises: Promise<{
+        letter: string;
+        path: string;
+      } | null>[] = [];
 
-    for (let i = 67; i <= 90; i++) {
-      const letter = String.fromCharCode(i);
-      const drivePath = `${letter}:\\`;
+      for (let i = 67; i <= 90; i++) {
+        const letter = String.fromCharCode(i);
+        const drivePath = `${letter}:\\`;
 
-      // Check all drives in parallel using async access check
-      driveCheckPromises.push(
-        fs.promises
-          .access(drivePath)
-          .then(() => ({ letter, path: drivePath }))
-          .catch(() => null),
-      );
-    }
+        // Check all drives in parallel using async access check
+        driveCheckPromises.push(
+          fs.promises
+            .access(drivePath)
+            .then(() => ({ letter, path: drivePath }))
+            .catch(() => null),
+        );
+      }
 
-    // Wait for all drive checks to complete in parallel
-    const results = await Promise.all(driveCheckPromises);
+      // Wait for all drive checks to complete in parallel
+      const results = await Promise.all(driveCheckPromises);
 
-    // Filter out null results (non-existent drives) and build the drives array
-    for (const result of results) {
-      if (result) {
-        drives.push({
-          letter: result.letter,
-          path: result.path,
-          label: `${result.letter}:`,
-        });
+      // Filter out null results (non-existent drives) and build the drives array
+      for (const result of results) {
+        if (result) {
+          drives.push({
+            letter: result.letter,
+            path: result.path,
+            label: `${result.letter}:`,
+          });
+        }
+      }
+    } else {
+      // macOS and Linux: Use root and mounted volumes
+      // Always add root
+      drives.push({
+        letter: '/',
+        path: '/',
+        label: 'Root (/)',
+      });
+
+      // On macOS, check for volumes
+      if (process.platform === 'darwin') {
+        const volumesPath = '/Volumes';
+        try {
+          const volumeEntries = await fs.promises.readdir(volumesPath, {
+            withFileTypes: true,
+          });
+          for (const entry of volumeEntries) {
+            if (entry.isDirectory()) {
+              const volumePath = `${volumesPath}/${entry.name}`;
+              drives.push({
+                letter: entry.name,
+                path: volumePath,
+                label: entry.name,
+              });
+            }
+          }
+        } catch (error) {
+          // /Volumes might not be accessible or doesn't exist
+          console.warn('Could not read /Volumes:', error);
+        }
       }
     }
 
