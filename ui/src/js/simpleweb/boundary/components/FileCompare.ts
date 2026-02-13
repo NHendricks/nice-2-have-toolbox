@@ -205,7 +205,15 @@ export class FileCompare extends LitElement {
     const l = this.leftContent
     const r = this.rightContent
 
+    console.log('[FileCompare] computeDiffs called:', {
+      leftLength: l.length,
+      rightLength: r.length,
+      leftContent: l.substring(0, 100),
+      rightContent: r.substring(0, 100)
+    })
+
     const changes: ChangeObject<string>[] = diffLines(l, r)
+    console.log('[FileCompare] diffLines changes:', changes)
 
     this.diffLines = []
     this.lineDiffMap = []
@@ -261,6 +269,12 @@ export class FileCompare extends LitElement {
       }
       i++
     }
+
+    console.log('[FileCompare] computeDiffs result:', {
+      lineDiffMapLength: this.lineDiffMap.length,
+      diffLinesLength: this.diffLines.length,
+      lineDiffMap: this.lineDiffMap
+    })
   }
 
   scrollToDiff(index: number) {

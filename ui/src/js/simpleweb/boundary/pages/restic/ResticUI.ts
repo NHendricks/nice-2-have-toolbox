@@ -3025,13 +3025,11 @@ export class ResticUI extends LitElement {
       if (!currEntry) {
         removed.add(path)
       } else {
-        // Check if modified (compare size and mtime)
+        // Check if modified (compare size only - mtime changes are too common for false positives)
+        // Note: This won't detect edits that don't change file size
         const sizeChanged = snapEntry.size !== currEntry.size
-        const mtimeChanged =
-          new Date(snapEntry.mtime).getTime() !==
-          new Date(currEntry.mtime).getTime()
 
-        if (sizeChanged || mtimeChanged) {
+        if (sizeChanged) {
           modified.add(path)
         } else {
           unchanged.add(path)
