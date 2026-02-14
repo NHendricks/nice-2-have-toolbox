@@ -522,7 +522,7 @@ export class GarbageFinder extends LitElement {
   drives: DriveInfo[] = []
 
   @property({ type: Object })
-  deleteConfirm: { show: boolean; node: FolderNode | null } = {
+  deleteConfirm: { show: boolean; node: FolderNode | FileNode | null } = {
     show: false,
     node: null,
   }
@@ -869,7 +869,7 @@ export class GarbageFinder extends LitElement {
     this.loadDrives()
   }
 
-  showDeleteConfirm(node: FolderNode, e: Event) {
+  showDeleteConfirm(node: FolderNode | FileNode, e: Event) {
     e.stopPropagation()
     this.deleteConfirm = { show: true, node }
   }
@@ -881,19 +881,37 @@ export class GarbageFinder extends LitElement {
   async confirmDelete() {
     if (!this.deleteConfirm.node) return
 
-    const nodePath = this.deleteConfirm.node.path
+    const node = this.deleteConfirm.node
+    const nodePath = node.path
+    const deletedSize = node.size
     this.hideDeleteConfirm()
 
     try {
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'file-operations',
-        { operation: 'delete', path: nodePath },
+        { operation: 'delete', sourcePath: nodePath },
       )
 
       if (response.success) {
-        // Remove the node from the tree
-        this.treeData = this.removeNodeFromTree(this.treeData, nodePath)
+        // Check if it's a file or folder
+        if ('isFile' in node && node.isFile) {
+          // Remove file from parent folder's files array and update sizes
+          this.treeData = this.removeFileFromTree(this.treeData, nodePath)
+          this.treeData = this.updateParentSizesAfterDeletion(
+            this.treeData,
+            nodePath,
+            deletedSize,
+          )
+        } else {
+          // Remove folder node from the tree and update parent sizes
+          this.treeData = this.removeNodeFromTree(this.treeData, nodePath)
+          this.treeData = this.updateParentSizesAfterDeletion(
+            this.treeData,
+            nodePath,
+            deletedSize,
+          )
+        }
       } else {
         console.error('Delete failed:', response.error)
         alert(`Failed to delete: ${response.error}`)
@@ -911,6 +929,65 @@ export class GarbageFinder extends LitElement {
         ...node,
         children: this.removeNodeFromTree(node.children, targetPath),
       }))
+  }
+
+  removeFileFromTree(nodes: FolderNode[], targetPath: string): FolderNode[] {
+    return nodes.map((node) => {
+      // Remove file from this node's files array if it exists
+      const updatedFiles = node.files
+        ? node.files.filter((file) => file.path !== targetPath)
+        : node.files
+
+      return {
+        ...node,
+        files: updatedFiles,
+        children: this.removeFileFromTree(node.children, targetPath),
+      }
+    })
+  }
+
+  updateParentSizesAfterDeletion(
+    nodes: FolderNode[],
+    deletedPath: string,
+    deletedSize: number,
+  ): FolderNode[] {
+    return nodes.map((node) => {
+      // Check if this node or any of its children contain the deleted item
+      const containsDeletedItem = this.nodeContainsPath(node, deletedPath)
+
+      if (containsDeletedItem) {
+        // Subtract the deleted size from this node's size
+        return {
+          ...node,
+          size: Math.max(0, node.size - deletedSize),
+          children: this.updateParentSizesAfterDeletion(
+            node.children,
+            deletedPath,
+            deletedSize,
+          ),
+        }
+      }
+
+      // If this node doesn't contain the deleted item, just recurse on children
+      return {
+        ...node,
+        children: this.updateParentSizesAfterDeletion(
+          node.children,
+          deletedPath,
+          deletedSize,
+        ),
+      }
+    })
+  }
+
+  nodeContainsPath(node: FolderNode, targetPath: string): boolean {
+    // Check if the target path is this node or under this node
+    if (targetPath === node.path) return true
+    if (targetPath.startsWith(node.path + '\\') || targetPath.startsWith(node.path + '/')) {
+      return true
+    }
+    // Check children recursively
+    return node.children.some((child) => this.nodeContainsPath(child, targetPath))
   }
 
   formatSize(bytes: number): string {
@@ -1081,7 +1158,16 @@ export class GarbageFinder extends LitElement {
           <div class="size-text">
             ${file.size > 0 ? this.formatSize(file.size) : '-'}
           </div>
-          <div class="action-cell"></div>
+          <div class="action-cell">
+            <button
+              class="btn btn-delete"
+              ?disabled=${this.scanProgress.isScanning}
+              @click=${(e: Event) => this.showDeleteConfirm(file, e)}
+              title="Delete file"
+            >
+              🗑
+            </button>
+          </div>
         </div>
       `,
     )}`
@@ -1178,38 +1264,48 @@ export class GarbageFinder extends LitElement {
       </div>
 
       ${this.deleteConfirm.show && this.deleteConfirm.node
-        ? html`
-            <div
-              class="confirm-overlay"
-              @click=${() => this.hideDeleteConfirm()}
-            >
+        ? (() => {
+            const isFile =
+              'isFile' in this.deleteConfirm.node! &&
+              this.deleteConfirm.node.isFile
+            return html`
               <div
-                class="confirm-dialog"
-                @click=${(e: Event) => e.stopPropagation()}
+                class="confirm-overlay"
+                @click=${() => this.hideDeleteConfirm()}
               >
-                <div class="confirm-title">⚠️ Delete Folder</div>
-                <div class="confirm-message">
-                  Are you sure you want to permanently delete this folder and
-                  all its contents?
-                </div>
-                <div class="confirm-path">${this.deleteConfirm.node.path}</div>
-                <div class="confirm-buttons">
-                  <button
-                    class="btn-cancel"
-                    @click=${() => this.hideDeleteConfirm()}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    class="btn-confirm-delete"
-                    @click=${() => this.confirmDelete()}
-                  >
-                    Delete
-                  </button>
+                <div
+                  class="confirm-dialog"
+                  @click=${(e: Event) => e.stopPropagation()}
+                >
+                  <div class="confirm-title">
+                    ⚠️ Delete ${isFile ? 'File' : 'Folder'}
+                  </div>
+                  <div class="confirm-message">
+                    ${isFile
+                      ? 'Are you sure you want to permanently delete this file?'
+                      : 'Are you sure you want to permanently delete this folder and all its contents?'}
+                  </div>
+                  <div class="confirm-path">
+                    ${this.deleteConfirm.node!.path}
+                  </div>
+                  <div class="confirm-buttons">
+                    <button
+                      class="btn-cancel"
+                      @click=${() => this.hideDeleteConfirm()}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      class="btn-confirm-delete"
+                      @click=${() => this.confirmDelete()}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          `
+            `
+          })()
         : ''}
     `
   }
