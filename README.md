@@ -1,4 +1,4 @@
-# nice2have-toolbox (https://github.com/NHendricks/nice-2-have-toolbox)
+# nice2have-toolbox (https://www.nice2havetoolbox.de/)
 
 This **Nice2Have Toolbox** is a modular Electron-based utility application with an extensible command-line backend and interactive UI.
 
