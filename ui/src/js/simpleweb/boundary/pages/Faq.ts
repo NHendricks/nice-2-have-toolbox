@@ -45,21 +45,17 @@ export class Faq extends LitElement {
         <h1>FAQ</h1>
         <h2>Simplify all of your utility tasks in 1 app</h2>
 
-        <p>Use cline in vscode.</p>
-        <p>
-          Create a command in the backend project. Cline (KI Claude-Sonnet) will
-          see the existing structures and build it accordingly.
-        </p>
-        <p>
-          In the UI use the menu at the top right corner to test your backend
-          services separately. If something is missing extends the help of the
-          backend.
-        </p>
-        <p>Read the readmes and look at the code.</p>
-        <p>
-          Complex UI is cheap to generate using AI, fixing is much more
-          expensive.
-        </p>
+        Get help at
+        <a target="_blank" href="https://www.nice2havetoolbox.de/"
+          >https://www.nice2havetoolbox.de/</a
+        >
+
+        Contribute at
+        <a target="_blank" href="https://github.com/NHendricks/nh-toolbox"
+          >https://github.com/NHendricks/nh-toolbox</a
+        >. If you are new to programming just use Claude Code or Cline in Visual
+        Studio Code. Ask your AI for help how to set this up (clone, oinstall
+        node and VSCode, install Claude ... lets go).
       </div>
     `
   }
