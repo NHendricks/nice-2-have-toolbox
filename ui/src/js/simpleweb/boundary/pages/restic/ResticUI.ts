@@ -763,6 +763,20 @@ export class ResticUI extends LitElement {
       display: flex;
       align-items: center;
       gap: 0.25rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .diff-stat:hover {
+      background: rgba(100, 116, 139, 0.2);
+    }
+
+    .diff-stat.active {
+      background: rgba(100, 116, 139, 0.3);
+      font-weight: bold;
+      border: 1px solid currentColor;
     }
 
     .diff-stat-added {
@@ -775,6 +789,10 @@ export class ResticUI extends LitElement {
 
     .diff-stat-modified {
       color: #f59e0b;
+    }
+
+    .diff-stat-all {
+      color: #94a3b8;
     }
 
     .tree-item.diff-added {
@@ -1322,6 +1340,7 @@ export class ResticUI extends LitElement {
     leftPath: string
     rightPath: string
   } | null = null
+  @state() private diffFilter: 'all' | 'added' | 'removed' | 'modified' = 'all'
   private sliderDebounceTimer: any = null
 
   connectedCallback() {
@@ -2366,6 +2385,7 @@ export class ResticUI extends LitElement {
       // Exiting diff mode - clear diff data
       this.timelineDiffResult = null
       this.timelineDiffSnapshot = null
+      this.diffFilter = 'all'
     }
 
     saveResticState({ timelineDiffMode: this.timelineDiffMode })
@@ -2460,6 +2480,9 @@ export class ResticUI extends LitElement {
         currentFsTree,
         comparison,
       }
+
+      // Reset filter when loading new comparison
+      this.diffFilter = 'all'
 
       saveResticState({
         timelineDiffSnapshot: snapshot,
@@ -3558,15 +3581,48 @@ export class ResticUI extends LitElement {
       <div style="margin-bottom: 1rem;">
         <h3 style="margin: 0 0 0.5rem 0;">Timeline Comparison</h3>
         <div class="diff-stats">
-          <div class="diff-stat diff-stat-added">
+          <div
+            class="diff-stat diff-stat-all ${this.diffFilter === 'all'
+              ? 'active'
+              : ''}"
+            @click=${() => {
+              this.diffFilter = 'all'
+            }}
+          >
+            <span>◉</span>
+            <span>All</span>
+          </div>
+          <div
+            class="diff-stat diff-stat-added ${this.diffFilter === 'added'
+              ? 'active'
+              : ''}"
+            @click=${() => {
+              this.diffFilter = 'added'
+            }}
+          >
             <span>●</span>
             <span>${stats.added.size} Added</span>
           </div>
-          <div class="diff-stat diff-stat-removed">
+          <div
+            class="diff-stat diff-stat-removed ${this.diffFilter === 'removed'
+              ? 'active'
+              : ''}"
+            @click=${() => {
+              this.diffFilter = 'removed'
+            }}
+          >
             <span>●</span>
             <span>${stats.removed.size} Removed</span>
           </div>
-          <div class="diff-stat diff-stat-modified">
+          <div
+            class="diff-stat diff-stat-modified ${this.diffFilter ===
+            'modified'
+              ? 'active'
+              : ''}"
+            @click=${() => {
+              this.diffFilter = 'modified'
+            }}
+          >
             <span>●</span>
             <span>${stats.modified.size} Modified</span>
           </div>
@@ -3720,6 +3776,38 @@ export class ResticUI extends LitElement {
   }
 
   /**
+   * Check if a directory has any children matching the filter recursively
+   */
+  private hasFilteredChildrenRecursive(
+    dirPath: string,
+    tree: Map<string, any[]>,
+    side: 'snapshot' | 'current',
+    filter: 'added' | 'removed' | 'modified',
+  ): boolean {
+    if (!this.timelineDiffResult) return false
+
+    const comp = this.timelineDiffResult.comparison
+    const normalizedDirPath = this.normalizePathForComparison(dirPath)
+    const prefix = normalizedDirPath + '/'
+
+    // Get the appropriate set based on filter
+    let pathSet: Set<string>
+    if (filter === 'added') pathSet = comp.added
+    else if (filter === 'removed') pathSet = comp.removed
+    else pathSet = comp.modified
+
+    // Check if this filter is valid for this side
+    if (filter === 'added' && side === 'snapshot') return false
+    if (filter === 'removed' && side === 'current') return false
+
+    // Check if any path with this status starts with this directory path
+    for (const changedPath of pathSet) {
+      if (changedPath.startsWith(prefix)) return true
+    }
+    return false
+  }
+
+  /**
    * Render a single tree node in diff mode
    */
   private renderDiffTreeNode(
@@ -3746,17 +3834,35 @@ export class ResticUI extends LitElement {
     if (side === 'snapshot' && diffStatus === 'added') return null
     if (side === 'current' && diffStatus === 'removed') return null
 
-    // Hide unchanged files (but keep directories that might contain changed files)
-    if (diffStatus === 'unchanged' && !isDir) return null
+    // Apply user filter (added/removed/modified/all)
+    if (this.diffFilter !== 'all') {
+      // For files, check if it matches the filter
+      if (!isDir && diffStatus !== this.diffFilter) {
+        return null
+      }
+      // For directories, check if any children match the filter
+      if (isDir) {
+        const hasFilteredChildren = this.hasFilteredChildrenRecursive(
+          entry.path,
+          tree,
+          side,
+          this.diffFilter,
+        )
+        if (!hasFilteredChildren) return null
+      }
+    } else {
+      // When showing all, hide unchanged files (but keep directories that might contain changed files)
+      if (diffStatus === 'unchanged' && !isDir) return null
 
-    // Hide unchanged directories that don't have any changed children
-    if (diffStatus === 'unchanged' && isDir) {
-      const hasChangedChildren = this.hasChangedChildrenRecursive(
-        entry.path,
-        tree,
-        side,
-      )
-      if (!hasChangedChildren) return null
+      // Hide unchanged directories that don't have any changed children
+      if (diffStatus === 'unchanged' && isDir) {
+        const hasChangedChildren = this.hasChangedChildrenRecursive(
+          entry.path,
+          tree,
+          side,
+        )
+        if (!hasChangedChildren) return null
+      }
     }
 
     const isClickable = !isDir && diffStatus === 'modified'
