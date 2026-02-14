@@ -306,6 +306,29 @@ ipcMain.handle('show-save-dialog', async (_event: any, options: any) => {
   }
 });
 
+// Drag and drop IPC handler
+ipcMain.on('start-drag', async (event: any, filePath: string) => {
+  try {
+    // Ensure we have an absolute path
+    const absolutePath = path.isAbsolute(filePath)
+      ? filePath
+      : path.resolve(filePath);
+
+    console.log('[start-drag] Dragging file:', absolutePath);
+
+    // Get file icon (required parameter)
+    const icon = await app.getFileIcon(absolutePath, { size: 'normal' });
+
+    // Start drag with icon
+    event.sender.startDrag({
+      file: absolutePath,
+      icon: icon,
+    });
+  } catch (error: any) {
+    console.error('[start-drag] Error:', error);
+  }
+});
+
 ipcMain.handle('open-terminal', async (_event: any, dirPath: string) => {
   try {
     const platform = process.platform;

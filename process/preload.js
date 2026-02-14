@@ -39,4 +39,7 @@ contextBridge.exposeInMainWorld('electron', {
       return clipboard.readText();
     },
   },
+  startDrag: (filePath) => {
+    ipcRenderer.send('start-drag', filePath);
+  },
 });

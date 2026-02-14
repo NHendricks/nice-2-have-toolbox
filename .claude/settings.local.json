@@ -7,7 +7,8 @@
       "Bash(node -e:*)",
       "WebFetch(domain:restic.readthedocs.io)",
       "Bash(ls:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "WebFetch(domain:chatgpt.com)"
     ]
   }
 }

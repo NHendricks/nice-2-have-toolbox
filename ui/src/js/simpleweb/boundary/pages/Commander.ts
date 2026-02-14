@@ -3434,6 +3434,15 @@ export class Commander extends LitElement {
                   : ''} ${displaySelectedIndices.has(displayIndex)
                   ? 'selected'
                   : ''}"
+                draggable="true"
+                @dragstart=${(e: DragEvent) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  // Use window.electron.startDrag to initiate native drag
+                  if (window.electron?.startDrag) {
+                    window.electron.startDrag(item.path)
+                  }
+                }}
                 @click=${(e: MouseEvent) => {
                   // Find original index in pane.items
                   const originalIndex = pane.items.findIndex(
