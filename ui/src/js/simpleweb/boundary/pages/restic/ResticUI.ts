@@ -368,7 +368,6 @@ export class ResticUI extends LitElement {
       background: #0f172a;
       border-radius: 8px;
       padding: 1rem;
-      overflow-y: auto;
     }
 
     .timeline h3 {
@@ -2850,7 +2849,11 @@ export class ResticUI extends LitElement {
     })
 
     // Check both IPC-level and backend-level success
-    if (!dumpResult.success || dumpResult.data?.success === false || !dumpResult.data?.tempPath) {
+    if (
+      !dumpResult.success ||
+      dumpResult.data?.success === false ||
+      !dumpResult.data?.tempPath
+    ) {
       this.showMessage(
         'error',
         `Failed to dump file: ${dumpResult.data?.error || dumpResult.error || 'Unknown error'}`,
@@ -3639,11 +3642,15 @@ export class ResticUI extends LitElement {
       this.timelineDiffResult.currentFsTree as any,
     )
 
+    const snapshotDate = this.timelineDiffSnapshot?.time
+      ? new Date(this.timelineDiffSnapshot.time).toLocaleString()
+      : this.timelineDiffSnapshot?.short_id || ''
+
     return html`
       <div class="diff-trees-container">
         <div class="diff-tree-panel">
           <h4>
-            <span>Snapshot (${this.timelineDiffSnapshot?.short_id})</span>
+            <span>Snapshot (${snapshotDate})</span>
           </h4>
           <div class="tree-scroll">
             ${snapshotRootEntries.map((entry) =>

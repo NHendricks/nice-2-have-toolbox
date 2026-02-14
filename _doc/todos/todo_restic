@@ -1,9 +1,6 @@
 restic:
 
-- compare binaries freezes ui
-- show date below snapshot in treecompare
 - click on added, remove or changed and fiter trees
-- fix no scrollbar please in compare snapshots title
 - test linux
   - i can only select files, not folders. i want to be able to only select folders on ubuntu
 - test ftps => klappt
