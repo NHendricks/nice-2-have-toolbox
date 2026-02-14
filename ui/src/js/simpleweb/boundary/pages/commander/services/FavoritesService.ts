@@ -104,6 +104,40 @@ export class FavoritesService {
   }
 
   /**
+   * Move a favorite up in the list
+   * Returns true if moved, false if already at top or not found
+   */
+  moveUp(path: string): boolean {
+    const index = this.favoritePaths.indexOf(path)
+    if (index > 0) {
+      // Swap with previous item
+      const temp = this.favoritePaths[index - 1]
+      this.favoritePaths[index - 1] = this.favoritePaths[index]
+      this.favoritePaths[index] = temp
+      this.save()
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Move a favorite down in the list
+   * Returns true if moved, false if already at bottom or not found
+   */
+  moveDown(path: string): boolean {
+    const index = this.favoritePaths.indexOf(path)
+    if (index >= 0 && index < this.favoritePaths.length - 1) {
+      // Swap with next item
+      const temp = this.favoritePaths[index + 1]
+      this.favoritePaths[index + 1] = this.favoritePaths[index]
+      this.favoritePaths[index] = temp
+      this.save()
+      return true
+    }
+    return false
+  }
+
+  /**
    * Clear all favorites
    */
   clear(): void {

@@ -397,6 +397,20 @@ export class Commander extends LitElement {
     this.setStatus(result.message, 'success')
   }
 
+  moveFavoriteUp(path: string) {
+    if (this.favoritesService.moveUp(path)) {
+      this.favoritePaths = this.favoritesService.getAll()
+      this.setStatus(`Moved up: ${path}`, 'success')
+    }
+  }
+
+  moveFavoriteDown(path: string) {
+    if (this.favoritesService.moveDown(path)) {
+      this.favoritePaths = this.favoritesService.getAll()
+      this.setStatus(`Moved down: ${path}`, 'success')
+    }
+  }
+
   addToFavorites(path: string) {
     if (this.favoritesService.add(path)) {
       this.favoritePaths = this.favoritesService.getAll()
@@ -3021,6 +3035,10 @@ export class Commander extends LitElement {
               @select=${(e: CustomEvent) => this.selectDrive(e.detail)}
               @toggle-favorite=${(e: CustomEvent) =>
                 this.toggleFavorite(e.detail)}
+              @move-favorite-up=${(e: CustomEvent) =>
+                this.moveFavoriteUp(e.detail)}
+              @move-favorite-down=${(e: CustomEvent) =>
+                this.moveFavoriteDown(e.detail)}
               @add-to-favorites=${(e: CustomEvent) =>
                 this.addToFavorites(e.detail)}
               @open-ftp=${() => {

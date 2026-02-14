@@ -213,14 +213,17 @@ export class SMBConnectionDialog extends LitElement {
 
   private parseInitialPath(path: string) {
     // Handle UNC paths: \\server\share or //server/share
-    let cleanPath = path.replace(/^\\\\/, '').replace(/^\/\//, '').replace(/\\/g, '/')
+    let cleanPath = path
+      .replace(/^\\\\/, '')
+      .replace(/^\/\//, '')
+      .replace(/\\/g, '/')
 
     // Handle smb:// URLs
     if (path.startsWith('smb://')) {
       cleanPath = path.substring(6) // Remove 'smb://'
     }
 
-    const parts = cleanPath.split('/').filter(p => p)
+    const parts = cleanPath.split('/').filter((p) => p)
     if (parts.length >= 2) {
       this.server = parts[0]
       this.share = parts[1]
@@ -376,7 +379,8 @@ export class SMBConnectionDialog extends LitElement {
       >
         <div class="form-container">
           <div class="info-box">
-            🔐 Linux requires credentials to mount SMB shares. Enter your network credentials below.
+            🔐 Credentials required to mount SMB shares. Enter your network
+            credentials below.
           </div>
 
           ${this.savedConnections.length > 0
@@ -396,7 +400,10 @@ export class SMBConnectionDialog extends LitElement {
                         <div class="connection-info">
                           <div class="connection-name">${conn.name}</div>
                           <div class="connection-details">
-                            \\\\${conn.server}\\${conn.share} (${conn.domain ? conn.domain + '\\' : ''}${conn.username})
+                            \\\\${conn.server}\\${conn.share}
+                            (${conn.domain
+                              ? conn.domain + '\\'
+                              : ''}${conn.username})
                           </div>
                         </div>
                         <button
@@ -511,7 +518,6 @@ export class SMBConnectionDialog extends LitElement {
                 </div>
               `
             : ''}
-
           ${this.statusMessage
             ? html`
                 <div class="status-message status-${this.statusType}">
@@ -524,7 +530,11 @@ export class SMBConnectionDialog extends LitElement {
             <button
               class="btn btn-primary"
               @click=${this.connect}
-              ?disabled=${this.connecting || !this.server || !this.share || !this.username || !this.password}
+              ?disabled=${this.connecting ||
+              !this.server ||
+              !this.share ||
+              !this.username ||
+              !this.password}
             >
               ${this.connecting ? '⏳ Connecting...' : '🔗 Connect'}
             </button>

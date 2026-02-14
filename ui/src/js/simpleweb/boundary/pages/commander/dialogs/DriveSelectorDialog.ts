@@ -233,6 +233,14 @@ export class DriveSelectorDialog extends LitElement {
     this.dispatchEvent(new CustomEvent('toggle-favorite', { detail: path }))
   }
 
+  private moveFavoriteUp(path: string) {
+    this.dispatchEvent(new CustomEvent('move-favorite-up', { detail: path }))
+  }
+
+  private moveFavoriteDown(path: string) {
+    this.dispatchEvent(new CustomEvent('move-favorite-down', { detail: path }))
+  }
+
   private isFavorite(path: string): boolean {
     return this.favorites.includes(path)
   }
@@ -315,16 +323,40 @@ export class DriveSelectorDialog extends LitElement {
                           </div>
                           <div class="drive-path">${favPath}</div>
                         </div>
-                        <button
-                          @click=${(e: Event) => {
-                            e.stopPropagation()
-                            this.toggleFavorite(favPath)
-                          }}
-                          style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 1.2rem;"
-                          title="Aus Favoriten entfernen"
-                        >
-                          🗑️
-                        </button>
+                        <div style="display: flex; gap: 0.25rem;">
+                          <button
+                            @click=${(e: Event) => {
+                              e.stopPropagation()
+                              this.moveFavoriteUp(favPath)
+                            }}
+                            ?disabled=${index === 0}
+                            style="background: #475569; border: none; color: white; padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 1rem; ${index === 0 ? 'opacity: 0.3; cursor: not-allowed;' : ''}"
+                            title="Move up"
+                          >
+                            ⬆️
+                          </button>
+                          <button
+                            @click=${(e: Event) => {
+                              e.stopPropagation()
+                              this.moveFavoriteDown(favPath)
+                            }}
+                            ?disabled=${index === this.favorites.length - 1}
+                            style="background: #475569; border: none; color: white; padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 1rem; ${index === this.favorites.length - 1 ? 'opacity: 0.3; cursor: not-allowed;' : ''}"
+                            title="Move down"
+                          >
+                            ⬇️
+                          </button>
+                          <button
+                            @click=${(e: Event) => {
+                              e.stopPropagation()
+                              this.toggleFavorite(favPath)
+                            }}
+                            style="background: #dc2626; border: none; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 1rem;"
+                            title="Remove from favorites"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     `,
                   )}

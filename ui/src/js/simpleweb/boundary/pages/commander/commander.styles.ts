@@ -59,10 +59,12 @@ export const commanderStyles = css`
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    opacity: 0.6;
   }
 
   .pane.active {
     background: #062b66;
+    opacity: 1;
   }
 
   .pane-header {
@@ -84,6 +86,7 @@ export const commanderStyles = css`
   .pane.active .pane-header {
     background: #0ea5e9;
     color: #fff;
+    font-weight: 400;
   }
 
   .pane.active .pane-header:hover {
@@ -206,6 +209,7 @@ export const commanderStyles = css`
   .file-name {
     overflow: hidden;
     text-overflow: ellipsis;
+    font-weight: 100;
   }
 
   .file-name.directory {
