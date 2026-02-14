@@ -13,6 +13,8 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - commander
   - start commands or commandline (SHIFT+F9) with cleaned up environment (dont inherit env variables from n2hcommander)
   - add sort option to favorites
+  - ftp connection - show error message when it fails to connect
+  - fix cancel edit dialog while loading file
 - restic:
   - compare files on diff file click. Reuse compare dialog from commander.
   - show date instead of id

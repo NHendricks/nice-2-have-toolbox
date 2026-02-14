@@ -89,6 +89,48 @@ export class TextEditorDialog extends LitElement {
       white-space: nowrap;
     }
 
+    .help-icon {
+      color: #94a3b8;
+      cursor: help;
+      font-size: 0.85rem;
+      padding: 0 0.3rem;
+    }
+
+    .help-tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      white-space: nowrap;
+      z-index: 100;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .help-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #475569;
+    }
+
+    .help-tooltip code {
+      background: #0f172a;
+      padding: 0.1rem 0.3rem;
+      border-radius: 2px;
+      color: #fbbf24;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
     .editor-wrapper {
       position: relative;
       flex: 1;
@@ -226,6 +268,7 @@ export class TextEditorDialog extends LitElement {
   @state() private caseSensitive = false
   @state() private searchMatches = 0
   @state() private currentMatchIndex = -1
+  @state() private showReplaceHelp = false
 
   connectedCallback() {
     super.connectedCallback()
@@ -238,7 +281,7 @@ export class TextEditorDialog extends LitElement {
   }
 
   private handleWindowKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') this.close()
+    // ESC is handled by SimpleDialog's dialog-close event
     if (e.ctrlKey && e.key === 's') {
       e.preventDefault()
       if (this.isModified) this.save()
@@ -405,6 +448,20 @@ export class TextEditorDialog extends LitElement {
     }, 0)
   }
 
+  private processReplacement(replaceText: string): string {
+    // Process escape sequences in replacement text
+    // Use a single pass to handle all sequences correctly
+    return replaceText.replace(/\\(.)/g, (match, char) => {
+      switch (char) {
+        case 'n': return '\n'
+        case 't': return '\t'
+        case 'r': return '\r'
+        case '\\': return '\\'
+        default: return match // Keep unknown escape sequences as-is
+      }
+    })
+  }
+
   private replaceNext() {
     if (!this.searchQuery || this.searchMatches === 0) return
 
@@ -422,9 +479,10 @@ export class TextEditorDialog extends LitElement {
 
       const match = matches[this.currentMatchIndex]
       if (match.index !== undefined) {
+        const processedReplacement = this.processReplacement(this.replaceQuery)
         this.editedContent =
           this.editedContent.substring(0, match.index) +
-          this.replaceQuery +
+          processedReplacement +
           this.editedContent.substring(match.index + match[0].length)
         this.isModified = true
         this.updateSearchMatches()
@@ -449,7 +507,9 @@ export class TextEditorDialog extends LitElement {
             flags,
           )
 
-      this.editedContent = this.editedContent.replace(regex, this.replaceQuery)
+      const processedReplacement = this.processReplacement(this.replaceQuery)
+      // Use a function to avoid special $ replacement patterns being interpreted
+      this.editedContent = this.editedContent.replace(regex, () => processedReplacement)
       this.isModified = true
       this.updateSearchMatches()
       this.requestUpdate()
@@ -473,9 +533,28 @@ export class TextEditorDialog extends LitElement {
     )
   }
 
+  private handleDialogClose() {
+    // If loading or saving, trigger cancel instead of close
+    if (this.loading || this.saving) {
+      this.dispatchEvent(
+        new CustomEvent('cancel-operation', {
+          bubbles: true,
+          composed: true,
+        }),
+      )
+    } else {
+      this.close()
+    }
+  }
+
   private close() {
     if (this.isModified && !confirm('Discard unsaved changes?')) return
-    this.dispatchEvent(new CustomEvent('close'))
+    this.dispatchEvent(
+      new CustomEvent('close', {
+        bubbles: true,
+        composed: true,
+      }),
+    )
   }
 
   render() {
@@ -485,7 +564,7 @@ export class TextEditorDialog extends LitElement {
         .title=${'Edit: ' + this.fileName}
         .width=${'90%'}
         .height=${'90vh'}
-        @dialog-close=${this.close}
+        @dialog-close=${this.handleDialogClose}
       >
         <div class="editor-container">
           ${this.loading || this.saving
@@ -525,19 +604,38 @@ export class TextEditorDialog extends LitElement {
                       }
                     }}
                   />
-                  <input
-                    placeholder="Replace"
-                    .value=${this.replaceQuery}
-                    @input=${(e: Event) =>
-                      (this.replaceQuery = (
-                        e.target as HTMLInputElement
-                      ).value)}
-                    @keydown=${(e: KeyboardEvent) => {
-                      if (e.key === 'Enter') {
-                        this.replaceNext()
-                      }
-                    }}
-                  />
+                  <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                    <input
+                      style="flex: 1;"
+                      placeholder="Replace"
+                      .value=${this.replaceQuery}
+                      @input=${(e: Event) =>
+                        (this.replaceQuery = (
+                          e.target as HTMLInputElement
+                        ).value)}
+                      @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === 'Enter') {
+                          this.replaceNext()
+                        }
+                      }}
+                    />
+                    <span
+                      class="help-icon"
+                      @mouseenter=${() => (this.showReplaceHelp = true)}
+                      @mouseleave=${() => (this.showReplaceHelp = false)}
+                      title="Help"
+                    >
+                      ℹ️
+                    </span>
+                    ${this.showReplaceHelp
+                      ? html`
+                          <div class="help-tooltip">
+                            Use escape sequences: <code>\\n</code> = newline,
+                            <code>\\t</code> = tab, <code>\\\\</code> = backslash
+                          </div>
+                        `
+                      : ''}
+                  </div>
                   <div class="search-controls">
                     <span class="search-info">
                       ${this.searchMatches > 0

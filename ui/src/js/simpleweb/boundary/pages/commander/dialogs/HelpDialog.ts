@@ -55,6 +55,12 @@ export class HelpDialog extends LitElement {
         .maxHeight=${'85vh'}
         @dialog-close=${this.close}
       >
+        <div>
+          Get more help at
+          <a target="_blank" href="https://www.nice2havetoolbox.de/"
+            >https://www.nice2havetoolbox.de/</a
+          >
+        </div>
         <div class="help-content">
           <div class="help-section">
             <h3>navigation</h3>

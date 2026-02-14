@@ -1,4 +1,4 @@
 Commander:
-
 - show help for replace function in texteditor (how to replace text with line breaks)
+- fix line feed replacement
 - drag and drop files / folders from or to another app should work

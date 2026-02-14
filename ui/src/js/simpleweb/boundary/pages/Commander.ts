@@ -2511,6 +2511,11 @@ export class Commander extends LitElement {
       )
       const response = await FileService.readFile(item.path)
 
+      // Check if dialog was closed (e.g., user pressed ESC during loading)
+      if (!this.textEditorDialog) {
+        return
+      }
+
       if (response.success && response.data) {
         // Check if it's a binary/image file
         if (response.data.isImage) {
@@ -2520,27 +2525,51 @@ export class Commander extends LitElement {
         }
 
         this.textEditorDialog = {
-          ...this.textEditorDialog!,
+          ...this.textEditorDialog,
           content: response.data.content,
           loading: false,
         }
       } else {
         this.textEditorDialog = {
-          ...this.textEditorDialog!,
+          ...this.textEditorDialog,
           loading: false,
           error: response.error || 'Failed to read file',
         }
       }
     } catch (error: any) {
+      // Check if dialog was closed during error
+      if (!this.textEditorDialog) {
+        return
+      }
       this.textEditorDialog = {
-        ...this.textEditorDialog!,
+        ...this.textEditorDialog,
         loading: false,
         error: error.message,
       }
     }
   }
 
-  closeTextEditor() {
+  async cancelTextEditorOperation() {
+    if (!this.textEditorDialog) return
+
+    // Cancel the backend operation
+    try {
+      const { FileService } = await import(
+        './commander/services/FileService.js'
+      )
+      await FileService.cancelOperation()
+      const operation = this.textEditorDialog.loading ? 'loading' : 'saving'
+      this.setStatus(`File ${operation} cancelled`, 'normal')
+
+      // Close the dialog after canceling
+      this.textEditorDialog = null
+    } catch (error) {
+      console.error('Failed to cancel operation:', error)
+      this.setStatus('Failed to cancel operation', 'error')
+    }
+  }
+
+  async closeTextEditor() {
     this.textEditorDialog = null
   }
 
@@ -2560,6 +2589,11 @@ export class Commander extends LitElement {
         './commander/services/FileService.js'
       )
       const response = await FileService.writeFile(filePath, content)
+
+      // Check if dialog was closed (e.g., user pressed ESC during saving)
+      if (!this.textEditorDialog) {
+        return
+      }
 
       if (response.success) {
         this.textEditorDialog = {
@@ -2582,6 +2616,10 @@ export class Commander extends LitElement {
         }
       }
     } catch (error: any) {
+      // Check if dialog was closed during error
+      if (!this.textEditorDialog) {
+        return
+      }
       this.textEditorDialog = {
         ...this.textEditorDialog,
         saving: false,
@@ -3167,6 +3205,7 @@ export class Commander extends LitElement {
               .error=${this.textEditorDialog.error}
               @close=${this.closeTextEditor}
               @save=${(e: CustomEvent) => this.saveTextEditor(e.detail.content)}
+              @cancel-operation=${this.cancelTextEditorOperation}
             ></text-editor-dialog>`
           : ''}
         ${this.showSettingsDialog
