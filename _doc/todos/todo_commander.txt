@@ -1,3 +1,2 @@
 Commander:
-✓ drag and drop files / folders from commander to another app (implemented)
-✓ drag and drop files / folders from another app to commander (implemented)
+ask user when existing file exists during copy, dont alwaýs create copies
