@@ -109,4 +109,5 @@ Nils Hendricks
 
 ## License
 
-MIT
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3

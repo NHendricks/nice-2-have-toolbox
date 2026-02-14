@@ -1,6 +1,1 @@
 restic:
-- add docs
-  - prepare:
-    - Terminal (on Windows: use Git Bash):
-      - ssh-keygen
-      - ssh-copy-id user@host
