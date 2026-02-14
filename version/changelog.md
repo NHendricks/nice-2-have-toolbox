@@ -15,7 +15,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - restic:
   - compare files on diff file click. Reuse compare dialog from commander.
   - show date instead of id
-- garbagefinder: Fix to work for linmux and mac.
+- garbagefinder:
+  - Fix to work for linmux and mac.
+  - show files also, not only folders
 
 ### v2.0.0 (12.02.2026)
 

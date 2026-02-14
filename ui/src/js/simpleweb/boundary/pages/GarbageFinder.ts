@@ -1,16 +1,25 @@
 import { LitElement, css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import '../navigation/ResponsiveMenu'
 import {
   getGarbageFinderState,
   saveGarbageFinderState,
 } from '../../services/SessionState.js'
+import '../navigation/ResponsiveMenu'
+
+interface FileNode {
+  name: string
+  path: string
+  size: number
+  modified: string
+  isFile: true
+}
 
 interface FolderNode {
   name: string
   path: string
   size: number
   children: FolderNode[]
+  files: FileNode[]
   isExpanded: boolean
   depth: number
   fileCount: number
@@ -590,6 +599,7 @@ export class GarbageFinder extends LitElement {
           path: drive.path,
           size: 0,
           children: [],
+          files: [],
           isExpanded: false,
           depth: 0,
           fileCount: 0,
@@ -649,9 +659,13 @@ export class GarbageFinder extends LitElement {
         isExpanded: false,
       })
     } else {
-      // Expand - load children if not analyzed
+      // Expand - load children and files if not loaded yet
       this.expandedPaths.add(node.path)
-      if (!node.isAnalyzed && node.children.length === 0) {
+      if (
+        node.children.length === 0 &&
+        (!node.files || node.files.length === 0)
+      ) {
+        // Load folder contents even if analyzed (analysis doesn't load files)
         await this.loadFolderContents(node)
       }
       this.treeData = this.updateNodeInTree(this.treeData, node.path, {
@@ -682,6 +696,7 @@ export class GarbageFinder extends LitElement {
             path: item.path,
             size: 0,
             children: [],
+            files: [],
             isExpanded: false,
             depth: node.depth + 1,
             fileCount: 0,
@@ -691,8 +706,19 @@ export class GarbageFinder extends LitElement {
           }),
         )
 
+        const files: FileNode[] = (response.data.files || []).map(
+          (item: any) => ({
+            name: item.name,
+            path: item.path,
+            size: item.size || 0,
+            modified: item.modified || '',
+            isFile: true as const,
+          }),
+        )
+
         this.treeData = this.updateNodeInTree(this.treeData, node.path, {
           children,
+          files,
           isLoading: false,
           isExpanded: true,
         })
@@ -968,11 +994,9 @@ export class GarbageFinder extends LitElement {
             <span class="expand-icon">
               ${node.isLoading
                 ? html`<span class="spinner spinner-small"></span>`
-                : node.children.length > 0 || !node.isAnalyzed
-                  ? node.isExpanded
-                    ? '▼'
-                    : '▶'
-                  : ''}
+                : node.isExpanded
+                  ? '▼'
+                  : '▶'}
             </span>
             <span class="folder-icon">
               ${node.depth === 0 ? '💾' : node.isExpanded ? '📂' : '📁'}
@@ -1035,8 +1059,32 @@ export class GarbageFinder extends LitElement {
         ${node.isExpanded && node.children.length > 0
           ? this.renderTree(node.children, node.size || parentSize)
           : ''}
+        ${node.isExpanded && node.files && node.files.length > 0
+          ? this.renderFiles(node.files, node.depth)
+          : ''}
       `
     })
+  }
+
+  renderFiles(files: FileNode[], parentDepth: number): any {
+    const indent = (parentDepth + 1) * 20
+
+    return html`${files.map(
+      (file) => html`
+        <div class="tree-node file-node">
+          <div class="folder-name" style="padding-left: ${indent}px">
+            <span class="expand-icon"></span>
+            <span class="folder-icon">📄</span>
+            <span class="folder-label" title="${file.path}">${file.name}</span>
+          </div>
+          <div class="size-bar-container"></div>
+          <div class="size-text">
+            ${file.size > 0 ? this.formatSize(file.size) : '-'}
+          </div>
+          <div class="action-cell"></div>
+        </div>
+      `,
+    )}`
   }
 
   render() {

@@ -1,5 +1,5 @@
 Commander:
-- compare files 
+- compare files option directly in pane view
 - ftp update connection - update saved connection when changes are made
 - fix: quick command launch ENTER doesnt work
 - cleanup UI (remove header)
