@@ -242,4 +242,4 @@ When adding support for new formats:
 
 ## License
 
-Part of nh-toolbox - MIT License
+Part of nh-toolbox - GNU AFFERO GENERAL PUBLIC LICENSE
