@@ -474,9 +474,11 @@ try {
       );
 
       const psScript = `
+Write-Host "=== SCRIPT START ==="
 try {
-    # Create WIA DeviceManager
+    Write-Host "DEBUG: Creating WIA DeviceManager"
     $deviceManager = New-Object -ComObject WIA.DeviceManager
+    Write-Host "DEBUG: DeviceManager created, scanner count: $($deviceManager.DeviceInfos.Count)"
 
     # Get scanner by ID or use first available
     if ($deviceManager.DeviceInfos.Count -eq 0) {
@@ -486,9 +488,11 @@ try {
 
     $targetScannerId = ${scannerIdParam}
     $deviceInfo = $null
+    Write-Host "DEBUG: Looking for scanner ID: $targetScannerId"
 
     if ($targetScannerId -ne "") {
         # Find scanner by Device ID
+        Write-Host "DEBUG: Searching for specific scanner"
         foreach ($info in $deviceManager.DeviceInfos) {
             if ($info.DeviceID -eq $targetScannerId) {
                 $deviceInfo = $info
@@ -502,44 +506,27 @@ try {
         }
     } else {
         # Use first available scanner
+        Write-Host "DEBUG: Using first available scanner"
         $deviceInfo = $deviceManager.DeviceInfos.Item(1)
         Write-Host "Using default scanner: $($deviceInfo.Properties.Item('Name').Value)"
     }
 
+    Write-Host "DEBUG: Connecting to device..."
     $device = $deviceInfo.Connect()
+    Write-Host "DEBUG: Device connected"
 
-    # Get scanner item (usually Item 1)
+    Write-Host "DEBUG: Getting scanner item..."
     $item = $device.Items.Item(1)
+    Write-Host "DEBUG: Item retrieved successfully"
 
     # Try to enable duplex and ADF/Feeder (Property ID: 3088)
+    # TEMPORARILY DISABLED FOR DEBUGGING
     $duplexEnabled = ${duplexEnabled}
     $multiPageEnabled = ${multiPageEnabled}
 
-    if ($duplexEnabled -or $multiPageEnabled) {
-        try {
-            $handlingSelect = $item.Properties.Item("3088")
-            if ($handlingSelect -ne $null) {
-                # Bit flags: 1=Feeder, 2=Flatbed, 4=Duplex
-                $selectValue = 0
+    Write-Host "DEBUG: Duplex configuration DISABLED for debugging - scanning without duplex/multi-page"
 
-                if ($multiPageEnabled) {
-                    $selectValue = $selectValue -bor 1  # Enable Feeder
-                    Write-Host "Multi-page scanning enabled (using ADF)"
-                }
-
-                if ($duplexEnabled) {
-                    $selectValue = $selectValue -bor 4  # Enable Duplex
-                    Write-Host "Duplex scanning enabled"
-                }
-
-                Write-Host "Setting document handling to: $selectValue"
-                $handlingSelect.Value = $selectValue
-            }
-        } catch {
-            Write-Warning "Could not configure document handling: $_. Scanner may not support these features."
-        }
-    }
-    
+    Write-Host "DEBUG: Setting resolution and color mode..."
     # Try to set resolution (Property IDs: 6147=Vertical, 6148=Horizontal DPI)
     try {
         # Set horizontal resolution
@@ -547,8 +534,8 @@ try {
         if ($horizontalRes -ne $null) {
             $horizontalRes.Value = ${dpiValue}
         }
-        
-        # Set vertical resolution  
+
+        # Set vertical resolution
         $verticalRes = $item.Properties.Item("6148")
         if ($verticalRes -ne $null) {
             $verticalRes.Value = ${dpiValue}
@@ -556,7 +543,7 @@ try {
     } catch {
         Write-Warning "Could not set resolution: $_"
     }
-    
+
     # Try to set color mode (Property ID: 6146)
     try {
         $colorProp = $item.Properties.Item("6146")
@@ -566,8 +553,10 @@ try {
     } catch {
         Write-Warning "Could not set color mode: $_"
     }
+    Write-Host "DEBUG: Resolution and color mode configured"
 
     # Create temp directory for multi-page scans
+    Write-Host "DEBUG: Creating temp directory if needed..."
     $tempDir = "${tempDir.replace(/\\/g, '\\\\')}"
     if ($multiPageEnabled) {
         New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
@@ -575,6 +564,7 @@ try {
     }
 
     # Perform the scan (multi-page loop)
+    Write-Host "DEBUG: About to start scan loop"
     Write-Host "Starting scan..."
     $pageNumber = 1
     $scannedFiles = @()
@@ -657,6 +647,11 @@ try {
         );
         console.log('WIA scan completed');
 
+        // Log stderr if there were any errors/warnings
+        if (stderr && stderr.trim()) {
+          console.error('PowerShell stderr:', stderr);
+        }
+
         // Clean up temp script
         if (fs.existsSync(tempScript)) {
           fs.unlinkSync(tempScript);
@@ -722,6 +717,7 @@ try {
               method: 'WIA + PNG-to-PDF conversion',
               pageCount: scanResult.pageCount,
               fileSize: stats.size,
+              debugOutput: stdout + (stderr ? '\n\n=== STDERR ===\n' + stderr : ''),
             };
           } else {
             // Not PDF - if multi-page, just return first page or error
@@ -742,6 +738,7 @@ try {
               method: 'WIA',
               pageCount: 1,
               fileSize: stats.size,
+              debugOutput: stdout + (stderr ? '\n\n=== STDERR ===\n' + stderr : ''),
             };
           }
         } catch (conversionError: any) {

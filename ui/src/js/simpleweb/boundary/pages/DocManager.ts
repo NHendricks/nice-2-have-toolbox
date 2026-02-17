@@ -460,6 +460,16 @@ export class DocManager extends LitElement {
       this.scanning = true
       this.showMessage('Starting scan... Please wait.', 'info')
 
+      // Log scan parameters for debugging
+      console.log('Scan parameters:', {
+        duplex: this.duplex,
+        multiPage: this.multiPage,
+        resolution: this.resolution,
+        colorMode: this.colorMode,
+        format: this.format,
+        scannerId: this.selectedScannerId,
+      })
+
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'scanner',
@@ -476,6 +486,11 @@ export class DocManager extends LitElement {
         },
       )
       const result = response.data || response
+
+      // Log scan result for debugging
+      if (result.debugOutput) {
+        console.log('Scan debug output:', result.debugOutput)
+      }
 
       if (result.success) {
         this.showMessage(

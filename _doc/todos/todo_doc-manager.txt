@@ -1,7 +1,7 @@
 - pdf manager
-  - remember last scanner (set as favorite)
-  - show scanned images in popup while scanning
   - fix duplex
+  - remember all settings
+  - show scanned images in popup while scanning
   - define own managed folder
   - rescan pdf (ocr)
   - split pdf incl. preview
