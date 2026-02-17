@@ -12,6 +12,7 @@ import { HelpCommand } from './help-command.js';
 import { PingCommand } from './ping-command.js';
 import { ProficashCommand } from './proficash-command.js';
 import { ResticCommand } from './restic-command.js';
+import { ScannerCommand } from './scanner-command.js';
 
 export class CommandRegistry {
   private commands: Map<string, ICommand>;
@@ -33,6 +34,7 @@ export class CommandRegistry {
     this.register('proficash', new ProficashCommand());
     this.register('garbage-finder', new GarbageFinderCommand());
     this.register('restic', new ResticCommand());
+    this.register('scanner', new ScannerCommand());
   }
 
   /**

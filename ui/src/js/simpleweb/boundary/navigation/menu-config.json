@@ -21,6 +21,10 @@
       "path": "/taskboard"
     },
     {
+      "label": "DocManager",
+      "path": "/docmanager"
+    },
+    {
       "label": "Help",
       "path": "/faq"
     }
@@ -53,6 +57,10 @@
       "addBodyClass": "force-portrait"
     },
     "/taskboard": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/docmanager": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }

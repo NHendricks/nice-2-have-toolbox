@@ -2,9 +2,10 @@ import { Router } from '@vaadin/router'
 import './simpleweb/boundary/navigation/ResponsiveMenu'
 import './simpleweb/boundary/pages/Commander'
 import './simpleweb/boundary/pages/CommandParameter'
+import './simpleweb/boundary/pages/DocManager'
 import './simpleweb/boundary/pages/Faq'
-import './simpleweb/boundary/pages/MoneyFinder'
 import './simpleweb/boundary/pages/GarbageFinder'
+import './simpleweb/boundary/pages/MoneyFinder'
 import './simpleweb/boundary/pages/restic/ResticUI'
 import './simpleweb/boundary/pages/taskboard/TaskBoard'
 
@@ -19,6 +20,7 @@ const validPaths = [
   '/garbagefinder',
   '/restic',
   '/taskboard',
+  '/docmanager',
 ]
 
 const outlet = document.querySelector('.view')
@@ -34,6 +36,7 @@ router.setRoutes([
   { path: '/garbagefinder', component: 'nh-garbagefinder' },
   { path: '/restic', component: 'nh-restic' },
   { path: '/taskboard', component: 'nh-taskboard' },
+  { path: '/docmanager', component: 'nh-docmanager' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 

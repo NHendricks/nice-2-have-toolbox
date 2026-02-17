@@ -10,6 +10,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+- new app documentManager
+  - scan documents (pdf, png, jpg)
+
 ### v2.1.0 (14.02.2026)
 
 - commander

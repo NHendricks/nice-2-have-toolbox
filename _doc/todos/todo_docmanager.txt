@@ -1,0 +1,45 @@
+# DocManager TODO List
+
+## ✅ Completed
+- [x] Create ScannerCommand backend implementation
+- [x] Register scanner command in CommandRegistry
+- [x] Create DocManager UI component with Lit
+- [x] Add routing and navigation for /docmanager
+- [x] Implement scanner detection (Windows WIA, Mac/Linux SANE)
+- [x] Implement document scanning with configurable settings
+- [x] Implement document list management
+- [x] Add document viewing and deletion features
+
+- scan using naps (https://www.naps2.com/download)
+
+## 📋 Features
+- Scanner detection on Windows (WIA), macOS and Linux (SANE)
+- Scan documents with configurable:
+  - Resolution (150, 300, 600 DPI)
+  - Color mode (color, grayscale, black & white)
+  - Output format (PDF, PNG, JPG)
+  - Custom file names or auto-generated
+  - Custom output directory or default (Documents/Scans)
+- Document management:
+  - View scanned documents
+  - Open documents in default application
+  - Delete documents
+  - Show file size and modification date
+
+## 🔄 Future Enhancements
+- [ ] Multi-page PDF scanning
+- [ ] Batch scanning support
+- [ ] OCR text recognition
+- [ ] Document preview thumbnails
+- [ ] Document tagging and categorization
+- [ ] Search functionality for documents
+- [ ] Export/Import document metadata
+- [ ] Cloud storage integration
+- [ ] Scan templates/presets
+- [ ] Automatic document naming based on date/content
+
+## 📝 Notes
+- Windows uses WIA (Windows Image Acquisition) API via PowerShell
+- macOS/Linux uses SANE (scanimage command)
+- Default scan location: Documents/Scans directory
+- Supports common document formats: PDF, PNG, JPG

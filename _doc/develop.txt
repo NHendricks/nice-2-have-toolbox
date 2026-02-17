@@ -1,0 +1,3 @@
+* install vscode
+** extensions (see .vscode/extensions.json) & claude code or cline
+* install node (20)

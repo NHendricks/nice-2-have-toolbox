@@ -8,7 +8,10 @@
       "WebFetch(domain:restic.readthedocs.io)",
       "Bash(ls:*)",
       "Bash(dir:*)",
-      "WebFetch(domain:chatgpt.com)"
+      "WebFetch(domain:chatgpt.com)",
+      "Bash(node dist/cli.js scanner:*)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

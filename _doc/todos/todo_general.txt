@@ -1,5 +1,8 @@
 now:
-...
+
+
+- change menu to look like applauncher in mac
+- integrate menu button better in apps
 
 new major features:
 - quick app launcher ctrl+Space (global shortcut)

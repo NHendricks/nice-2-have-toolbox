@@ -31,8 +31,12 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@types/image-size": "^0.7.0",
+    "@types/pdfkit": "^0.17.5",
     "adm-zip": "^0.5.16",
     "basic-ftp": "^5.1.0",
-    "fast-xml-parser": "^5.3.3"
+    "fast-xml-parser": "^5.3.3",
+    "image-size": "^2.0.2",
+    "pdfkit": "^0.17.2"
   }
 }
