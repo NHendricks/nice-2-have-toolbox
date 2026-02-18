@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:calculate": "node dist/cli.js calculate \"{\\\"operation\\\":\\\"add\\\",\\\"a\\\":5,\\\"b\\\":3}\"",
     "test:help": "node dist/cli.js help",
-    "test:help:usage": "node dist/cli.js"
+    "test:help:usage": "node dist/cli.js",
+    "scan:test": "tsc -p tsconfig.scantest.json && node dist/__tests__/scanme.js"
   },
   "keywords": [
     "cli",
