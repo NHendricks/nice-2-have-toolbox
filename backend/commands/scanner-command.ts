@@ -770,23 +770,27 @@ try {
                 // Emit progress callback for IPC with base64 preview
                 pageCounter++;
                 if (this.progressCallback) {
-                  // Read file and create base64 preview
-                  try {
-                    const fileData = fs.readFileSync(filePath);
-                    const base64Preview = `data:image/png;base64,${fileData.toString('base64')}`;
-                    (this.progressCallback as any)(
-                      pageCounter,
-                      filename,
-                      stats.size,
-                      filePath,
-                      base64Preview,
-                    );
-                    console.log(
-                      `[WATCHER] Emitted progress event for page ${pageCounter}`,
-                    );
-                  } catch (err) {
-                    console.error(`[WATCHER] Failed to create preview:`, err);
-                  }
+                  // Small delay to ensure file is fully written before reading
+                  setTimeout(() => {
+                    try {
+                      if (fs.existsSync(filePath)) {
+                        const fileData = fs.readFileSync(filePath);
+                        const base64Preview = `data:image/png;base64,${fileData.toString('base64')}`;
+                        (this.progressCallback as any)(
+                          pageCounter,
+                          filename,
+                          stats.size,
+                          filePath,
+                          base64Preview,
+                        );
+                        console.log(
+                          `[WATCHER] Emitted progress event for page ${pageCounter}`,
+                        );
+                      }
+                    } catch (err) {
+                      console.error(`[WATCHER] Failed to create preview:`, err);
+                    }
+                  }, 100); // 100ms delay to let file finish writing
                 }
               }
             }

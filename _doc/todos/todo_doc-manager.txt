@@ -1,6 +1,6 @@
 - pdf manager
   - fix cancel function during scan
-  - show scanned images in popup while scanning
+  - enable scan more pages in preview dialog
   - fix duplex (use naps2)
   - remember all settings
   - define own managed folder
