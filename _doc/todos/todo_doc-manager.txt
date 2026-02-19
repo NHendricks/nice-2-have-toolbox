@@ -1,12 +1,11 @@
 - pdf manager
-  - remove duplex checkbox (doesnt work)
   - show scanned images in popup while scanning
   - fix duplex (use naps2)
   - remember all settings
   - define own managed folder
-  - rescan pdf folder (ocr)
+  - show text in popup (save text as filename.txt)
+  - rescan pdf opton (ocr)
   - split pdf incl. preview
-  - show text
   - find text in pdfs 
     - write textfile for each pdf
     - find text within text files
