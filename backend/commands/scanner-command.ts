@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import * as fs from 'fs';
 import sizeOf from 'image-size';
 import * as path from 'path';
@@ -576,7 +576,7 @@ try {
     $tempDir = "${tempDir.replace(/\\/g, '\\\\')}"
     if ($multiPageEnabled) {
         New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
-        Write-Host "Created temp directory: $tempDir"
+        Write-Host "DEBUG: Temp directory created: $tempDir"
     }
 
     # Perform the scan (multi-page loop)
@@ -608,9 +608,19 @@ try {
             }
 
             # Save image
+            Write-Host "DEBUG: Saving page $pageNumber to disk..."
+            $saveStartTime = Get-Date
             $image.SaveFile($outputPath)
+            $saveEndTime = Get-Date
+            $saveDuration = ($saveEndTime - $saveStartTime).TotalMilliseconds
             $scannedFiles += $outputPath
-            Write-Host "Page $pageNumber saved to: $outputPath"
+            
+            # Get file size
+            $fileInfo = Get-Item $outputPath
+            $fileSizeKB = [math]::Round($fileInfo.Length / 1KB, 2)
+            
+            Write-Host "DEBUG: Page $pageNumber saved in $($saveDuration)ms, size: $($fileSizeKB) KB"
+            Write-Host "DEBUG: File location: $outputPath"
 
             $pageNumber++
 
@@ -713,27 +723,70 @@ try {
         console.log('========================================');
 
         const startTime = Date.now();
-        const { stdout, stderr } = await execAsync(
-          `powershell -ExecutionPolicy Bypass -NoProfile -File "${tempScript}"`,
-          { timeout: 300000 }, // 5 minute timeout for multi-page
-        );
-        const endTime = Date.now();
 
-        console.log('========================================');
-        console.log(`WIA scan completed in ${endTime - startTime}ms`);
-        console.log('========================================');
+        // Use spawn instead of exec to stream output in real-time
+        const psProcess = spawn('powershell', [
+          '-ExecutionPolicy',
+          'Bypass',
+          '-NoProfile',
+          '-File',
+          tempScript,
+        ]);
 
-        // Log all PowerShell output
-        console.log('PowerShell stdout:');
-        console.log(stdout);
-        console.log('========================================');
+        let stdout = '';
+        let stderr = '';
 
-        // Log stderr if there were any errors/warnings
-        if (stderr && stderr.trim()) {
-          console.log('PowerShell stderr:');
-          console.log(stderr);
-          console.log('========================================');
-        }
+        // Stream stdout in real-time
+        psProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          stdout += output;
+          // Log each line immediately to backend console
+          output.split('\n').forEach((line: string) => {
+            if (line.trim()) {
+              console.log(`[PS] ${line.trim()}`);
+            }
+          });
+        });
+
+        // Stream stderr in real-time
+        psProcess.stderr.on('data', (data) => {
+          const output = data.toString();
+          stderr += output;
+          // Log errors immediately
+          output.split('\n').forEach((line: string) => {
+            if (line.trim()) {
+              console.error(`[PS ERROR] ${line.trim()}`);
+            }
+          });
+        });
+
+        // Wait for process to complete
+        await new Promise<void>((resolve, reject) => {
+          psProcess.on('close', (code) => {
+            const endTime = Date.now();
+            console.log('========================================');
+            console.log(
+              `WIA scan completed in ${endTime - startTime}ms (exit code: ${code})`,
+            );
+            console.log('========================================');
+
+            if (code !== 0) {
+              reject(new Error(`PowerShell process exited with code ${code}`));
+            } else {
+              resolve();
+            }
+          });
+
+          psProcess.on('error', (error) => {
+            reject(error);
+          });
+
+          // Set timeout
+          setTimeout(() => {
+            psProcess.kill();
+            reject(new Error('Scan operation timed out after 5 minutes'));
+          }, 300000);
+        });
 
         // Clean up temp script
         if (fs.existsSync(tempScript)) {
