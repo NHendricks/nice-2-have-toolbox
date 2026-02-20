@@ -49,8 +49,11 @@ describe('ScannerCommand', () => {
     })
 
     it('adds --duplex when duplex flag is true and supported', async () => {
-      // stub detection to true and run
-      jest.spyOn(command as any, 'supportsDuplex').mockResolvedValue(true);
+      // stub detection to return flag support
+      jest.spyOn(command as any, 'detectDuplexSupport').mockResolvedValue({
+        flagSupported: true,
+        sourceOption: null
+      });
       await (command as any).scanUnixSANE(
         '/tmp/out.jpg',
         '',
@@ -65,8 +68,10 @@ describe('ScannerCommand', () => {
     })
 
     it('skips --duplex when not supported', async () => {
-      jest.spyOn(command as any, 'supportsDuplex').mockResolvedValue(false);
-      jest.spyOn(command as any, 'getDuplexSource').mockResolvedValue(null);
+      jest.spyOn(command as any, 'detectDuplexSupport').mockResolvedValue({
+        flagSupported: false,
+        sourceOption: null
+      });
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       await (command as any).scanUnixSANE(
         '/tmp/out.jpg',
@@ -88,8 +93,10 @@ describe('ScannerCommand', () => {
     })
 
     it('falls back to --source when duplex unsupported but source found', async () => {
-      jest.spyOn(command as any, 'supportsDuplex').mockResolvedValue(false);
-      jest.spyOn(command as any, 'getDuplexSource').mockResolvedValue('ADF Duplex');
+      jest.spyOn(command as any, 'detectDuplexSupport').mockResolvedValue({
+        flagSupported: false,
+        sourceOption: 'ADF Duplex'
+      });
       const execSpy = jest.spyOn(command as any as any, 'normalizeImage');
       await (command as any).scanUnixSANE(
         '/tmp/out.jpg',
@@ -106,7 +113,10 @@ describe('ScannerCommand', () => {
     })
 
     it('does not add --duplex when flag is false', async () => {
-      jest.spyOn(command as any, 'supportsDuplex').mockResolvedValue(true);
+      jest.spyOn(command as any, 'detectDuplexSupport').mockResolvedValue({
+        flagSupported: true,
+        sourceOption: null
+      });
       await (command as any).scanUnixSANE(
         '/tmp/out.jpg',
         '',

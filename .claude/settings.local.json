@@ -11,7 +11,8 @@
       "WebFetch(domain:chatgpt.com)",
       "Bash(node dist/cli.js scanner:*)",
       "Bash(npm install:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

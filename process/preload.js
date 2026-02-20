@@ -16,6 +16,10 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+contextBridge.exposeInMainWorld('process', {
+  platform: process.platform,
+});
+
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel, data) => {

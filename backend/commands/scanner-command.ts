@@ -740,52 +740,49 @@ try {
   /**
    * Scan on Unix systems (Linux/macOS) using SANE/scanimage
    */
-  // cached support state so we only shell out once per process
-  private duplexSupported: boolean | null = null;
-  private async supportsDuplex(): Promise<boolean> {
-    if (this.duplexSupported !== null) return this.duplexSupported;
-    try {
-      // look for "--duplex" in help output
-      const { stdout } = await execAsync('scanimage --help');
-      this.duplexSupported = stdout.includes('--duplex');
-    } catch (e) {
-      // if the command fails for any reason just pretend it's unsupported
-      this.duplexSupported = false;
-    }
-    return this.duplexSupported;
-  }
+  // Cached duplex support information so we only shell out once per process
+  private duplexInfo: { flagSupported: boolean; sourceOption: string | null } | null = null;
 
   /**
-   * Some scanners don't honour the --duplex flag but expose a source named
-   * "ADF Duplex" (or similar) which effectively does the same thing.  When
-   * we detect that the command line lacks --duplex support we fall back to
-   * scanning the first side, then passing --source "ADF Duplex" to the
-   * second pass.  This helper attempts to discover a suitable source name by
-   * examining scanimage's help text.  It returns the string to use or null if
-   * none is found.
+   * Detects duplex scanning support by examining scanimage help output.
+   * Returns both whether --duplex flag is supported and any alternative source option.
+   * This runs scanimage --help only once and caches the result.
    */
-  private async getDuplexSource(): Promise<string | null> {
+  private async detectDuplexSupport(): Promise<{ flagSupported: boolean; sourceOption: string | null }> {
+    if (this.duplexInfo !== null) return this.duplexInfo;
+
     try {
       const { stdout } = await execAsync('scanimage --help');
       const text = stdout.toLowerCase();
-      // Look for the most common lexical variants
-      if (text.includes('adf duplex')) {
-        return 'ADF Duplex';
-      }
-      // some drivers may call it simply "duplex"
-      if (text.includes('duplex')) {
-        // try to extract the quoted phrase following "--source"
-        const match = stdout.match(/--source\s+"([^"]*duplex[^"]*)"/i);
-        if (match && match[1]) {
-          return match[1];
+
+      // Check if --duplex flag is supported
+      const flagSupported = stdout.includes('--duplex');
+
+      // Check for alternative duplex source options
+      let sourceOption: string | null = null;
+      if (!flagSupported) {
+        // Look for the most common lexical variants
+        if (text.includes('adf duplex')) {
+          sourceOption = 'ADF Duplex';
+        } else if (text.includes('duplex')) {
+          // Try to extract the quoted phrase following "--source"
+          const match = stdout.match(/--source\s+"([^"]*duplex[^"]*)"/i);
+          if (match && match[1]) {
+            sourceOption = match[1];
+          } else {
+            // Fallback to generic word
+            sourceOption = 'duplex';
+          }
         }
-        // fallback to generic word
-        return 'duplex';
       }
+
+      this.duplexInfo = { flagSupported, sourceOption };
     } catch (e) {
-      // ignore errors and return null
+      // If the command fails for any reason, assume no duplex support
+      this.duplexInfo = { flagSupported: false, sourceOption: null };
     }
-    return null;
+
+    return this.duplexInfo;
   }
 
   /**
@@ -853,20 +850,16 @@ try {
       }
 
       if (duplex) {
-        const ok = await this.supportsDuplex();
-        if (ok) {
-          // insert before common args so it's next to batch/ -o
+        const duplexSupport = await this.detectDuplexSupport();
+        if (duplexSupport.flagSupported) {
+          // Use --duplex flag (preferred method)
           scanArgs.splice(multiPage ? 1 : scanArgs.length - 1, 0, '--duplex');
+        } else if (duplexSupport.sourceOption) {
+          // Fallback: use alternative source option like "ADF Duplex"
+          scanArgs.push('--source', duplexSupport.sourceOption);
+          fallbackUsed = true;
         } else {
-          // try alternate mechanism: use a source option if available
-          const src = await this.getDuplexSource();
-          if (src) {
-            // append at end, scanimage accepts "--source" <value>
-            scanArgs.push('--source', src);
-            fallbackUsed = true;
-          } else {
-            console.warn('Duplex flag requested but scanimage does not support it; ignoring');
-          }
+          console.warn('Duplex flag requested but scanimage does not support it; ignoring');
         }
       }
 
