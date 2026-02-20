@@ -75,7 +75,9 @@ export class ViewerDialog extends LitElement {
       max-width: none;
       max-height: none;
       object-fit: contain;
-      transition: width 0.1s ease-out, height 0.1s ease-out;
+      transition:
+        width 0.1s ease-out,
+        height 0.1s ease-out;
       cursor: inherit;
     }
     .dialog-content.image-viewer img:active {
