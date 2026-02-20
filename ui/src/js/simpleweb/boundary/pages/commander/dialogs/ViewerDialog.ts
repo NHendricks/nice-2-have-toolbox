@@ -230,7 +230,8 @@ export class ViewerDialog extends LitElement {
                   Bild: ${this.file.path.split(/[/\\]/).pop()} |
                   ${Math.round(this.zoomLevel * 100)}% | press ESC to close
                 `
-              : html`Größe: ${this.formatFileSize(this.file.size)} | press ESC to close`}
+              : html`Größe: ${this.formatFileSize(this.file.size)} | press ESC
+                to close`}
           </div>
         </div>
       </div>
