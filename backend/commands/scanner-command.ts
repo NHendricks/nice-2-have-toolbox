@@ -335,19 +335,19 @@ try {
       // Always scan in color (Color Intent: 1 = Color)
       const colorIntent = 1;
 
-      // WIA's PDF output is unreliable, so we'll scan as PNG and convert to PDF if needed
+      // WIA's PDF output is unreliable, so we scan as JPEG and convert to PDF if needed
       const scanAsPdf = format === 'pdf';
-      const actualFormat = scanAsPdf ? 'png' : format;
+      const actualFormat = scanAsPdf ? 'jpg' : format;
+      const mimeType = actualFormat === 'jpg' ? 'image/jpeg' : 'image/png';
 
-      // Determine output format ID (scan as PNG for PDF conversion)
+      // Determine output format ID
       const formatId =
         actualFormat === 'jpg'
           ? '{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}' // JPEG
           : '{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}'; // PNG
 
-      // Temporary file for PNG if converting to PDF
       const tempOutputFile = scanAsPdf
-        ? outputFile.replace(/\.pdf$/i, '.png')
+        ? outputFile.replace(/\.pdf$/i, '.jpg')
         : outputFile;
 
       const scannerIdParam = scannerId ? `"${scannerId}"` : '""';
@@ -436,7 +436,7 @@ try {
             $image = $imageProcess.Apply($image)
 
             if ($multiPageEnabled) {
-                $outputPath = "$tempDir\\page_$pageNumber.png"
+                $outputPath = "$tempDir\\page_$pageNumber.${actualFormat}"
             } else {
                 $outputPath = "${tempOutputFile.replace(/\\/g, '\\\\')}"
             }
@@ -490,18 +490,17 @@ try {
         let pageCounter = 0;
         if (multiPage) {
           fsWatcher = fs.watch(tempDir, (eventType, filename) => {
-            if (filename && filename.endsWith('.png')) {
+            if (filename && filename.endsWith(`.${actualFormat}`)) {
               const filePath = path.join(tempDir, filename);
               if (eventType === 'rename' && fs.existsSync(filePath)) {
                 const stats = fs.statSync(filePath);
                 pageCounter++;
                 if (this.progressCallback) {
-                  // Small delay to ensure file is fully written before reading
                   setTimeout(() => {
                     try {
                       if (fs.existsSync(filePath)) {
                         const fileData = fs.readFileSync(filePath);
-                        const base64Preview = `data:image/png;base64,${fileData.toString('base64')}`;
+                        const base64Preview = `data:${mimeType};base64,${fileData.toString('base64')}`;
                         (this.progressCallback as any)(
                           pageCounter,
                           filename,
@@ -513,7 +512,7 @@ try {
                     } catch (err) {
                       console.error('Failed to create preview:', err);
                     }
-                  }, 100); // 100ms delay to let file finish writing
+                  }, 100);
                 }
               }
             }
@@ -598,7 +597,7 @@ try {
         if (multiPage && fs.existsSync(tempDir)) {
           const files = fs
             .readdirSync(tempDir)
-            .filter((f) => f.endsWith('.png'))
+            .filter((f) => f.endsWith(`.${actualFormat}`))
             .sort()
             .map((f) => path.join(tempDir, f));
           if (files.length === 0) {
@@ -625,7 +624,6 @@ try {
           `Scanned ${scanResult.pageCount} page(s): ${scanResult.files.join(', ')}`,
         );
 
-        // Process the scanned files
         try {
           if (scanAsPdf) {
             console.log('Converting to PDF...');
@@ -727,8 +725,11 @@ try {
   ): Promise<any> {
     try {
       const scanAsPdf = format === 'pdf';
+      const actualFormat = scanAsPdf ? 'jpg' : format;
+      const mimeType = actualFormat === 'jpg' ? 'image/jpeg' : 'image/png';
+      const saneFormat = actualFormat === 'jpg' ? 'jpeg' : 'png';
       const tempOutputFile = scanAsPdf
-        ? outputFile.replace(/\.pdf$/i, '.png')
+        ? outputFile.replace(/\.pdf$/i, '.jpg')
         : outputFile;
       const tempDir = path.dirname(tempOutputFile);
 
@@ -739,7 +740,7 @@ try {
       const dpiValue = parseInt(resolution) || 300;
       const deviceArg = scannerId ? ['-d', scannerId] : [];
       const commonArgs = [
-        '--format=png',
+        `--format=${saneFormat}`,
         '--resolution',
         String(dpiValue),
         '--mode',
@@ -748,19 +749,17 @@ try {
       ];
 
       const scanArgs = multiPage
-        ? [`--batch=${path.join(tempDir, 'page_%d.png')}`, ...commonArgs]
+        ? [`--batch=${path.join(tempDir, `page_%d.${actualFormat}`)}`, ...commonArgs]
         : [...commonArgs, '-o', tempOutputFile];
 
-      console.log(
-        `Starting SANE scan: scanimage ${scanArgs.join(' ')}`,
-      );
+      console.log(`Starting SANE scan: scanimage ${scanArgs.join(' ')}`);
       const startTime = Date.now();
 
       let fsWatcher: fs.FSWatcher | null = null;
       let pageCounter = 0;
       if (multiPage) {
         fsWatcher = fs.watch(tempDir, (eventType, filename) => {
-          if (filename && filename.endsWith('.png')) {
+          if (filename && filename.endsWith(`.${actualFormat}`)) {
             const filePath = path.join(tempDir, filename);
             if (eventType === 'rename' && fs.existsSync(filePath)) {
               const stats = fs.statSync(filePath);
@@ -770,7 +769,7 @@ try {
                   try {
                     if (fs.existsSync(filePath)) {
                       const fileData = fs.readFileSync(filePath);
-                      const base64Preview = `data:image/png;base64,${fileData.toString('base64')}`;
+                      const base64Preview = `data:${mimeType};base64,${fileData.toString('base64')}`;
                       (this.progressCallback as any)(
                         pageCounter,
                         filename,
@@ -831,7 +830,7 @@ try {
                 multiPage
                   ? fs
                       .readdirSync(tempDir)
-                      .some((f) => f.endsWith('.png'))
+                      .some((f) => f.endsWith(`.${actualFormat}`))
                   : fs.existsSync(tempOutputFile);
               if (code === 0 || filesExist) {
                 resolve();
@@ -876,7 +875,7 @@ try {
       if (multiPage && fs.existsSync(tempDir)) {
         const files = fs
           .readdirSync(tempDir)
-          .filter((f) => f.endsWith('.png'))
+          .filter((f) => f.endsWith(`.${actualFormat}`))
           .sort()
           .map((f) => path.join(tempDir, f));
         if (files.length === 0) {
@@ -1045,7 +1044,7 @@ try {
 
 
   /**
-   * Scan to preview - scans pages to temp PNGs without creating PDF (always in color)
+   * Scan to preview - scans pages to temp JPEGs without creating PDF (always in color)
    */
   private async scanPreview(
     scannerId: string = '',
@@ -1057,7 +1056,7 @@ try {
         process.env.TMPDIR || process.env.TEMP || '/tmp';
       const tempDir = path.join(tmpBase, `scan_preview_${Date.now()}`);
       fs.mkdirSync(tempDir, { recursive: true });
-      const tempOutputFile = path.join(tempDir, 'page.png');
+      const tempOutputFile = path.join(tempDir, 'page.jpg');
 
       const result =
         process.platform === 'win32'
@@ -1065,14 +1064,14 @@ try {
               tempOutputFile,
               scannerId,
               resolution,
-              'png',
+              'jpg',
               multiPage,
             )
           : await this.scanUnixSANE(
               tempOutputFile,
               scannerId,
               resolution,
-              'png',
+              'jpg',
               multiPage,
             );
 
@@ -1090,7 +1089,7 @@ try {
       if (fs.existsSync(scanTempDir)) {
         const dirFiles = fs.readdirSync(scanTempDir);
         for (const f of dirFiles) {
-          if (f.endsWith('.png')) {
+          if (f.endsWith('.jpg') || f.endsWith('.jpeg')) {
             const fullPath = path.join(scanTempDir, f);
             if (!files.includes(fullPath)) {
               files.push(fullPath);
@@ -1121,7 +1120,7 @@ try {
       const previews: string[] = [];
       for (const f of files) {
         const data = fs.readFileSync(f);
-        previews.push(`data:image/png;base64,${data.toString('base64')}`);
+        previews.push(`data:image/jpeg;base64,${data.toString('base64')}`);
       }
 
       return {

@@ -1,6 +1,6 @@
 - pdf manager
-  - fix cancel function during scan
-  - enable scan more in preview dialog
+  - make smaller pdf sizes
+  - add scan button in preview dialog to scan more pages for this session
   - add image viewer from commander to png preview dilog when clicking on image 
   - arrange scan and files in 2 tabs
     - files tab: add new features here 
