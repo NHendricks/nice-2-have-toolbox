@@ -25,6 +25,13 @@ interface Scanner {
 
 @customElement('nh-docmanager')
 export class DocManager extends LitElement {
+  constructor() {
+    super()
+    const plat = (window as any).process?.platform
+    // only show when we explicitly know it's macOS or Linux
+    this.showDuplex = plat === 'darwin' || plat === 'linux'
+  }
+
   @state() private documents: Document[] = []
   @state() private scanners: Scanner[] = []
   @state() private loading = false
@@ -37,6 +44,8 @@ export class DocManager extends LitElement {
   @state() private resolution = '300'
   @state() private format = 'pdf'
   @state() private multiPage = true
+  @state() private duplex = false
+  @state() private showDuplex = false
   @state() private showPreviewDialog = false
   @state() private previewFiles: string[] = []
   @state() private previewDataUrls: string[] = []
@@ -525,6 +534,7 @@ export class DocManager extends LitElement {
     this.resolution = scannerPreferencesService.getResolution()
     this.format = scannerPreferencesService.getFormat()
     this.multiPage = scannerPreferencesService.getMultiPage()
+    this.duplex = scannerPreferencesService.getDuplex()
   }
 
   async loadScanners() {
@@ -616,6 +626,11 @@ export class DocManager extends LitElement {
     scannerPreferencesService.setMultiPage(this.multiPage)
   }
 
+  handleDuplexChange(e: any) {
+    this.duplex = e.target.checked
+    scannerPreferencesService.setDuplex(this.duplex)
+  }
+
   handleScannerChange(e: any) {
     this.selectedScannerId = e.target.value
     scannerPreferencesService.setLastScannerId(this.selectedScannerId)
@@ -646,6 +661,7 @@ export class DocManager extends LitElement {
           scannerId: this.selectedScannerId,
           resolution: this.resolution,
           multiPage: this.multiPage,
+          duplex: this.duplex,
         },
       )
       const result = response.data || response
@@ -664,6 +680,7 @@ export class DocManager extends LitElement {
           resolution: this.resolution,
           format: this.format,
           multiPage: this.multiPage,
+          duplex: this.duplex,
         })
       } else {
         this.showPreviewDialog = false
@@ -699,6 +716,7 @@ export class DocManager extends LitElement {
           scannerId: this.selectedScannerId,
           resolution: this.resolution,
           multiPage: this.multiPage,
+          duplex: this.duplex,
         },
       )
       const result = response.data || response
@@ -1028,6 +1046,17 @@ export class DocManager extends LitElement {
                 >Scan all pages (ADF - Automatic Document Feeder)</label
               >
             </div>
+            ${this.showDuplex
+              ? html`<div class="checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="duplex"
+                    .checked="${this.duplex}"
+                    @change="${this.handleDuplexChange}"
+                  />
+                  <label for="duplex">Scan both sides (duplex)</label>
+                </div>`
+              : ''}
           </div>
 
           <div class="button-group">

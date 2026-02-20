@@ -17,6 +17,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   -
 - commander
   - add zoom functins to imageviewer
+- scanner/docmanager
+  - add duplex scan option (linux & mac only)
+- detect when `scanimage` lacks `--duplex` support and gracefully fall back to an "ADF Duplex" source or log a warning, avoiding unrecognized option errors
 
 ### v2.1.0 (14.02.2026)
 

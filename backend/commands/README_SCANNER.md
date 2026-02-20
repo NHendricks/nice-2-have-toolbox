@@ -205,13 +205,19 @@ private async scanUnixSANE(...)
 
 ### Neue Scan-Optionen hinzufügen
 
-Parameter in `getParameters()` erweitern:
+Parameter in `getParameters()` erweitern (unix-only option):
+
+*Note: newer versions of `scanimage` support `--duplex`. Older builds will ignore the
+flag and simply log a warning. In those cases we also attempt to detect a
+"ADF Duplex" source (or similar) via the help text and pass `--source` instead;
+if neither mechanism is available duplex scanning is silently skipped. On
+Windows the option is never sent.*
 
 ```typescript
 {
   name: 'duplex',
   type: 'boolean',
-  description: 'Duplex scanning (both sides)',
+  description: 'Duplex scanning (both sides) - ignored on Windows or unsupported SANE versions',
   required: false,
   default: false,
 }

@@ -41,7 +41,7 @@ export class ScannerCommand implements ICommand {
   }
 
   getParameters(): CommandParameter[] {
-    return [
+    const params: CommandParameter[] = [
       {
         name: 'action',
         type: 'select',
@@ -92,6 +92,20 @@ export class ScannerCommand implements ICommand {
         required: false,
         default: true,
       },
+    ];
+
+    // duplex only available on non-Windows (SANE) platforms
+    if (process.platform !== 'win32') {
+      params.push({
+        name: 'duplex',
+        type: 'boolean',
+        description: 'Duplex scanning (both sides) - only applicable on macOS/Linux',
+        required: false,
+        default: false,
+      });
+    }
+
+    params.push(
       {
         name: 'files',
         type: 'string',
@@ -105,7 +119,9 @@ export class ScannerCommand implements ICommand {
         description: 'Temp directory path (for cleanup-scan)',
         required: false,
       },
-    ];
+    );
+
+    return params;
   }
 
   async execute(params: any): Promise<any> {
@@ -117,6 +133,7 @@ export class ScannerCommand implements ICommand {
       resolution,
       format,
       multiPage,
+      duplex,
       files,
       tempDir,
     } = params;
@@ -130,6 +147,7 @@ export class ScannerCommand implements ICommand {
             scannerId,
             resolution,
             multiPage !== false,
+            duplex !== false,
           );
         case 'finalize-scan':
           return await this.finalizeScan(files, outputPath, fileName, format);
@@ -722,12 +740,79 @@ try {
   /**
    * Scan on Unix systems (Linux/macOS) using SANE/scanimage
    */
+  // cached support state so we only shell out once per process
+  private duplexSupported: boolean | null = null;
+  private async supportsDuplex(): Promise<boolean> {
+    if (this.duplexSupported !== null) return this.duplexSupported;
+    try {
+      // look for "--duplex" in help output
+      const { stdout } = await execAsync('scanimage --help');
+      this.duplexSupported = stdout.includes('--duplex');
+    } catch (e) {
+      // if the command fails for any reason just pretend it's unsupported
+      this.duplexSupported = false;
+    }
+    return this.duplexSupported;
+  }
+
+  /**
+   * Some scanners don't honour the --duplex flag but expose a source named
+   * "ADF Duplex" (or similar) which effectively does the same thing.  When
+   * we detect that the command line lacks --duplex support we fall back to
+   * scanning the first side, then passing --source "ADF Duplex" to the
+   * second pass.  This helper attempts to discover a suitable source name by
+   * examining scanimage's help text.  It returns the string to use or null if
+   * none is found.
+   */
+  private async getDuplexSource(): Promise<string | null> {
+    try {
+      const { stdout } = await execAsync('scanimage --help');
+      const text = stdout.toLowerCase();
+      // Look for the most common lexical variants
+      if (text.includes('adf duplex')) {
+        return 'ADF Duplex';
+      }
+      // some drivers may call it simply "duplex"
+      if (text.includes('duplex')) {
+        // try to extract the quoted phrase following "--source"
+        const match = stdout.match(/--source\s+"([^"]*duplex[^"]*)"/i);
+        if (match && match[1]) {
+          return match[1];
+        }
+        // fallback to generic word
+        return 'duplex';
+      }
+    } catch (e) {
+      // ignore errors and return null
+    }
+    return null;
+  }
+
+  /**
+   * Perform a simple auto‑level/normalization on the given image file.  This is
+   * mainly used to brighten up the second side of a duplex scan when the backend
+   * does not honour the `--duplex` flag and we fall back to a source such as
+   * "ADF Duplex".  We invoke ImageMagick's `convert` if it's available and
+   * otherwise silently skip the step.
+   */
+  private async normalizeImage(filePath: string): Promise<void> {
+    try {
+      // `convert` is part of ImageMagick, which is commonly installed on Unix
+      // systems that also have SANE.  If the command is missing we simply ignore
+      // the failure instead of throwing.
+      await execAsync(`convert "${filePath}" -auto-level "${filePath}"`);
+    } catch (e) {
+      // ignore normalization errors
+    }
+  }
+
   private async scanUnixSANE(
     outputFile: string,
     scannerId: string,
     resolution: string,
     format: string,
     multiPage: boolean,
+    duplex: boolean,
   ): Promise<any> {
     try {
       const scanAsPdf = format === 'pdf';
@@ -754,9 +839,36 @@ try {
         ...deviceArg,
       ];
 
-      const scanArgs = multiPage
-        ? [`--batch=${path.join(tempDir, `page_%d.${actualFormat}`)}`, ...commonArgs]
-        : [...commonArgs, '-o', tempOutputFile];
+      // build base args list and conditionally add duplex if supported
+      let scanArgs: string[];
+      let fallbackUsed = false;
+
+      if (multiPage) {
+        scanArgs = [
+          `--batch=${path.join(tempDir, `page_%d.${actualFormat}`)}`,
+          ...commonArgs,
+        ];
+      } else {
+        scanArgs = [...commonArgs, '-o', tempOutputFile];
+      }
+
+      if (duplex) {
+        const ok = await this.supportsDuplex();
+        if (ok) {
+          // insert before common args so it's next to batch/ -o
+          scanArgs.splice(multiPage ? 1 : scanArgs.length - 1, 0, '--duplex');
+        } else {
+          // try alternate mechanism: use a source option if available
+          const src = await this.getDuplexSource();
+          if (src) {
+            // append at end, scanimage accepts "--source" <value>
+            scanArgs.push('--source', src);
+            fallbackUsed = true;
+          } else {
+            console.warn('Duplex flag requested but scanimage does not support it; ignoring');
+          }
+        }
+      }
 
       console.log(`Starting SANE scan: scanimage ${scanArgs.join(' ')}`);
       const startTime = Date.now();
@@ -899,6 +1011,15 @@ try {
         };
       } else {
         throw new Error('Scan completed but no files were created');
+      }
+
+      // when we fell back to a source-based duplex scan a few scanners produce
+      // very dark images for the back side; applying an automatic normalization
+      // helps most of them.  perform a quick post‑scan pass over every file.
+      if (fallbackUsed && scanResult && scanResult.files) {
+        for (const file of scanResult.files) {
+          await this.normalizeImage(file);
+        }
       }
 
       for (const file of scanResult.files) {
@@ -1106,6 +1227,7 @@ try {
     scannerId: string = '',
     resolution: string = '300',
     multiPage: boolean = true,
+    duplex: boolean = false,
   ): Promise<any> {
     try {
       const tmpBase =
@@ -1129,6 +1251,7 @@ try {
               resolution,
               'jpg',
               multiPage,
+              duplex,
             );
 
       // Collect PNG files from result or from disk

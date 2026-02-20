@@ -85,6 +85,8 @@ async function scanWithCanonDRM140() {
     console.log(`   Color Mode: Color`);
     console.log(`   Format: PDF`);
     console.log(`   Multi-Page: Ja`);
+    // Duplex only works on macOS/Linux; Windows will ignore it
+    console.log(`   Duplex: Nein`);
     console.log('');
     console.log('⏳ Bitte warten, Scanner wird initialisiert...\n');
 
