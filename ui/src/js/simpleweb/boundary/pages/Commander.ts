@@ -3206,7 +3206,10 @@ export class Commander extends LitElement {
                     const errorMsg = error.message || 'Unknown error'
                     dialog?.connectionFailed(errorMsg)
                     // Also show error in Commander status bar as fallback
-                    this.setStatus(`FTP connection failed: ${errorMsg}`, 'error')
+                    this.setStatus(
+                      `FTP connection failed: ${errorMsg}`,
+                      'error',
+                    )
                   }
                 }
                 this.pendingFtpUrl = null
@@ -3521,7 +3524,8 @@ export class Commander extends LitElement {
           ${filteredItems.map(
             (item, displayIndex) => html`
               <div
-                class="file-item ${isActive && displayFocusedIndex === displayIndex
+                class="file-item ${isActive &&
+                displayFocusedIndex === displayIndex
                   ? 'focused'
                   : ''} ${displaySelectedIndices.has(displayIndex)
                   ? 'selected'
@@ -3539,13 +3543,15 @@ export class Commander extends LitElement {
                     )
 
                     // Check if dragged item is in selection
-                    const isInSelection = originalIndex !== -1 && pane.selectedIndices.has(originalIndex)
+                    const isInSelection =
+                      originalIndex !== -1 &&
+                      pane.selectedIndices.has(originalIndex)
 
                     if (isInSelection && pane.selectedIndices.size > 0) {
                       // Drag all selected items
                       const selectedPaths = Array.from(pane.selectedIndices)
-                        .map(idx => pane.items[idx]?.path)
-                        .filter(path => path !== undefined)
+                        .map((idx) => pane.items[idx]?.path)
+                        .filter((path) => path !== undefined)
                       window.electron.startDrag(selectedPaths)
                     } else {
                       // Drag only the current item
