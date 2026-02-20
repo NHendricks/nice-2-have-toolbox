@@ -15,6 +15,8 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - remove images option in live preview, save as pdf
   - support multipage scanning (adf)
   -
+- commander
+  - add zoom functins to imageviewer
 
 ### v2.1.0 (14.02.2026)
 

@@ -60,19 +60,26 @@ export class ViewerDialog extends LitElement {
       word-wrap: break-word;
     }
     .dialog-content.image-viewer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      /* no flex centering – let the image itself handle centering when smaller
+         and allow scrollbars to reach all edges when larger */
       padding: 0;
       background: #000;
+      overflow: auto;
+      cursor: grab;
     }
     .dialog-content.image-viewer img {
-      max-width: 100%;
-      max-height: 100%;
+      display: block;
+      margin: auto;
+      /* allow image to resize based on zoom level rather than
+         being constrained to the container dimensions */
+      max-width: none;
+      max-height: none;
       object-fit: contain;
-      /* transform origin at center for zooming */
-      transform-origin: center center;
-      transition: transform 0.1s ease-out;
+      transition: width 0.1s ease-out, height 0.1s ease-out;
+      cursor: inherit;
+    }
+    .dialog-content.image-viewer img:active {
+      cursor: grabbing;
     }
     .dialog-footer {
       background: #334155;
@@ -119,6 +126,11 @@ export class ViewerDialog extends LitElement {
   @property({ type: Number })
   zoomLevel = 1
 
+  // pan state
+  private isPanning = false
+  private panStart = { x: 0, y: 0 }
+  private scrollStart = { x: 0, y: 0 }
+
   private formatFileSize(bytes: number): string {
     if (bytes === 0) return ''
     const sizes = ['B', 'KB', 'MB', 'GB']
@@ -138,6 +150,17 @@ export class ViewerDialog extends LitElement {
 
   private resetZoom() {
     this.zoomLevel = 1
+    this.resetScroll()
+  }
+
+  private resetScroll() {
+    const container = this.shadowRoot?.querySelector(
+      '.dialog-content.image-viewer',
+    ) as HTMLElement | null
+    if (container) {
+      container.scrollTop = 0
+      container.scrollLeft = 0
+    }
   }
 
   private onWheel(e: WheelEvent) {
@@ -148,6 +171,37 @@ export class ViewerDialog extends LitElement {
       this.zoomOut()
     }
     e.preventDefault()
+  }
+
+  private startPan(e: PointerEvent) {
+    if (!this.file?.isImage) return
+    this.isPanning = true
+    const container = this.shadowRoot?.querySelector(
+      '.dialog-content.image-viewer',
+    ) as HTMLElement
+    this.panStart = { x: e.clientX, y: e.clientY }
+    this.scrollStart = { x: container.scrollLeft, y: container.scrollTop }
+    container.setPointerCapture(e.pointerId)
+  }
+
+  private onPan(e: PointerEvent) {
+    if (!this.isPanning) return
+    const dx = e.clientX - this.panStart.x
+    const dy = e.clientY - this.panStart.y
+    const container = this.shadowRoot?.querySelector(
+      '.dialog-content.image-viewer',
+    ) as HTMLElement
+    container.scrollLeft = this.scrollStart.x - dx
+    container.scrollTop = this.scrollStart.y - dy
+  }
+
+  private stopPan(e: PointerEvent) {
+    if (!this.isPanning) return
+    this.isPanning = false
+    const container = this.shadowRoot?.querySelector(
+      '.dialog-content.image-viewer',
+    ) as HTMLElement
+    container.releasePointerCapture(e.pointerId)
   }
 
   private handleKeydown = (e: KeyboardEvent) => {
@@ -189,6 +243,7 @@ export class ViewerDialog extends LitElement {
     if (changed.has('file')) {
       // reset zoom whenever a new file is opened
       this.zoomLevel = 1
+      this.updateComplete.then(() => this.resetScroll())
     }
   }
 
@@ -215,12 +270,16 @@ export class ViewerDialog extends LitElement {
           <div
             class="dialog-content ${this.file.isImage ? 'image-viewer' : ''}"
             @wheel=${this.onWheel}
+            @pointerdown=${this.startPan}
+            @pointermove=${this.onPan}
+            @pointerup=${this.stopPan}
+            @pointerleave=${this.stopPan}
           >
             ${this.file.isImage
               ? html`<img
                   src="${this.file.content}"
                   alt="Image preview"
-                  style="transform: scale(${this.zoomLevel});"
+                  style="width: ${this.zoomLevel * 100}%; height: auto;"
                 />`
               : this.file.content}
           </div>
