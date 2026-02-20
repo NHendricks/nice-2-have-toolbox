@@ -706,6 +706,251 @@ try {
   }
 
   /**
+   * Scan on Unix systems (Linux/macOS) using SANE/scanimage
+   */
+  private async scanUnixSANE(
+    outputFile: string,
+    scannerId: string,
+    resolution: string,
+    format: string,
+    multiPage: boolean,
+  ): Promise<any> {
+    try {
+      const scanAsPdf = format === 'pdf';
+      const tempOutputFile = scanAsPdf
+        ? outputFile.replace(/\.pdf$/i, '.png')
+        : outputFile;
+      const tempDir = path.dirname(tempOutputFile);
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const dpiValue = parseInt(resolution) || 300;
+      const deviceArg = scannerId ? ['-d', scannerId] : [];
+      const commonArgs = [
+        '--format=png',
+        '--resolution',
+        String(dpiValue),
+        '--mode',
+        'Color',
+        ...deviceArg,
+      ];
+
+      const scanArgs = multiPage
+        ? [`--batch=${path.join(tempDir, 'page_%d.png')}`, ...commonArgs]
+        : [...commonArgs, '-o', tempOutputFile];
+
+      console.log(
+        `Starting SANE scan: scanimage ${scanArgs.join(' ')}`,
+      );
+      const startTime = Date.now();
+
+      let fsWatcher: fs.FSWatcher | null = null;
+      let pageCounter = 0;
+      if (multiPage) {
+        fsWatcher = fs.watch(tempDir, (eventType, filename) => {
+          if (filename && filename.endsWith('.png')) {
+            const filePath = path.join(tempDir, filename);
+            if (eventType === 'rename' && fs.existsSync(filePath)) {
+              const stats = fs.statSync(filePath);
+              pageCounter++;
+              if (this.progressCallback) {
+                setTimeout(() => {
+                  try {
+                    if (fs.existsSync(filePath)) {
+                      const fileData = fs.readFileSync(filePath);
+                      const base64Preview = `data:image/png;base64,${fileData.toString('base64')}`;
+                      (this.progressCallback as any)(
+                        pageCounter,
+                        filename,
+                        stats.size,
+                        filePath,
+                        base64Preview,
+                      );
+                    }
+                  } catch (err) {
+                    console.error('Failed to create preview:', err);
+                  }
+                }, 100);
+              }
+            }
+          }
+        });
+      }
+
+      const maxRetries = 3;
+      let lastError: Error | null = null;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        lastError = null;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const scanProcess = spawn('scanimage', scanArgs);
+            let stderr = '';
+
+            scanProcess.stdout.on('data', (data) => {
+              data
+                .toString()
+                .split('\n')
+                .filter((l: string) => l.trim())
+                .forEach((l: string) => console.log(`[SANE] ${l.trim()}`));
+            });
+
+            scanProcess.stderr.on('data', (data) => {
+              const txt = data.toString();
+              stderr += txt;
+              txt
+                .split('\n')
+                .filter((l: string) => l.trim())
+                .forEach((l: string) => console.log(`[SANE] ${l.trim()}`));
+            });
+
+            const timeout = setTimeout(() => {
+              scanProcess.kill();
+              reject(new Error('Scan operation timed out after 5 minutes'));
+            }, 300000);
+
+            scanProcess.on('close', (code) => {
+              clearTimeout(timeout);
+              // ADF empty may exit non-zero on some drivers; treat as success
+              // if files were already written to disk
+              const filesExist =
+                multiPage
+                  ? fs
+                      .readdirSync(tempDir)
+                      .some((f) => f.endsWith('.png'))
+                  : fs.existsSync(tempOutputFile);
+              if (code === 0 || filesExist) {
+                resolve();
+              } else {
+                reject(
+                  new Error(
+                    stderr.trim() || `scanimage exited with code ${code}`,
+                  ),
+                );
+              }
+            });
+
+            scanProcess.on('error', (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            });
+          });
+          break; // success — exit retry loop
+        } catch (err: any) {
+          lastError = err;
+          if (attempt < maxRetries) {
+            console.log(
+              `Scan attempt ${attempt} failed, retrying in ${attempt * 2}s...`,
+            );
+            await new Promise((r) => setTimeout(r, attempt * 2000));
+          }
+        }
+      }
+
+      if (fsWatcher) {
+        fsWatcher.close();
+      }
+
+      if (lastError) {
+        throw lastError;
+      }
+
+      console.log(`SANE scan finished in ${Date.now() - startTime}ms`);
+
+      // Collect files from filesystem
+      let scanResult: any;
+      if (multiPage && fs.existsSync(tempDir)) {
+        const files = fs
+          .readdirSync(tempDir)
+          .filter((f) => f.endsWith('.png'))
+          .sort()
+          .map((f) => path.join(tempDir, f));
+        if (files.length === 0) {
+          throw new Error('Scan completed but no files were created');
+        }
+        scanResult = { success: true, pageCount: files.length, files, tempDir };
+      } else if (fs.existsSync(tempOutputFile)) {
+        scanResult = {
+          success: true,
+          pageCount: 1,
+          files: [tempOutputFile],
+          tempDir: '',
+        };
+      } else {
+        throw new Error('Scan completed but no files were created');
+      }
+
+      console.log(
+        `Scanned ${scanResult.pageCount} page(s): ${scanResult.files.join(', ')}`,
+      );
+
+      if (scanAsPdf) {
+        await this.convertImagesToPdf(scanResult.files, outputFile);
+        for (const file of scanResult.files) {
+          if (fs.existsSync(file)) fs.unlinkSync(file);
+        }
+        if (scanResult.tempDir && fs.existsSync(scanResult.tempDir)) {
+          fs.rmdirSync(scanResult.tempDir);
+        }
+        const stats = fs.statSync(outputFile);
+        return {
+          success: true,
+          outputFile,
+          message: `Scanned ${scanResult.pageCount} page(s) and converted to PDF: ${outputFile}`,
+          method: 'SANE + PNG-to-PDF conversion',
+          pageCount: scanResult.pageCount,
+          fileSize: stats.size,
+        };
+      } else {
+        if (scanResult.pageCount > 1) {
+          return {
+            success: false,
+            error:
+              'Multi-page scanning is only supported for PDF format. Please select PDF format.',
+            files: scanResult.files,
+          };
+        }
+        const stats = fs.statSync(scanResult.files[0]);
+        return {
+          success: true,
+          outputFile: scanResult.files[0],
+          message: `Document scanned successfully to ${scanResult.files[0]}`,
+          method: 'SANE',
+          pageCount: 1,
+          fileSize: stats.size,
+        };
+      }
+    } catch (error: any) {
+      console.error('SANE scan failed:', error.message);
+
+      let message =
+        'Scanning failed. Make sure your scanner is connected and SANE is installed.';
+      if (error.message.includes('timeout')) {
+        message =
+          'Scan operation timed out. Scanner may be offline or not responding.';
+      } else if (
+        error.message.includes('No such device') ||
+        error.message.includes('Invalid argument')
+      ) {
+        message =
+          'Scanner not found. Check scanner connection and SANE configuration.';
+      }
+
+      return {
+        success: false,
+        error: error.message,
+        message,
+        help:
+          process.platform === 'darwin'
+            ? 'Install SANE: brew install sane-backends'
+            : 'Install SANE: sudo apt-get install sane sane-utils',
+      };
+    }
+  }
+
+  /**
    * Convert multiple images (PNG/JPG) to a multi-page PDF using PDFKit
    */
   private async convertImagesToPdf(
@@ -796,29 +1041,28 @@ try {
     multiPage: boolean = true,
   ): Promise<any> {
     try {
-      if (process.platform !== 'win32') {
-        return {
-          success: false,
-          error: 'scan-preview is currently only supported on Windows',
-        };
-      }
-
-      // Generate a temp output file path and ensure directory exists
-      const tempDir = path.join(
-        process.env.TEMP || '',
-        `scan_preview_${Date.now()}`,
-      );
+      const tmpBase =
+        process.env.TMPDIR || process.env.TEMP || '/tmp';
+      const tempDir = path.join(tmpBase, `scan_preview_${Date.now()}`);
       fs.mkdirSync(tempDir, { recursive: true });
       const tempOutputFile = path.join(tempDir, 'page.png');
 
-      // Scan as PNG in color mode
-      const result = await this.scanWindowsWIA(
-        tempOutputFile,
-        scannerId,
-        resolution,
-        'png',
-        multiPage,
-      );
+      const result =
+        process.platform === 'win32'
+          ? await this.scanWindowsWIA(
+              tempOutputFile,
+              scannerId,
+              resolution,
+              'png',
+              multiPage,
+            )
+          : await this.scanUnixSANE(
+              tempOutputFile,
+              scannerId,
+              resolution,
+              'png',
+              multiPage,
+            );
 
       // Collect PNG files from result or from disk
       const resultFiles: string[] = result.files || [];
