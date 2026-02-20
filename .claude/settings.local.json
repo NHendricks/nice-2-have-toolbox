@@ -15,7 +15,8 @@
       "Bash(npm test:*)",
       "WebFetch(domain:www.access-programmers.co.uk)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:ithoughthecamewithyou.com)"
+      "WebFetch(domain:ithoughthecamewithyou.com)",
+      "Bash(scanimage:*)"
     ]
   }
 }

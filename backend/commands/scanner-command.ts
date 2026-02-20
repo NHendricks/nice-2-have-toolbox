@@ -855,14 +855,19 @@ try {
 
       const dpiValue = parseInt(resolution) || 300;
       const deviceArg = scannerId ? ['-d', scannerId] : [];
+
       const commonArgs = [
         `--format=${saneFormat}`,
         '--resolution',
         String(dpiValue),
         '--mode',
         'Color',
-        '-x', '210',  // A4 width in mm
-        '-y', '297',  // A4 height in mm
+        '--page-width', '210',   // Tell scanner A4 paper width for proper centering
+        '--page-height', '297',  // Tell scanner A4 paper height for proper centering
+        '-l', '0',    // Start scanning at left edge
+        '-t', '0',    // Start scanning at top edge
+        '-x', '210',  // Scan width: A4 width in mm
+        '-y', '297',  // Scan height: A4 height in mm
         ...deviceArg,
       ];
 
