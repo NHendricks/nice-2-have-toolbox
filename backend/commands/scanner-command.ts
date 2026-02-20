@@ -133,6 +133,7 @@ export class ScannerCommand implements ICommand {
       duplex,
       files,
       tempDir,
+      autoSetFileName,
     } = params;
 
     try {
@@ -147,7 +148,7 @@ export class ScannerCommand implements ICommand {
             duplex === true,
           );
         case 'finalize-scan':
-          return await this.finalizeScan(files, outputPath, fileName, format);
+          return await this.finalizeScan(files, outputPath, fileName, format, autoSetFileName);
         case 'cleanup-scan':
           return await this.cleanupScan(files, tempDir);
         case 'list-documents':
@@ -1168,12 +1169,14 @@ try {
 
   /**
    * Convert multiple images (PNG/JPG) to a multi-page PDF using PDFKit
+   * Optionally performs OCR recognition on the first image only
    */
   private async convertImagesToPdf(
     inputFiles: string[],
     outputFile: string,
+    autoSetFileName: boolean = false,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         if (!inputFiles || inputFiles.length === 0) {
           reject(new Error('No input files provided'));
@@ -1181,7 +1184,7 @@ try {
         }
 
         console.log(
-          `Converting ${inputFiles.length} image(s) to PDF: ${outputFile}`,
+          `[PDF] Converting ${inputFiles.length} image(s) to PDF: ${outputFile}`,
         );
 
         // Get dimensions of first image to set initial page size
@@ -1233,9 +1236,37 @@ try {
         // Finalize the PDF
         doc.end();
 
-        writeStream.on('finish', () => {
-          console.log('PDF created successfully');
-          resolve();
+        writeStream.on('finish', async () => {
+          try {
+            console.log('[PDF] PDF generated successfully');
+
+            // Perform OCR only on first page if requested
+            if (autoSetFileName) {
+              try {
+                console.log('[OCR] Starting OCR scan of page 1...');
+                // Dynamically import OCR service to avoid circular dependencies
+                const { getOcrService } = await import('./ocr-service.js');
+                const ocrService = getOcrService();
+                await ocrService.initialize();
+                // Only OCR the first image
+                const firstImage = [inputFiles[0]];
+                const textFile = await ocrService.saveTextToFile(
+                  firstImage,
+                  outputFile,
+                );
+                console.log(`[OCR] OCR completed (first page only). Text saved to: ${textFile}`);
+              } catch (ocrError: any) {
+                console.warn(
+                  `[OCR] OCR processing failed (continuing anyway): ${ocrError.message}`,
+                );
+                // Continue even if OCR fails
+              }
+            }
+
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
         });
 
         writeStream.on('error', (error) => {
@@ -1355,6 +1386,7 @@ try {
     outputPath: string,
     fileName: string,
     format: string = 'pdf',
+    autoSetFileName: boolean = false,
   ): Promise<any> {
     try {
       const fileList = typeof files === 'string' ? JSON.parse(files) : files;
@@ -1385,7 +1417,7 @@ try {
       const outputFile = path.join(baseDir, finalFileName);
 
       if (format === 'pdf') {
-        await this.convertImagesToPdf(fileList, outputFile);
+        await this.convertImagesToPdf(fileList, outputFile, autoSetFileName);
       } else {
         // For non-PDF, copy the first file
         fs.copyFileSync(fileList[0], outputFile);

@@ -1,1 +1,3 @@
 show wait dialog when expanding folder
+
+fix mac

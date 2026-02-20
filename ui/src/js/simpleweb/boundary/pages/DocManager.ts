@@ -3,8 +3,8 @@ import { customElement, state } from 'lit/decorators.js'
 import { scannerPreferencesService } from './docmanager/ScannerPreferencesService.js'
 
 // bring in the commander viewer component and type so we can reuse it here
-import './commander/dialogs/index.js'
 import type { ViewerFile } from './commander/commander.types.js'
+import './commander/dialogs/index.js'
 
 interface Document {
   name: string
@@ -30,6 +30,8 @@ export class DocManager extends LitElement {
     this.showDuplex = true
   }
 
+  private messageTimeout: any = null
+
   @state() private documents: Document[] = []
   @state() private scanners: Scanner[] = []
   @state() private loading = false
@@ -44,6 +46,7 @@ export class DocManager extends LitElement {
   @state() private multiPage = true
   @state() private duplex = false
   @state() private showDuplex = false
+  @state() private autoSetFileName = false
   @state() private showPreviewDialog = false
   @state() private previewFiles: string[] = []
   @state() private previewDataUrls: string[] = []
@@ -629,6 +632,10 @@ export class DocManager extends LitElement {
     scannerPreferencesService.setDuplex(this.duplex)
   }
 
+  handleAutoSetFileNameChange(e: any) {
+    this.autoSetFileName = e.target.checked
+  }
+
   handleScannerChange(e: any) {
     this.selectedScannerId = e.target.value
     scannerPreferencesService.setLastScannerId(this.selectedScannerId)
@@ -660,6 +667,7 @@ export class DocManager extends LitElement {
           resolution: this.resolution,
           multiPage: this.multiPage,
           duplex: this.duplex,
+          autoSetFileName: this.autoSetFileName,
         },
       )
       const result = response.data || response
@@ -715,6 +723,7 @@ export class DocManager extends LitElement {
           resolution: this.resolution,
           multiPage: this.multiPage,
           duplex: this.duplex,
+          autoSetFileName: this.autoSetFileName,
         },
       )
       const result = response.data || response
@@ -788,10 +797,38 @@ export class DocManager extends LitElement {
       return
     }
 
+    let statusUpdateInterval: any = null
+
     try {
       this.scanning = true
       this.saving = true
-      this.showMessage('Creating document...', 'info')
+
+      // Show detailed status messages
+      this.showMessage('📄 Generating PDF from images...', 'info', true)
+
+      // Start a timer to show progress during OCR if enabled
+      const ocrMessages = [
+        '🔍 OCR scanning page 1...',
+        '🔍 Recognizing text... (analyzing page)',
+        '🔍 Processing text data...',
+        '🔍 Finalizing OCR results...',
+      ]
+      let messageIndex = 0
+
+      if (this.autoSetFileName) {
+        // Add a small delay to show the PDF generation message
+        await new Promise((resolve) => setTimeout(resolve, 800))
+
+        // Start rotating through OCR messages
+        statusUpdateInterval = setInterval(() => {
+          this.showMessage(
+            ocrMessages[messageIndex % ocrMessages.length],
+            'info',
+            true,
+          )
+          messageIndex++
+        }, 2000) // Update message every 2 seconds
+      }
 
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
@@ -802,13 +839,14 @@ export class DocManager extends LitElement {
           outputPath: this.scanDirectory,
           fileName: this.fileName,
           format: this.format,
+          autoSetFileName: this.autoSetFileName,
         },
       )
       const result = response.data || response
 
       if (result.success) {
         this.showMessage(
-          'Document saved successfully! ' + result.message,
+          `✅ Document saved successfully! ${result.pageCount} page(s) saved.`,
           'success',
         )
         this.fileName = ''
@@ -826,6 +864,10 @@ export class DocManager extends LitElement {
     } catch (error: any) {
       this.showMessage('Error saving document: ' + error.message, 'error')
     } finally {
+      // Clear the status update interval
+      if (statusUpdateInterval) {
+        clearInterval(statusUpdateInterval)
+      }
       this.scanning = false
       this.saving = false
     }
@@ -916,11 +958,26 @@ export class DocManager extends LitElement {
     }
   }
 
-  showMessage(text: string, type: 'success' | 'error' | 'info' = 'info') {
+  showMessage(
+    text: string,
+    type: 'success' | 'error' | 'info' = 'info',
+    keepUntilNextMessage: boolean = false,
+  ) {
+    // Clear any existing timeout
+    if (this.messageTimeout) {
+      clearTimeout(this.messageTimeout)
+      this.messageTimeout = null
+    }
+
     this.message = text
-    setTimeout(() => {
-      this.message = ''
-    }, 5000)
+
+    // Only auto-clear if not keeping until next message
+    if (!keepUntilNextMessage) {
+      this.messageTimeout = setTimeout(() => {
+        this.message = ''
+        this.messageTimeout = null
+      }, 5000)
+    }
   }
 
   formatBytes(bytes: number): string {
@@ -1055,6 +1112,15 @@ export class DocManager extends LitElement {
                   <label for="duplex">Scan both sides (duplex)</label>
                 </div>`
               : ''}
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="autoSetFileName"
+                .checked="${this.autoSetFileName}"
+                @change="${this.handleAutoSetFileNameChange}"
+              />
+              <label for="autoSetFileName">OCR Scan for first page</label>
+            </div>
           </div>
 
           <div class="button-group">
@@ -1147,30 +1213,44 @@ export class DocManager extends LitElement {
         <div class="preview-dialog">
           <div class="preview-header">
             <span
-              >${isInitialScanning
-                ? 'Scanning...'
-                : isScanningWithPages
-                  ? '📄 Scanning in progress...'
-                  : 'Scanned Pages - Review & Remove'}</span
+              >${this.saving
+                ? '⏳ Saving document...'
+                : isInitialScanning
+                  ? 'Scanning...'
+                  : isScanningWithPages
+                    ? '📄 Scanning in progress...'
+                    : 'Scanned Pages - Review & Remove'}</span
             >
           </div>
           <div class="preview-body">
-            ${isScanningWithPages
+            ${this.saving
               ? html`
                   <div
-                    style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;"
+                    style="background: #e3f2fd; color: #1565c0; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;"
                   >
                     <div
                       class="spinner"
                       style="width: 20px; height: 20px; border-width: 3px;"
                     ></div>
-                    <span
-                      ><strong>Scanning in progress...</strong> Pages will
-                      appear here as they're scanned.</span
-                    >
+                    <span><strong>${this.message}</strong></span>
                   </div>
                 `
-              : ''}
+              : isScanningWithPages
+                ? html`
+                    <div
+                      style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;"
+                    >
+                      <div
+                        class="spinner"
+                        style="width: 20px; height: 20px; border-width: 3px;"
+                      ></div>
+                      <span
+                        ><strong>Scanning in progress...</strong> Pages will
+                        appear here as they're scanned.</span
+                      >
+                    </div>
+                  `
+                : ''}
             ${isInitialScanning
               ? html`
                   <div class="loading">
@@ -1178,32 +1258,47 @@ export class DocManager extends LitElement {
                     <span>Scanning documents... Please wait.</span>
                   </div>
                 `
-              : this.previewDataUrls.length > 0
+              : this.saving
                 ? html`
-                    <div class="preview-grid">
-                      ${this.previewDataUrls.map(
-                        (dataUrl, index) => html`
-                          <div class="preview-item" @click="${() => this.openViewer(index)}">
-                            <img src="${dataUrl}" alt="Page ${index + 1}" />
-                            <div class="preview-item-footer">
-                              <span class="preview-item-label"
-                                >Page ${index + 1}</span
-                              >
-                              <button
-                                class="preview-delete-btn"
-                                @click="${() => this.removePreviewPage(index)}"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        `,
-                      )}
+                    <div class="loading">
+                      <div class="spinner"></div>
+                      <p
+                        style="margin-top: 20px; text-align: center; color: #555;"
+                      >
+                        ${this.message}
+                      </p>
                     </div>
                   `
-                : html`<div class="empty-state">
-                    <p>All pages removed.</p>
-                  </div>`}
+                : this.previewDataUrls.length > 0
+                  ? html`
+                      <div class="preview-grid">
+                        ${this.previewDataUrls.map(
+                          (dataUrl, index) => html`
+                            <div
+                              class="preview-item"
+                              @click="${() => this.openViewer(index)}"
+                            >
+                              <img src="${dataUrl}" alt="Page ${index + 1}" />
+                              <div class="preview-item-footer">
+                                <span class="preview-item-label"
+                                  >Page ${index + 1}</span
+                                >
+                                <button
+                                  class="preview-delete-btn"
+                                  @click="${() =>
+                                    this.removePreviewPage(index)}"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          `,
+                        )}
+                      </div>
+                    `
+                  : html`<div class="empty-state">
+                      <p>All pages removed.</p>
+                    </div>`}
           </div>
           <div class="preview-footer">
             <span class="page-count"
@@ -1222,7 +1317,9 @@ export class DocManager extends LitElement {
                 @click="${this.finalizeScan}"
                 ?disabled="${this.previewFiles.length === 0 || this.scanning}"
               >
-                ${this.saving ? 'Saving...' : `Save as ${this.format.toUpperCase()}`}
+                ${this.saving
+                  ? 'Saving...'
+                  : `Save as ${this.format.toUpperCase()}`}
               </button>
             </div>
           </div>

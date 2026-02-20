@@ -38,6 +38,7 @@
     "basic-ftp": "^5.1.0",
     "fast-xml-parser": "^5.3.3",
     "image-size": "^2.0.2",
-    "pdfkit": "^0.17.2"
+    "pdfkit": "^0.17.2",
+    "tesseract.js": "^7.0.0"
   }
 }
