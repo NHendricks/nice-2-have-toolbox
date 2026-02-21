@@ -1,67 +1,199 @@
 [
-  { "id": 1, "name": "Deutsche Post AG", "branche": "Postdienstleister" },
-  { "id": 2, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 3, "name": "Deutsche Telekom AG", "branche": "Telekommunikation" },
-  { "id": 4, "name": "Vodafone GmbH", "branche": "Telekommunikation" },
+  {
+    "id": 1,
+    "name": "Deutsche Post AG",
+    "branche": "Postdienstleister"
+  },
+  {
+    "id": 2,
+    "name": "DHL Paket GmbH",
+    "branche": "Logistik"
+  },
+  {
+    "id": 3,
+    "name": "Deutsche Telekom AG",
+    "branche": "Telekommunikation"
+  },
+  {
+    "id": 4,
+    "name": "Vodafone GmbH",
+    "branche": "Telekommunikation"
+  },
   {
     "id": 5,
     "name": "Telefónica Germany GmbH & Co. OHG",
     "branche": "Telekommunikation"
   },
-  { "id": 6, "name": "1&1 Telecom GmbH", "branche": "Telekommunikation" },
-  { "id": 7, "name": "United Internet AG", "branche": "Telekommunikation" },
-  { "id": 8, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 9, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 10, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 11, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 12, "name": "HDI Versicherung AG", "branche": "Versicherung" },
+  {
+    "id": 6,
+    "name": "1&1 Telecom GmbH",
+    "branche": "Telekommunikation"
+  },
+  {
+    "id": 7,
+    "name": "United Internet AG",
+    "branche": "Telekommunikation"
+  },
+  {
+    "id": 8,
+    "name": "Allianz Versicherungs-AG",
+    "branche": "Versicherung"
+  },
+  {
+    "id": 9,
+    "name": "AXA Versicherung AG",
+    "branche": "Versicherung"
+  },
+  {
+    "id": 10,
+    "name": "ERGO Group AG",
+    "branche": "Versicherung"
+  },
+  {
+    "id": 11,
+    "name": "Generali Deutschland AG",
+    "branche": "Versicherung"
+  },
+  {
+    "id": 12,
+    "name": "HDI Versicherung AG",
+    "branche": "Versicherung"
+  },
   {
     "id": 13,
     "name": "HUK-COBURG Haftpflicht-Unterstützungs-Kasse",
     "branche": "Versicherung"
   },
-  { "id": 14, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  { "id": 15, "name": "DEVK Versicherungen", "branche": "Versicherung" },
+  {
+    "id": 14,
+    "name": "R+V Versicherung AG",
+    "branche": "Versicherung"
+  },
+  {
+    "id": 15,
+    "name": "DEVK Versicherungen",
+    "branche": "Versicherung"
+  },
   {
     "id": 16,
     "name": "Debeka Versicherungsverein a.G.",
     "branche": "Versicherung"
   },
-  { "id": 17, "name": "Deutsche Bank AG", "branche": "Bank" },
-  { "id": 18, "name": "Commerzbank AG", "branche": "Bank" },
-  { "id": 19, "name": "DZ BANK AG", "branche": "Bank" },
-  { "id": 20, "name": "KfW Bankengruppe", "branche": "Bank" },
-  { "id": 21, "name": "ING-DiBa AG", "branche": "Bank" },
-  { "id": 22, "name": "Santander Consumer Bank AG", "branche": "Bank" },
-  { "id": 23, "name": "TARGOBANK AG", "branche": "Bank" },
+  {
+    "id": 17,
+    "name": "Deutsche Bank AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 18,
+    "name": "Commerzbank AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 19,
+    "name": "DZ BANK AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 20,
+    "name": "KfW Bankengruppe",
+    "branche": "Bank"
+  },
+  {
+    "id": 21,
+    "name": "ING-DiBa AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 22,
+    "name": "Santander Consumer Bank AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 23,
+    "name": "TARGOBANK AG",
+    "branche": "Bank"
+  },
   {
     "id": 24,
     "name": "Postbank – eine Niederlassung der Deutsche Bank AG",
     "branche": "Bank"
   },
-  { "id": 25, "name": "DKB – Deutsche Kreditbank AG", "branche": "Bank" },
-  { "id": 26, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 27, "name": "Berliner Sparkasse", "branche": "Bank" },
-  { "id": 28, "name": "Hamburger Sparkasse AG", "branche": "Bank" },
-  { "id": 29, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 30, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 31, "name": "AOK Bundesverband", "branche": "Krankenkasse" },
-  { "id": 32, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 33, "name": "Barmer", "branche": "Krankenkasse" },
-  { "id": 34, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 35, "name": "IKK classic", "branche": "Krankenkasse" },
+  {
+    "id": 25,
+    "name": "DKB – Deutsche Kreditbank AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 26,
+    "name": "Sparkasse KölnBonn",
+    "branche": "Bank"
+  },
+  {
+    "id": 27,
+    "name": "Berliner Sparkasse",
+    "branche": "Bank"
+  },
+  {
+    "id": 28,
+    "name": "Hamburger Sparkasse AG",
+    "branche": "Bank"
+  },
+  {
+    "id": 29,
+    "name": "Volksbank Köln Bonn eG",
+    "branche": "Bank"
+  },
+  {
+    "id": 30,
+    "name": "Sparda-Bank Berlin eG",
+    "branche": "Bank"
+  },
+  {
+    "id": 31,
+    "name": "AOK Bundesverband",
+    "branche": "Krankenkasse"
+  },
+  {
+    "id": 32,
+    "name": "Techniker Krankenkasse",
+    "branche": "Krankenkasse"
+  },
+  {
+    "id": 33,
+    "name": "Barmer",
+    "branche": "Krankenkasse"
+  },
+  {
+    "id": 34,
+    "name": "DAK-Gesundheit",
+    "branche": "Krankenkasse"
+  },
+  {
+    "id": 35,
+    "name": "IKK classic",
+    "branche": "Krankenkasse"
+  },
   {
     "id": 36,
     "name": "KKH Kaufmännische Krankenkasse",
     "branche": "Krankenkasse"
   },
-  { "id": 37, "name": "BARMER GEK", "branche": "Krankenkasse" },
+  {
+    "id": 37,
+    "name": "BARMER GEK",
+    "branche": "Krankenkasse"
+  },
   {
     "id": 38,
     "name": "E.ON Energie Deutschland GmbH",
     "branche": "Energieversorger"
   },
-  { "id": 39, "name": "RWE AG", "branche": "Energieversorger" },
+  {
+    "id": 39,
+    "name": "RWE AG",
+    "branche": "Energieversorger"
+  },
   {
     "id": 40,
     "name": "EnBW Energie Baden-Württemberg AG",
@@ -72,22 +204,46 @@
     "name": "Vattenfall Europe Sales GmbH",
     "branche": "Energieversorger"
   },
-  { "id": 42, "name": "Mainova AG", "branche": "Energieversorger" },
+  {
+    "id": 42,
+    "name": "Mainova AG",
+    "branche": "Energieversorger"
+  },
   {
     "id": 43,
     "name": "Stadtwerke München GmbH",
     "branche": "Energieversorger"
   },
-  { "id": 44, "name": "Stadtwerke Köln GmbH", "branche": "Energieversorger" },
-  { "id": 45, "name": "enviaM AG", "branche": "Energieversorger" },
-  { "id": 46, "name": "Süwag Energie AG", "branche": "Energieversorger" },
+  {
+    "id": 44,
+    "name": "Stadtwerke Köln GmbH",
+    "branche": "Energieversorger"
+  },
+  {
+    "id": 45,
+    "name": "enviaM AG",
+    "branche": "Energieversorger"
+  },
+  {
+    "id": 46,
+    "name": "Süwag Energie AG",
+    "branche": "Energieversorger"
+  },
   {
     "id": 47,
     "name": "Amazon Deutschland Services GmbH",
     "branche": "E-Commerce"
   },
-  { "id": 48, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  { "id": 49, "name": "Zalando SE", "branche": "E-Commerce" },
+  {
+    "id": 48,
+    "name": "Otto (GmbH & Co KG)",
+    "branche": "Versandhandel"
+  },
+  {
+    "id": 49,
+    "name": "Zalando SE",
+    "branche": "E-Commerce"
+  },
   {
     "id": 50,
     "name": "MediaMarktSaturn Retail Group GmbH",
@@ -98,47 +254,151 @@
     "name": "IKEA Deutschland GmbH & Co. KG",
     "branche": "Einzelhandel"
   },
-  { "id": 52, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
+  {
+    "id": 52,
+    "name": "REWE Markt GmbH",
+    "branche": "Einzelhandel"
+  },
   {
     "id": 53,
     "name": "Lidl Dienstleistung GmbH & Co. KG",
     "branche": "Einzelhandel"
   },
-  { "id": 54, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  { "id": 55, "name": "Kaufland Stiftung & Co. KG", "branche": "Einzelhandel" },
-  { "id": 56, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 57, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 58, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 59, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 60, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 61, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 62, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 63, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 64, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 65, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 66, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 67, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 68, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 69, "name": "Continental AG", "branche": "Automobilzulieferer" },
+  {
+    "id": 54,
+    "name": "ALDI Einkauf SE & Co. oHG",
+    "branche": "Einzelhandel"
+  },
+  {
+    "id": 55,
+    "name": "Kaufland Stiftung & Co. KG",
+    "branche": "Einzelhandel"
+  },
+  {
+    "id": 56,
+    "name": "Deutsche Bahn AG",
+    "branche": "Transport"
+  },
+  {
+    "id": 57,
+    "name": "DB Vertrieb GmbH",
+    "branche": "Transport"
+  },
+  {
+    "id": 58,
+    "name": "Lufthansa AG",
+    "branche": "Luftfahrt"
+  },
+  {
+    "id": 59,
+    "name": "Flix SE",
+    "branche": "Mobilität"
+  },
+  {
+    "id": 60,
+    "name": "Siemens AG",
+    "branche": "Industrie"
+  },
+  {
+    "id": 61,
+    "name": "BASF SE",
+    "branche": "Chemie"
+  },
+  {
+    "id": 62,
+    "name": "Bayer AG",
+    "branche": "Pharma"
+  },
+  {
+    "id": 63,
+    "name": "Volkswagen AG",
+    "branche": "Automobil"
+  },
+  {
+    "id": 64,
+    "name": "BMW AG",
+    "branche": "Automobil"
+  },
+  {
+    "id": 65,
+    "name": "Mercedes-Benz Group AG",
+    "branche": "Automobil"
+  },
+  {
+    "id": 66,
+    "name": "Porsche AG",
+    "branche": "Automobil"
+  },
+  {
+    "id": 67,
+    "name": "Bosch Gruppe",
+    "branche": "Industrie"
+  },
+  {
+    "id": 68,
+    "name": "thyssenkrupp AG",
+    "branche": "Industrie"
+  },
+  {
+    "id": 69,
+    "name": "Continental AG",
+    "branche": "Automobilzulieferer"
+  },
   {
     "id": 70,
     "name": "Deutsche Rentenversicherung Bund",
     "branche": "Sozialversicherung"
   },
-  { "id": 71, "name": "Bundesagentur für Arbeit", "branche": "Behörde" },
-  { "id": 72, "name": "Bundeszentralamt für Steuern", "branche": "Behörde" },
-  { "id": 73, "name": "Kraftfahrt-Bundesamt", "branche": "Behörde" },
+  {
+    "id": 71,
+    "name": "Bundesagentur für Arbeit",
+    "branche": "Behörde"
+  },
+  {
+    "id": 72,
+    "name": "Bundeszentralamt für Steuern",
+    "branche": "Behörde"
+  },
+  {
+    "id": 73,
+    "name": "Kraftfahrt-Bundesamt",
+    "branche": "Behörde"
+  },
   {
     "id": 74,
     "name": "Bundesamt für Migration und Flüchtlinge",
     "branche": "Behörde"
   },
-  { "id": 75, "name": "Finanzamt Berlin", "branche": "Behörde" },
-  { "id": 76, "name": "Finanzamt München", "branche": "Behörde" },
-  { "id": 77, "name": "Landeshauptstadt München", "branche": "Behörde" },
-  { "id": 78, "name": "Stadt Köln", "branche": "Behörde" },
-  { "id": 79, "name": "Freie und Hansestadt Hamburg", "branche": "Behörde" },
-  { "id": 80, "name": "Land Berlin", "branche": "Behörde" },
+  {
+    "id": 75,
+    "name": "Finanzamt Berlin",
+    "branche": "Behörde"
+  },
+  {
+    "id": 76,
+    "name": "Finanzamt München",
+    "branche": "Behörde"
+  },
+  {
+    "id": 77,
+    "name": "Landeshauptstadt München",
+    "branche": "Behörde"
+  },
+  {
+    "id": 78,
+    "name": "Stadt Köln",
+    "branche": "Behörde"
+  },
+  {
+    "id": 79,
+    "name": "Freie und Hansestadt Hamburg",
+    "branche": "Behörde"
+  },
+  {
+    "id": 80,
+    "name": "Land Berlin",
+    "branche": "Behörde"
+  },
   {
     "id": 81,
     "name": "Charité – Universitätsmedizin Berlin",
@@ -159,8 +419,16 @@
     "name": "Asklepios Kliniken GmbH & Co. KGaA",
     "branche": "Gesundheitswesen"
   },
-  { "id": 85, "name": "Helios Kliniken GmbH", "branche": "Gesundheitswesen" },
-  { "id": 86, "name": "Deutsches Rotes Kreuz", "branche": "Gesundheitswesen" },
+  {
+    "id": 85,
+    "name": "Helios Kliniken GmbH",
+    "branche": "Gesundheitswesen"
+  },
+  {
+    "id": 86,
+    "name": "Deutsches Rotes Kreuz",
+    "branche": "Gesundheitswesen"
+  },
   {
     "id": 87,
     "name": "Johanniter-Unfall-Hilfe e.V.",
@@ -171,1660 +439,354 @@
     "name": "Malteser Hilfsdienst e.V.",
     "branche": "Gesundheitswesen"
   },
-  { "id": 89, "name": "Vonovia SE", "branche": "Immobilien" },
-  { "id": 90, "name": "Deutsche Wohnen SE", "branche": "Immobilien" },
-  { "id": 91, "name": "LEG Immobilien AG", "branche": "Immobilien" },
-  { "id": 92, "name": "Grand City Properties S.A.", "branche": "Immobilien" },
-  { "id": 93, "name": "GAGFAH S.A.", "branche": "Immobilien" },
+  {
+    "id": 89,
+    "name": "Vonovia SE",
+    "branche": "Immobilien"
+  },
+  {
+    "id": 90,
+    "name": "Deutsche Wohnen SE",
+    "branche": "Immobilien"
+  },
+  {
+    "id": 91,
+    "name": "LEG Immobilien AG",
+    "branche": "Immobilien"
+  },
+  {
+    "id": 92,
+    "name": "Grand City Properties S.A.",
+    "branche": "Immobilien"
+  },
+  {
+    "id": 93,
+    "name": "GAGFAH S.A.",
+    "branche": "Immobilien"
+  },
   {
     "id": 94,
     "name": "EOS Deutscher Inkasso-Dienste AG",
     "branche": "Inkasso"
   },
-  { "id": 95, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 96, "name": "Creditreform AG", "branche": "Inkasso" },
+  {
+    "id": 95,
+    "name": "GFKL Financial Services AG",
+    "branche": "Inkasso"
+  },
+  {
+    "id": 96,
+    "name": "Creditreform AG",
+    "branche": "Inkasso"
+  },
   {
     "id": 97,
     "name": "Deutsche Post Dialogmarketing GmbH",
     "branche": "Direktmarketing"
   },
-  { "id": 98, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 99, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 100, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 101, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
+  {
+    "id": 98,
+    "name": "adressdaten.de GmbH",
+    "branche": "Direktmarketing"
+  },
+  {
+    "id": 99,
+    "name": "infomail GmbH",
+    "branche": "Direktmarketing"
+  },
+  {
+    "id": 100,
+    "name": "Postina Direkt GmbH",
+    "branche": "Direktmarketing"
+  },
+  {
+    "id": 101,
+    "name": "targetmedia GmbH",
+    "branche": "Direktmarketing"
+  },
   {
     "id": 102,
-    "name": "E.ON Energie Deutschland GmbH",
-    "branche": "Energieversorger"
+    "name": "Audi AG",
+    "branche": "Automobil"
   },
-  { "id": 103, "name": "RWE AG", "branche": "Energieversorger" },
+  {
+    "id": 103,
+    "name": "Stadt Frankfurt am Main",
+    "branche": "Behörde"
+  },
   {
     "id": 104,
-    "name": "EnBW Energie Baden-Württemberg AG",
-    "branche": "Energieversorger"
+    "name": "Land Hessen",
+    "branche": "Behörde"
   },
   {
     "id": 105,
-    "name": "Vattenfall Europe Sales GmbH",
-    "branche": "Energieversorger"
+    "name": "Stadt Stuttgart",
+    "branche": "Behörde"
   },
   {
     "id": 106,
-    "name": "Stadtwerke München GmbH",
-    "branche": "Energieversorger"
+    "name": "Land Baden-Württemberg",
+    "branche": "Behörde"
   },
-  { "id": 107, "name": "Stadtwerke Köln GmbH", "branche": "Energieversorger" },
-  { "id": 108, "name": "Mainova AG", "branche": "Energieversorger" },
-  { "id": 109, "name": "enviaM AG", "branche": "Energieversorger" },
-  { "id": 110, "name": "Süwag Energie AG", "branche": "Energieversorger" },
+  {
+    "id": 107,
+    "name": "Stadt München",
+    "branche": "Behörde"
+  },
+  {
+    "id": 108,
+    "name": "Land Bayern",
+    "branche": "Behörde"
+  },
+  {
+    "id": 109,
+    "name": "Finanzamt Frankfurt",
+    "branche": "Behörde"
+  },
+  {
+    "id": 110,
+    "name": "Finanzamt Stuttgart",
+    "branche": "Behörde"
+  },
   {
     "id": 111,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
+    "name": "Bundesamt für Justiz",
+    "branche": "Behörde"
   },
-  { "id": 112, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  { "id": 113, "name": "Zalando SE", "branche": "E-Commerce" },
+  {
+    "id": 112,
+    "name": "Amtsgericht Berlin",
+    "branche": "Justiz"
+  },
+  {
+    "id": 113,
+    "name": "Amtsgericht Hamburg",
+    "branche": "Justiz"
+  },
   {
     "id": 114,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
+    "name": "Amtsgericht München",
+    "branche": "Justiz"
   },
   {
     "id": 115,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
+    "name": "Landgericht Berlin",
+    "branche": "Justiz"
   },
-  { "id": 116, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
+  {
+    "id": 116,
+    "name": "Landgericht Hamburg",
+    "branche": "Justiz"
+  },
   {
     "id": 117,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
+    "name": "Oberlandesgericht Frankfurt",
+    "branche": "Justiz"
   },
-  { "id": 118, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
+  {
+    "id": 118,
+    "name": "Oberlandesgericht München",
+    "branche": "Justiz"
+  },
   {
     "id": 119,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
+    "name": "Bundesgerichtshof Karlsruhe",
+    "branche": "Justiz"
   },
-  { "id": 120, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 121, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 122, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 123, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 124, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 125, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 126, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 127, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 128, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 129, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 130, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 131, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 132, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 133, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 134, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 135, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 136, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 137, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 138, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 139, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 140, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 141, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 142, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 143, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 144, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 145, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 146, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 147, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 148, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 149, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 150, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 151, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 152, "name": "Stadtverwaltung Berlin", "branche": "Behörde" },
-  { "id": 153, "name": "Stadtverwaltung Hamburg", "branche": "Behörde" },
-  { "id": 154, "name": "Stadtverwaltung Köln", "branche": "Behörde" },
   {
-    "id": 155,
+    "id": 120,
+    "name": "Stadtverwaltung Berlin",
+    "branche": "Behörde"
+  },
+  {
+    "id": 121,
+    "name": "Stadtverwaltung Hamburg",
+    "branche": "Behörde"
+  },
+  {
+    "id": 122,
+    "name": "Stadtverwaltung Köln",
+    "branche": "Behörde"
+  },
+  {
+    "id": 123,
     "name": "Stadtverwaltung Frankfurt am Main",
     "branche": "Behörde"
   },
-  { "id": 156, "name": "Stadtverwaltung Stuttgart", "branche": "Behörde" },
-  { "id": 157, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 158, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 159, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 160, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
   {
-    "id": 161,
+    "id": 124,
+    "name": "Stadtverwaltung Stuttgart",
+    "branche": "Behörde"
+  },
+  {
+    "id": 125,
+    "name": "IHK Berlin",
+    "branche": "Bildung & Verbände"
+  },
+  {
+    "id": 126,
+    "name": "IHK München",
+    "branche": "Bildung & Verbände"
+  },
+  {
+    "id": 127,
+    "name": "HWK Berlin",
+    "branche": "Bildung & Verbände"
+  },
+  {
+    "id": 128,
+    "name": "HWK Stuttgart",
+    "branche": "Bildung & Verbände"
+  },
+  {
+    "id": 129,
     "name": "Goethe-Institut e.V.",
     "branche": "Bildung & Verbände"
   },
   {
-    "id": 162,
+    "id": 130,
     "name": "Volkshochschule Berlin",
     "branche": "Bildung & Verbände"
   },
   {
-    "id": 163,
+    "id": 131,
     "name": "Volkshochschule München",
     "branche": "Bildung & Verbände"
   },
   {
-    "id": 164,
+    "id": 132,
     "name": "Deutscher Gewerkschaftsbund",
     "branche": "Bildung & Verbände"
   },
   {
-    "id": 165,
+    "id": 133,
     "name": "Studierendenwerk Berlin",
     "branche": "Bildung & Verbände"
   },
   {
-    "id": 166,
+    "id": 134,
     "name": "Studierendenwerk München",
     "branche": "Bildung & Verbände"
   },
   {
-    "id": 167,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
+    "id": 135,
+    "name": "Hermes Germany GmbH",
+    "branche": "Logistik"
   },
-  { "id": 168, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 169, "name": "Creditreform AG", "branche": "Inkasso" },
   {
-    "id": 170,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
+    "id": 136,
+    "name": "DPD Deutschland GmbH",
+    "branche": "Logistik"
   },
-  { "id": 171, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 172, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 173, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 174, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 175, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 176, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 177, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 178, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 179, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 180, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
   {
-    "id": 181,
+    "id": 137,
+    "name": "GLS Germany",
+    "branche": "Logistik"
+  },
+  {
+    "id": 138,
+    "name": "FedEx Express Germany",
+    "branche": "Logistik"
+  },
+  {
+    "id": 139,
+    "name": "Stadtwerke Düsseldorf",
+    "branche": "Energieversorger"
+  },
+  {
+    "id": 140,
+    "name": "Stadtwerke Hannover",
+    "branche": "Energieversorger"
+  },
+  {
+    "id": 141,
     "name": "SWM Stadtwerke München GmbH",
     "branche": "Energieversorger"
   },
   {
-    "id": 182,
+    "id": 142,
     "name": "Main-Kinzig-Gesundheitswesen GmbH",
     "branche": "Gesundheitswesen"
   },
-  { "id": 183, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 184, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 185, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 186, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 187, "name": "IKK classic", "branche": "Krankenkasse" },
   {
-    "id": 188,
-    "name": "KKH Kaufmännische Krankenkasse",
+    "id": 143,
+    "name": "Barmer GEK",
     "branche": "Krankenkasse"
   },
-  { "id": 189, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 190, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 191, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 192, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 193, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 194, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 195, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 196, "name": "R+V Versicherung AG", "branche": "Versicherung" },
   {
-    "id": 197,
-    "name": "Debeka Versicherungsverein a.G.",
+    "id": 144,
+    "name": "AOK Rheinland/Hamburg",
+    "branche": "Krankenkasse"
+  },
+  {
+    "id": 145,
+    "name": "BARMER",
+    "branche": "Krankenkasse"
+  },
+  {
+    "id": 146,
+    "name": "HUK-COBURG",
     "branche": "Versicherung"
   },
-  { "id": 198, "name": "HDI Versicherung AG", "branche": "Versicherung" },
   {
-    "id": 199,
+    "id": 147,
     "name": "Bayerische Versorgungskammer",
     "branche": "Versicherung"
   },
   {
-    "id": 200,
+    "id": 148,
     "name": "Versicherungskammer Bayern",
     "branche": "Versicherung"
   },
-  { "id": 201, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 202, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 203, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 204, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 205, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 206, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 207, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 208, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 209, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 210, "name": "Sparda-Bank München eG", "branche": "Bank" },
   {
-    "id": 211,
+    "id": 149,
+    "name": "Sparkasse Berlin",
+    "branche": "Bank"
+  },
+  {
+    "id": 150,
+    "name": "Sparkasse Hamburg",
+    "branche": "Bank"
+  },
+  {
+    "id": 151,
+    "name": "Sparkasse München",
+    "branche": "Bank"
+  },
+  {
+    "id": 152,
+    "name": "Volksbank Berlin eG",
+    "branche": "Bank"
+  },
+  {
+    "id": 153,
+    "name": "Volksbank Hamburg eG",
+    "branche": "Bank"
+  },
+  {
+    "id": 154,
+    "name": "Sparda-Bank Hamburg eG",
+    "branche": "Bank"
+  },
+  {
+    "id": 155,
+    "name": "Sparda-Bank München eG",
+    "branche": "Bank"
+  },
+  {
+    "id": 156,
     "name": "Deutsche Post AG – Briefdienst",
     "branche": "Postdienstleister"
   },
-  { "id": 212, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 213, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 214, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 215, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 216, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 217, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 218, "name": "Arriva GmbH", "branche": "Postdienstleister" },
   {
-    "id": 219,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 220, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 221,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 222, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 223,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 224, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 225,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 226, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 227,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 228, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 229, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 230, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 231, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 232, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 233, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 234, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 235, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 236, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 237, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 238, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 239, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 240, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 241, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 242, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 243, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 244, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 245, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 246, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 247, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 248, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 249, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 250, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 251, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 252, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 253, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 254, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 255, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 256, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 257, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 258, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 259, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 260, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 261, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 262, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 263, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 264,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 265,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 266,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 267,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 268,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 269,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 270,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 271, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 272, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 273,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 274, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 275, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 276, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 277, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 278, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 279, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 280,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 281,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 282, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 283, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 284, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 285, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 286, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 287,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 288, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 289, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 290, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 291, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 292, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 293, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 294, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 295, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 296,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 297, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 298,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 299,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 300, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 301, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 302, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 303, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 304, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 305, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 306, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 307, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 308, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 309, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 310,
-    "name": "Deutsche Post AG – Briefdienst",
+    "id": 157,
+    "name": "PIN AG",
     "branche": "Postdienstleister"
   },
-  { "id": 311, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 312, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 313, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 314, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 315, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 316, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 317, "name": "Arriva GmbH", "branche": "Postdienstleister" },
   {
-    "id": 318,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 319, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 320,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 321, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 322,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 323, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 324,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 325, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 326,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 327, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 328, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 329, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 330, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 331, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 332, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 333, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 334, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 335, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 336, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 337, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 338, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 339, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 340, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 341, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 342, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 343, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 344, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 345, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 346, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 347, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 348, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 349, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 350, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 351, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 352, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 353, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 354, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 355, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 356, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 357, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 358, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 359, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 360, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 361, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 362, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 363,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 364,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 365,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 366,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 367,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 368,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 369,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 370, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 371, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 372,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 373, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 374, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 375, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 376, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 377, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 378, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 379,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 380,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 381, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 382, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 383, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 384, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 385, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 386,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 387, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 388, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 389, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 390, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 391, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 392, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 393, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 394, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 395,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 396, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 397,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 398,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 399, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 400, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 401, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 402, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 403, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 404, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 405, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 406, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 407, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 408, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 409,
-    "name": "Deutsche Post AG – Briefdienst",
+    "id": 158,
+    "name": "Arriva GmbH",
     "branche": "Postdienstleister"
-  },
-  { "id": 410, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 411, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 412, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 413, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 414, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 415, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 416, "name": "Arriva GmbH", "branche": "Postdienstleister" },
-  {
-    "id": 417,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 418, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 419,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 420, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 421,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 422, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 423,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 424, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 425,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 426, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 427, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 428, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 429, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 430, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 431, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 432, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 433, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 434, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 435, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 436, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 437, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 438, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 439, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 440, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 441, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 442, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 443, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 444, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 445, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 446, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 447, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 448, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 449, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 450, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 451, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 452, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 453, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 454, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 455, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 456, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 457, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 458, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 459, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 460, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 461, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 462,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 463,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 464,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 465,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 466,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 467,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 468,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 469, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 470, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 471,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 472, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 473, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 474, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 475, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 476, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 477, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 478,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 479,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 480, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 481, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 482, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 483, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 484, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 485,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 486, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 487, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 488, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 489, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 490, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 491, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 492, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 493, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 494,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 495, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 496,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 497,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 498, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 499, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 500, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 501, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 502, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 503, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 504, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 505, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 506, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 507, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 508,
-    "name": "Deutsche Post AG – Briefdienst",
-    "branche": "Postdienstleister"
-  },
-  { "id": 509, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 510, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 511, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 512, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 513, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 514, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 515, "name": "Arriva GmbH", "branche": "Postdienstleister" },
-  {
-    "id": 516,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 517, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 518,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 519, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 520,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 521, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 522,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 523, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 524,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 525, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 526, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 527, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 528, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 529, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 530, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 531, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 532, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 533, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 534, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 535, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 536, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 537, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 538, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 539, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 540, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 541, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 542, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 543, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 544, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 545, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 546, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 547, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 548, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 549, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 550, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 551, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 552, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 553, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 554, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 555, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 556, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 557, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 558, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 559, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 560, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 561,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 562,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 563,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 564,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 565,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 566,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 567,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 568, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 569, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 570,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 571, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 572, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 573, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 574, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 575, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 576, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 577,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 578,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 579, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 580, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 581, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 582, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 583, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 584,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 585, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 586, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 587, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 588, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 589, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 590, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 591, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 592, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 593,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 594, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 595,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 596,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 597, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 598, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 599, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 600, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 601, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 602, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 603, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 604, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 605, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 606, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 607,
-    "name": "Deutsche Post AG – Briefdienst",
-    "branche": "Postdienstleister"
-  },
-  { "id": 608, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 609, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 610, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 611, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 612, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 613, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 614, "name": "Arriva GmbH", "branche": "Postdienstleister" },
-  {
-    "id": 615,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 616, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 617,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 618, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 619,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 620, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 621,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 622, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 623,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 624, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 625, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 626, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 627, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 628, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 629, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 630, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 631, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 632, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 633, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 634, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 635, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 636, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 637, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 638, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 639, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 640, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 641, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 642, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 643, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 644, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 645, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 646, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 647, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 648, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 649, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 650, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 651, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 652, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 653, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 654, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 655, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 656, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 657, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 658, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 659, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 660,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 661,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 662,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 663,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 664,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 665,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 666,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 667, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 668, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 669,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 670, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 671, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 672, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 673, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 674, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 675, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 676,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 677,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 678, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 679, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 680, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 681, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 682, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 683,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 684, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 685, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 686, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 687, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 688, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 689, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 690, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 691, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 692,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 693, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 694,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 695,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 696, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 697, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 698, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 699, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 700, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 701, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 702, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 703, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 704, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 705, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 706,
-    "name": "Deutsche Post AG – Briefdienst",
-    "branche": "Postdienstleister"
-  },
-  { "id": 707, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 708, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 709, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 710, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 711, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 712, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 713, "name": "Arriva GmbH", "branche": "Postdienstleister" },
-  {
-    "id": 714,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 715, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 716,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 717, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 718,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 719, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 720,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 721, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 722,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 723, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 724, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 725, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 726, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 727, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 728, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 729, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 730, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 731, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 732, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 733, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 734, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 735, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 736, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 737, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 738, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 739, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 740, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 741, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 742, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 743, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 744, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 745, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 746, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 747, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 748, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 749, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 750, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 751, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 752, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 753, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 754, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 755, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 756, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 757, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 758, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 759,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 760,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 761,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 762,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 763,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 764,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 765,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 766, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 767, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 768,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 769, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 770, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 771, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 772, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 773, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 774, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 775,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 776,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 777, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 778, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 779, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 780, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 781, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 782,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 783, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 784, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 785, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 786, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 787, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 788, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 789, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 790, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 791,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 792, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 793,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 794,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 795, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 796, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 797, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 798, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 799, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 800, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 801, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 802, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 803, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 804, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 805,
-    "name": "Deutsche Post AG – Briefdienst",
-    "branche": "Postdienstleister"
-  },
-  { "id": 806, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 807, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 808, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 809, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 810, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 811, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 812, "name": "Arriva GmbH", "branche": "Postdienstleister" },
-  {
-    "id": 813,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 814, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 815,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 816, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 817,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 818, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 819,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 820, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 821,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 822, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 823, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 824, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 825, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 826, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 827, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 828, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 829, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 830, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 831, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 832, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 833, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 834, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 835, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 836, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 837, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 838, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 839, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 840, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 841, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 842, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 843, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 844, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 845, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 846, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 847, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 848, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 849, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 850, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 851, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 852, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 853, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 854, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 855, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 856, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 857, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 858,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 859,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 860,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 861,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 862,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 863,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 864,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 865, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 866, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 867,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 868, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 869, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 870, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 871, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 872, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 873, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 874,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 875,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 876, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 877, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 878, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 879, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 880, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 881,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 882, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 883, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 884, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 885, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 886, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 887, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 888, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 889, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 890,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 891, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 892,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 893,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 894, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 895, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 896, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 897, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 898, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 899, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 900, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 901, "name": "Sparda-Bank Berlin eG", "branche": "Bank" },
-  { "id": 902, "name": "Sparda-Bank Hamburg eG", "branche": "Bank" },
-  { "id": 903, "name": "Sparda-Bank München eG", "branche": "Bank" },
-  {
-    "id": 904,
-    "name": "Deutsche Post AG – Briefdienst",
-    "branche": "Postdienstleister"
-  },
-  { "id": 905, "name": "DHL Paket GmbH", "branche": "Logistik" },
-  { "id": 906, "name": "Hermes Germany GmbH", "branche": "Logistik" },
-  { "id": 907, "name": "DPD Deutschland GmbH", "branche": "Logistik" },
-  { "id": 908, "name": "GLS Germany", "branche": "Logistik" },
-  { "id": 909, "name": "FedEx Express Germany", "branche": "Logistik" },
-  { "id": 910, "name": "PIN AG", "branche": "Postdienstleister" },
-  { "id": 911, "name": "Arriva GmbH", "branche": "Postdienstleister" },
-  {
-    "id": 912,
-    "name": "IKEA Deutschland GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 913, "name": "Otto (GmbH & Co KG)", "branche": "Versandhandel" },
-  {
-    "id": 914,
-    "name": "Amazon Deutschland Services GmbH",
-    "branche": "E-Commerce"
-  },
-  { "id": 915, "name": "Zalando SE", "branche": "E-Commerce" },
-  {
-    "id": 916,
-    "name": "MediaMarktSaturn Retail Group GmbH",
-    "branche": "Einzelhandel"
-  },
-  { "id": 917, "name": "REWE Markt GmbH", "branche": "Einzelhandel" },
-  {
-    "id": 918,
-    "name": "Lidl Dienstleistung GmbH & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 919, "name": "ALDI Einkauf SE & Co. oHG", "branche": "Einzelhandel" },
-  {
-    "id": 920,
-    "name": "Kaufland Stiftung & Co. KG",
-    "branche": "Einzelhandel"
-  },
-  { "id": 921, "name": "Volkswagen AG", "branche": "Automobil" },
-  { "id": 922, "name": "BMW AG", "branche": "Automobil" },
-  { "id": 923, "name": "Mercedes-Benz Group AG", "branche": "Automobil" },
-  { "id": 924, "name": "Porsche AG", "branche": "Automobil" },
-  { "id": 925, "name": "Audi AG", "branche": "Automobil" },
-  { "id": 926, "name": "Bosch Gruppe", "branche": "Industrie" },
-  { "id": 927, "name": "Siemens AG", "branche": "Industrie" },
-  { "id": 928, "name": "thyssenkrupp AG", "branche": "Industrie" },
-  { "id": 929, "name": "Continental AG", "branche": "Automobilzulieferer" },
-  { "id": 930, "name": "BASF SE", "branche": "Chemie" },
-  { "id": 931, "name": "Bayer AG", "branche": "Pharma" },
-  { "id": 932, "name": "Deutsche Bahn AG", "branche": "Transport" },
-  { "id": 933, "name": "DB Vertrieb GmbH", "branche": "Transport" },
-  { "id": 934, "name": "Lufthansa AG", "branche": "Luftfahrt" },
-  { "id": 935, "name": "Flix SE", "branche": "Mobilität" },
-  { "id": 936, "name": "Stadt Frankfurt am Main", "branche": "Behörde" },
-  { "id": 937, "name": "Land Hessen", "branche": "Behörde" },
-  { "id": 938, "name": "Stadt Stuttgart", "branche": "Behörde" },
-  { "id": 939, "name": "Land Baden-Württemberg", "branche": "Behörde" },
-  { "id": 940, "name": "Stadt München", "branche": "Behörde" },
-  { "id": 941, "name": "Land Bayern", "branche": "Behörde" },
-  { "id": 942, "name": "Finanzamt Frankfurt", "branche": "Behörde" },
-  { "id": 943, "name": "Finanzamt Stuttgart", "branche": "Behörde" },
-  { "id": 944, "name": "Bundesamt für Justiz", "branche": "Behörde" },
-  { "id": 945, "name": "Amtsgericht Berlin", "branche": "Justiz" },
-  { "id": 946, "name": "Amtsgericht Hamburg", "branche": "Justiz" },
-  { "id": 947, "name": "Amtsgericht München", "branche": "Justiz" },
-  { "id": 948, "name": "Landgericht Berlin", "branche": "Justiz" },
-  { "id": 949, "name": "Landgericht Hamburg", "branche": "Justiz" },
-  { "id": 950, "name": "Oberlandesgericht Frankfurt", "branche": "Justiz" },
-  { "id": 951, "name": "Oberlandesgericht München", "branche": "Justiz" },
-  { "id": 952, "name": "Bundesgerichtshof Karlsruhe", "branche": "Justiz" },
-  { "id": 953, "name": "IHK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 954, "name": "IHK München", "branche": "Bildung & Verbände" },
-  { "id": 955, "name": "HWK Berlin", "branche": "Bildung & Verbände" },
-  { "id": 956, "name": "HWK Stuttgart", "branche": "Bildung & Verbände" },
-  {
-    "id": 957,
-    "name": "Goethe-Institut e.V.",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 958,
-    "name": "Volkshochschule Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 959,
-    "name": "Volkshochschule München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 960,
-    "name": "Deutscher Gewerkschaftsbund",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 961,
-    "name": "Studierendenwerk Berlin",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 962,
-    "name": "Studierendenwerk München",
-    "branche": "Bildung & Verbände"
-  },
-  {
-    "id": 963,
-    "name": "EOS Deutscher Inkasso-Dienste AG",
-    "branche": "Inkasso"
-  },
-  { "id": 964, "name": "GFKL Financial Services AG", "branche": "Inkasso" },
-  { "id": 965, "name": "Creditreform AG", "branche": "Inkasso" },
-  {
-    "id": 966,
-    "name": "Deutsche Post Dialogmarketing GmbH",
-    "branche": "Direktmarketing"
-  },
-  { "id": 967, "name": "adressdaten.de GmbH", "branche": "Direktmarketing" },
-  { "id": 968, "name": "infomail GmbH", "branche": "Direktmarketing" },
-  { "id": 969, "name": "Postina Direkt GmbH", "branche": "Direktmarketing" },
-  { "id": 970, "name": "targetmedia GmbH", "branche": "Direktmarketing" },
-  { "id": 971, "name": "Stadtwerke Düsseldorf", "branche": "Energieversorger" },
-  { "id": 972, "name": "Stadtwerke Hannover", "branche": "Energieversorger" },
-  {
-    "id": 973,
-    "name": "SWM Stadtwerke München GmbH",
-    "branche": "Energieversorger"
-  },
-  {
-    "id": 974,
-    "name": "Main-Kinzig-Gesundheitswesen GmbH",
-    "branche": "Gesundheitswesen"
-  },
-  { "id": 975, "name": "Barmer GEK", "branche": "Krankenkasse" },
-  { "id": 976, "name": "DAK-Gesundheit", "branche": "Krankenkasse" },
-  { "id": 977, "name": "Techniker Krankenkasse", "branche": "Krankenkasse" },
-  { "id": 978, "name": "AOK Rheinland/Hamburg", "branche": "Krankenkasse" },
-  { "id": 979, "name": "IKK classic", "branche": "Krankenkasse" },
-  {
-    "id": 980,
-    "name": "KKH Kaufmännische Krankenkasse",
-    "branche": "Krankenkasse"
-  },
-  { "id": 981, "name": "BARMER", "branche": "Krankenkasse" },
-  { "id": 982, "name": "Allianz Versicherungs-AG", "branche": "Versicherung" },
-  { "id": 983, "name": "AXA Versicherung AG", "branche": "Versicherung" },
-  { "id": 984, "name": "ERGO Group AG", "branche": "Versicherung" },
-  { "id": 985, "name": "Generali Deutschland AG", "branche": "Versicherung" },
-  { "id": 986, "name": "HUK-COBURG", "branche": "Versicherung" },
-  { "id": 987, "name": "DEVK Versicherungen", "branche": "Versicherung" },
-  { "id": 988, "name": "R+V Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 989,
-    "name": "Debeka Versicherungsverein a.G.",
-    "branche": "Versicherung"
-  },
-  { "id": 990, "name": "HDI Versicherung AG", "branche": "Versicherung" },
-  {
-    "id": 991,
-    "name": "Bayerische Versorgungskammer",
-    "branche": "Versicherung"
-  },
-  {
-    "id": 992,
-    "name": "Versicherungskammer Bayern",
-    "branche": "Versicherung"
-  },
-  { "id": 993, "name": "Sparkasse Berlin", "branche": "Bank" },
-  { "id": 994, "name": "Sparkasse Hamburg", "branche": "Bank" },
-  { "id": 995, "name": "Sparkasse KölnBonn", "branche": "Bank" },
-  { "id": 996, "name": "Sparkasse München", "branche": "Bank" },
-  { "id": 997, "name": "Volksbank Berlin eG", "branche": "Bank" },
-  { "id": 998, "name": "Volksbank Hamburg eG", "branche": "Bank" },
-  { "id": 999, "name": "Volksbank Köln Bonn eG", "branche": "Bank" },
-  { "id": 1000, "name": "Sparda-Bank Berlin eG", "branche": "Bank" }
+  }
 ]
