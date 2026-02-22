@@ -1,7 +1,6 @@
 - pdf manager
-  - add today as option for found dates in ocr scan result file suggestion dropdown
-  - remember all settings
   - add preferernce dialog and save setting in userhome n2htoolbox settings file locally.let me configure my last name to be included in filename later
+  - set default settings in porefrence dialog
 - new tools app
   - define own managed folder
   - ocr scan for all pdfs in a specified directory
