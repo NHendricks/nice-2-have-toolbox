@@ -1,8 +1,9 @@
 /**
  * ScannerPreferencesService - Manages scanner preferences (last used scanner, settings)
+ * Now delegates to UserPreferencesService for file-based storage
  */
 
-const STORAGE_KEY = 'docmanager-scanner-preferences'
+import { userPreferencesService } from './UserPreferencesService.js'
 
 export interface ScannerPreferences {
   lastScannerId?: string
@@ -14,55 +15,40 @@ export interface ScannerPreferences {
 }
 
 export class ScannerPreferencesService {
-  private preferences: ScannerPreferences = {}
-
-  constructor() {
-    this.load()
-  }
-
   /**
-   * Load preferences from localStorage
+   * Load preferences - now a no-op since UserPreferencesService auto-loads
    */
   load(): ScannerPreferences {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        this.preferences = JSON.parse(saved)
-      } catch (error) {
-        console.error('Failed to load scanner preferences:', error)
-        this.preferences = {}
-      }
-    }
-    return this.preferences
-  }
-
-  /**
-   * Save preferences to localStorage
-   */
-  private save(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.preferences))
+    return this.getAll()
   }
 
   /**
    * Get all preferences
    */
   getAll(): ScannerPreferences {
-    return { ...this.preferences }
+    const prefs = userPreferencesService.getAll()
+    return {
+      lastScannerId: prefs.lastScannerId,
+      resolution: prefs.resolution,
+      colorMode: prefs.colorMode,
+      format: prefs.format,
+      multiPage: prefs.multiPage,
+      duplex: prefs.duplex,
+    }
   }
 
   /**
    * Get last used scanner ID
    */
   getLastScannerId(): string | undefined {
-    return this.preferences.lastScannerId
+    return userPreferencesService.getLastScannerId()
   }
 
   /**
    * Set last used scanner ID
    */
   setLastScannerId(scannerId: string): void {
-    this.preferences.lastScannerId = scannerId
-    this.save()
+    userPreferencesService.setLastScannerId(scannerId)
     console.log('Saved last used scanner:', scannerId)
   }
 
@@ -70,91 +56,91 @@ export class ScannerPreferencesService {
    * Get scan resolution preference
    */
   getResolution(): string {
-    return this.preferences.resolution || '300'
+    return userPreferencesService.getResolution()
   }
 
   /**
    * Set scan resolution preference
    */
   setResolution(resolution: string): void {
-    this.preferences.resolution = resolution
-    this.save()
+    userPreferencesService.setResolution(resolution)
   }
 
   /**
    * Get color mode preference
    */
   getColorMode(): string {
-    return this.preferences.colorMode || 'color'
+    return userPreferencesService.getColorMode()
   }
 
   /**
    * Set color mode preference
    */
   setColorMode(colorMode: string): void {
-    this.preferences.colorMode = colorMode
-    this.save()
+    userPreferencesService.setColorMode(colorMode)
   }
 
   /**
    * Get format preference
    */
   getFormat(): string {
-    return this.preferences.format || 'pdf'
+    return userPreferencesService.getFormat()
   }
 
   /**
    * Set format preference
    */
   setFormat(format: string): void {
-    this.preferences.format = format
-    this.save()
+    userPreferencesService.setFormat(format)
   }
 
   /**
    * Get multi-page preference
    */
   getMultiPage(): boolean {
-    return this.preferences.multiPage !== undefined ? this.preferences.multiPage : true
+    return userPreferencesService.getMultiPage()
   }
 
   /**
    * Set multi-page preference
    */
   setMultiPage(multiPage: boolean): void {
-    this.preferences.multiPage = multiPage
-    this.save()
+    userPreferencesService.setMultiPage(multiPage)
   }
 
   /**
    * Get duplex preference
    */
   getDuplex(): boolean {
-    return this.preferences.duplex !== undefined ? this.preferences.duplex : false
+    return userPreferencesService.getDuplex()
   }
 
   /**
    * Set duplex preference
    */
   setDuplex(duplex: boolean): void {
-    this.preferences.duplex = duplex
-    this.save()
+    userPreferencesService.setDuplex(duplex)
   }
 
   /**
    * Update multiple preferences at once
    */
   updatePreferences(prefs: Partial<ScannerPreferences>): void {
-    this.preferences = { ...this.preferences, ...prefs }
-    this.save()
+    userPreferencesService.updatePreferences(prefs)
   }
 
   /**
    * Clear all preferences
    */
   clear(): void {
-    this.preferences = {}
-    this.save()
+    userPreferencesService.updatePreferences({
+      lastScannerId: undefined,
+      resolution: undefined,
+      colorMode: undefined,
+      format: undefined,
+      multiPage: undefined,
+      duplex: undefined,
+    })
   }
 }
 

@@ -12,6 +12,13 @@ export interface UserPreferences {
   includeLastNameInFilename?: boolean
   senders?: string[] // Fixed sender strings to match in OCR
   accountNumbers?: string[] // Fixed account numbers/topics to match in OCR
+  // Scanner session preferences (last used settings)
+  lastScannerId?: string
+  resolution?: string
+  colorMode?: string
+  format?: string
+  multiPage?: boolean
+  duplex?: boolean
 }
 
 export class UserPreferencesService {
@@ -23,6 +30,7 @@ export class UserPreferencesService {
    */
   async load(): Promise<UserPreferences> {
     try {
+      console.log('[UserPreferences] Loading from:', PREFERENCES_FILENAME)
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'config',
@@ -32,18 +40,39 @@ export class UserPreferencesService {
         },
       )
 
-      if (response.success && response.content) {
+      console.log('[UserPreferences] Full response from config read:', response)
+
+      // Handle response wrapping - check both response.data and response directly
+      const result = response.data || response
+      console.log('[UserPreferences] Result after unwrapping:', result)
+
+      if (result.success && result.content) {
         try {
-          this.preferences = JSON.parse(response.content)
+          this.preferences = JSON.parse(result.content)
           this.loaded = true
           console.log('[UserPreferences] Loaded preferences:', this.preferences)
         } catch (e) {
           console.warn('[UserPreferences] Failed to parse preferences:', e)
           this.preferences = {}
         }
+      } else if (
+        result.success &&
+        result.data &&
+        typeof result.data === 'object'
+      ) {
+        // If data is already parsed as object
+        this.preferences = result.data
+        this.loaded = true
+        console.log(
+          '[UserPreferences] Loaded preferences from data field:',
+          this.preferences,
+        )
       } else {
         console.log(
-          '[UserPreferences] No preferences file found, using defaults',
+          '[UserPreferences] No preferences file found or failed to load. Result:',
+          result,
+          'notFound:',
+          result.notFound,
         )
         this.preferences = {}
       }
@@ -141,6 +170,109 @@ export class UserPreferencesService {
    */
   getAccountNumbers(): string[] {
     return this.preferences.accountNumbers || []
+  }
+
+  /**
+   * Get last used scanner ID
+   */
+  getLastScannerId(): string | undefined {
+    return this.preferences.lastScannerId
+  }
+
+  /**
+   * Set last used scanner ID
+   */
+  async setLastScannerId(scannerId: string): Promise<void> {
+    this.preferences.lastScannerId = scannerId
+    await this.save(this.preferences)
+  }
+
+  /**
+   * Get scan resolution preference
+   */
+  getResolution(): string {
+    return (
+      this.preferences.resolution || this.preferences.defaultResolution || '300'
+    )
+  }
+
+  /**
+   * Set scan resolution preference
+   */
+  async setResolution(resolution: string): Promise<void> {
+    this.preferences.resolution = resolution
+    await this.save(this.preferences)
+  }
+
+  /**
+   * Get color mode preference
+   */
+  getColorMode(): string {
+    return this.preferences.colorMode || 'color'
+  }
+
+  /**
+   * Set color mode preference
+   */
+  async setColorMode(colorMode: string): Promise<void> {
+    this.preferences.colorMode = colorMode
+    await this.save(this.preferences)
+  }
+
+  /**
+   * Get format preference
+   */
+  getFormat(): string {
+    return this.preferences.format || this.preferences.defaultFormat || 'pdf'
+  }
+
+  /**
+   * Set format preference
+   */
+  async setFormat(format: string): Promise<void> {
+    this.preferences.format = format
+    await this.save(this.preferences)
+  }
+
+  /**
+   * Get multi-page preference
+   */
+  getMultiPage(): boolean {
+    return this.preferences.multiPage !== undefined
+      ? this.preferences.multiPage
+      : true
+  }
+
+  /**
+   * Set multi-page preference
+   */
+  async setMultiPage(multiPage: boolean): Promise<void> {
+    this.preferences.multiPage = multiPage
+    await this.save(this.preferences)
+  }
+
+  /**
+   * Get duplex preference
+   */
+  getDuplex(): boolean {
+    return this.preferences.duplex !== undefined
+      ? this.preferences.duplex
+      : false
+  }
+
+  /**
+   * Set duplex preference
+   */
+  async setDuplex(duplex: boolean): Promise<void> {
+    this.preferences.duplex = duplex
+    await this.save(this.preferences)
+  }
+
+  /**
+   * Update multiple preferences at once
+   */
+  async updatePreferences(prefs: Partial<UserPreferences>): Promise<void> {
+    await this.save(prefs)
   }
 
   /**

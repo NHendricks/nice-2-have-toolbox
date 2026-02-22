@@ -1,4 +1,4 @@
-- in builkt add sane is not recognized ... in dev mode scanner ist found
+- read doc preferences from user/home at startup
 - add optoin open folder (with scan results)in n2h commander
 - use fix strings as sender search matches to be deinfable in preferences
 - use fix strings as account nr search matches defined in preferences (some have blank ´s ... )

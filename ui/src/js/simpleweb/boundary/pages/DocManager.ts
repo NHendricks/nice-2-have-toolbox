@@ -1,7 +1,6 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import './docmanager/DocManagerPreferences.js'
-import { scannerPreferencesService } from './docmanager/ScannerPreferencesService.js'
 import { userPreferencesService } from './docmanager/UserPreferencesService.js'
 
 // bring in the commander viewer component and type so we can reuse it here
@@ -898,10 +897,26 @@ export class DocManager extends LitElement {
    * Load saved preferences from service
    */
   loadPreferences() {
-    this.resolution = scannerPreferencesService.getResolution()
-    this.format = scannerPreferencesService.getFormat()
-    this.multiPage = scannerPreferencesService.getMultiPage()
-    this.duplex = scannerPreferencesService.getDuplex()
+    // Load all preferences from user preferences file
+    // Scanner session preferences (resolution, format, etc.) are stored alongside user defaults
+    this.resolution = userPreferencesService.getResolution()
+    this.format = userPreferencesService.getFormat()
+    this.multiPage = userPreferencesService.getMultiPage()
+    this.duplex = userPreferencesService.getDuplex()
+    this.scanDirectory = userPreferencesService.getDefaultScanDirectory()
+
+    console.log(
+      '[DocManager] Loaded preferences - Resolution:',
+      this.resolution,
+      'Format:',
+      this.format,
+      'ScanDir:',
+      this.scanDirectory,
+      'MultiPage:',
+      this.multiPage,
+      'Duplex:',
+      this.duplex,
+    )
   }
 
   async loadScanners() {
@@ -918,7 +933,7 @@ export class DocManager extends LitElement {
         this.scanners = result.scanners || []
 
         // Try to restore last used scanner from preferences service
-        const lastScannerId = scannerPreferencesService.getLastScannerId()
+        const lastScannerId = userPreferencesService.getLastScannerId()
 
         if (this.scanners.length > 0 && !this.selectedScannerId) {
           // Check if last used scanner is still available
@@ -980,12 +995,12 @@ export class DocManager extends LitElement {
 
   handleResolutionChange(e: any) {
     this.resolution = e.target.value
-    scannerPreferencesService.setResolution(this.resolution)
+    userPreferencesService.setResolution(this.resolution)
   }
 
   handleFormatChange(e: any) {
     this.format = e.target.value
-    scannerPreferencesService.setFormat(this.format)
+    userPreferencesService.setFormat(this.format)
     // Update filename extension if OCR mode is enabled
     if (this.autoSetFileName && this.companyOptions.length > 0) {
       this.updateComposedFilename()
@@ -994,12 +1009,12 @@ export class DocManager extends LitElement {
 
   handleMultiPageChange(e: any) {
     this.multiPage = e.target.checked
-    scannerPreferencesService.setMultiPage(this.multiPage)
+    userPreferencesService.setMultiPage(this.multiPage)
   }
 
   handleDuplexChange(e: any) {
     this.duplex = e.target.checked
-    scannerPreferencesService.setDuplex(this.duplex)
+    userPreferencesService.setDuplex(this.duplex)
   }
 
   handleAutoSetFileNameChange(e: any) {
@@ -1018,7 +1033,7 @@ export class DocManager extends LitElement {
 
   handleScannerChange(e: any) {
     this.selectedScannerId = e.target.value
-    scannerPreferencesService.setLastScannerId(this.selectedScannerId)
+    userPreferencesService.setLastScannerId(this.selectedScannerId)
   }
 
   async scanDocument() {
@@ -1073,7 +1088,7 @@ export class DocManager extends LitElement {
           'success',
         )
 
-        scannerPreferencesService.updatePreferences({
+        userPreferencesService.updatePreferences({
           lastScannerId: this.selectedScannerId,
           resolution: this.resolution,
           format: this.format,

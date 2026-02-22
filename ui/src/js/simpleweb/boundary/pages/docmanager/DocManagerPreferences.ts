@@ -259,12 +259,17 @@ export class DocManagerPreferences extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback()
+    this.message = '' // Clear any previous messages when dialog opens
     await this.loadPreferences()
   }
 
   private async loadPreferences() {
     await userPreferencesService.ensureLoaded()
     const prefs = userPreferencesService.getAll()
+    console.log(
+      '[DocManagerPreferences] Loading preferences into dialog:',
+      prefs,
+    )
     this.lastName = prefs.lastName || ''
     this.defaultScanDirectory = prefs.defaultScanDirectory || ''
     this.defaultResolution = prefs.defaultResolution || '300'

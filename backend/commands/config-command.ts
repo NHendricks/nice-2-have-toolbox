@@ -111,9 +111,13 @@ export class ConfigCommand implements ICommand {
     }
 
     const filePath = await this.getConfigFilePath(filename);
+    console.log(`[ConfigCommand] Reading config file: ${filePath}`);
 
     try {
       const content = await readFile(filePath, 'utf-8');
+      console.log(
+        `[ConfigCommand] Successfully read ${content.length} bytes from ${filename}`,
+      );
 
       // Try to parse as JSON if it looks like JSON
       let data = content;
@@ -135,13 +139,16 @@ export class ConfigCommand implements ICommand {
       };
     } catch (error: any) {
       if (error.code === 'ENOENT') {
+        console.log(`[ConfigCommand] Config file not found: ${filePath}`);
         return {
           success: false,
           error: 'Config file not found',
           filename,
+          path: filePath,
           notFound: true,
         };
       }
+      console.error(`[ConfigCommand] Error reading config file:`, error);
       throw error;
     }
   }
