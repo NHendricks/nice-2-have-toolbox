@@ -1089,8 +1089,20 @@ export class Commander extends LitElement {
       console.log('Navigating to directory/ZIP:', item.path)
       await this.navigateToDirectory(item.path)
     } else {
-      console.log('Viewing file:', item.path)
-      await this.viewFile(item.path)
+      // For files, determine if we should view them or show "open with" dialog
+      const isImage = this.isImageFile(item.path)
+      const isText = this.isTextFile(item.path)
+      const size500KB = 500 * 1024
+
+      // View directly if: image file OR text file < 500KB
+      if (isImage || (isText && item.size < size500KB)) {
+        console.log('Viewing file:', item.path)
+        await this.viewFile(item.path)
+      } else {
+        // Show "open with" dialog for other files
+        console.log('Showing open with dialog for:', item.path)
+        await this.handleOpenWith()
+      }
     }
   }
 
@@ -1245,6 +1257,50 @@ export class Commander extends LitElement {
     ]
     const ext = filePath.toLowerCase().substring(filePath.lastIndexOf('.'))
     return imageExtensions.includes(ext)
+  }
+
+  isTextFile(filePath: string): boolean {
+    const textExtensions = [
+      '.txt',
+      '.md',
+      '.json',
+      '.xml',
+      '.html',
+      '.htm',
+      '.css',
+      '.js',
+      '.ts',
+      '.tsx',
+      '.jsx',
+      '.log',
+      '.csv',
+      '.yaml',
+      '.yml',
+      '.ini',
+      '.conf',
+      '.config',
+      '.sh',
+      '.bat',
+      '.cmd',
+      '.ps1',
+      '.py',
+      '.rb',
+      '.java',
+      '.c',
+      '.cpp',
+      '.h',
+      '.hpp',
+      '.sql',
+      '.php',
+      '.go',
+      '.rs',
+      '.swift',
+      '.kt',
+      '.scala',
+      '.r',
+    ]
+    const ext = filePath.toLowerCase().substring(filePath.lastIndexOf('.'))
+    return textExtensions.includes(ext)
   }
 
   async viewFile(filePath: string) {
