@@ -1,18 +1,18 @@
 /**
  * ConfigService - Manages configuration files in ~/n2htoolbox/
- * 
+ *
  * This service provides a safe way to store preferences that may contain
  * sensitive data. It does NOT automatically save preferences - you must
  * explicitly call save methods.
- * 
+ *
  * Example usage:
  * ```typescript
  * // Get config directory path
  * const dir = await ConfigService.getConfigDir()
- * 
+ *
  * // Save preferences manually
  * await ConfigService.writeConfig('my-settings.json', { theme: 'dark' })
- * 
+ *
  * // Read preferences
  * const settings = await ConfigService.readConfig('my-settings.json')
  * ```
@@ -28,7 +28,7 @@ export class ConfigService {
       'config',
       { operation: 'get-dir' },
     )
-    
+
     if (response.success) {
       return response.path
     }
@@ -45,15 +45,15 @@ export class ConfigService {
       'config',
       { operation: 'read', filename },
     )
-    
+
     if (response.success) {
       return response.data as T
     }
-    
+
     if (response.notFound) {
       return null
     }
-    
+
     throw new Error(response.error || 'Failed to read config')
   }
 
@@ -70,14 +70,14 @@ export class ConfigService {
       'config',
       { operation: 'write', filename, data },
     )
-    
+
     if (response.success) {
       return {
         success: true,
         path: response.path,
       }
     }
-    
+
     throw new Error(response.error || 'Failed to write config')
   }
 
@@ -90,11 +90,11 @@ export class ConfigService {
       'config',
       { operation: 'list' },
     )
-    
+
     if (response.success) {
       return response.files
     }
-    
+
     throw new Error(response.error || 'Failed to list configs')
   }
 
@@ -107,15 +107,15 @@ export class ConfigService {
       'config',
       { operation: 'delete', filename },
     )
-    
+
     if (response.success) {
       return true
     }
-    
+
     if (response.notFound) {
       return false
     }
-    
+
     throw new Error(response.error || 'Failed to delete config')
   }
 
@@ -128,11 +128,11 @@ export class ConfigService {
       'config',
       { operation: 'exists', filename },
     )
-    
+
     if (response.success) {
       return response.exists
     }
-    
+
     throw new Error(response.error || 'Failed to check config existence')
   }
 }

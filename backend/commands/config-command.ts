@@ -4,88 +4,88 @@
  * Does NOT automatically save preferences containing passwords
  */
 
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
-import { promisify } from 'util'
-import { CommandParameter, ICommand } from './command-interface.js'
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { promisify } from 'util';
+import { CommandParameter, ICommand } from './command-interface.js';
 
-const mkdir = promisify(fs.mkdir)
-const readFile = promisify(fs.readFile)
-const writeFile = promisify(fs.writeFile)
-const access = promisify(fs.access)
-const readdir = promisify(fs.readdir)
+const mkdir = promisify(fs.mkdir);
+const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
+const access = promisify(fs.access);
+const readdir = promisify(fs.readdir);
 
-const CONFIG_DIR_NAME = 'n2htoolbox'
+const CONFIG_DIR_NAME = 'n2htoolbox';
 
 export class ConfigCommand implements ICommand {
   /**
    * Get the config directory path
    */
   private getConfigDir(): string {
-    return path.join(os.homedir(), CONFIG_DIR_NAME)
+    return path.join(os.homedir(), CONFIG_DIR_NAME);
   }
 
   /**
    * Ensure config directory exists
    */
   private async ensureConfigDir(): Promise<string> {
-    const configDir = this.getConfigDir()
-    
+    const configDir = this.getConfigDir();
+
     try {
-      await access(configDir)
+      await access(configDir);
     } catch {
       // Directory doesn't exist, create it
-      await mkdir(configDir, { recursive: true })
-      console.log(`[Config] Created config directory: ${configDir}`)
+      await mkdir(configDir, { recursive: true });
+      console.log(`[Config] Created config directory: ${configDir}`);
     }
-    
-    return configDir
+
+    return configDir;
   }
 
   /**
    * Get full path for a config file
    */
   private async getConfigFilePath(filename: string): Promise<string> {
-    const configDir = await this.ensureConfigDir()
-    return path.join(configDir, filename)
+    const configDir = await this.ensureConfigDir();
+    return path.join(configDir, filename);
   }
 
   async execute(params: any): Promise<any> {
-    const { operation, filename, content, data } = params
+    const { operation, filename, content, data } = params;
 
     try {
       switch (operation) {
         case 'get-dir':
-          return await this.getConfigDirectory()
-        
+          return await this.getConfigDirectory();
+
         case 'read':
-          return await this.readConfig(filename)
-        
+          return await this.readConfig(filename);
+
         case 'write':
-          return await this.writeConfig(filename, content || data)
-        
+          return await this.writeConfig(filename, content || data);
+
         case 'list':
-          return await this.listConfigs()
-        
+          return await this.listConfigs();
+
         case 'delete':
-          return await this.deleteConfig(filename)
-        
+          return await this.deleteConfig(filename);
+
         case 'exists':
-          return await this.configExists(filename)
-        
+          return await this.configExists(filename);
+
         default:
           return {
             success: false,
             error: `Unknown operation: ${operation}`,
-          }
+          };
       }
     } catch (error: any) {
       return {
         success: false,
         error: error.message,
         operation,
-      }
+      };
     }
   }
 
@@ -93,13 +93,13 @@ export class ConfigCommand implements ICommand {
    * Get config directory path
    */
   private async getConfigDirectory(): Promise<any> {
-    const configDir = await this.ensureConfigDir()
-    
+    const configDir = await this.ensureConfigDir();
+
     return {
       success: true,
       operation: 'get-dir',
       path: configDir,
-    }
+    };
   }
 
   /**
@@ -107,24 +107,24 @@ export class ConfigCommand implements ICommand {
    */
   private async readConfig(filename: string): Promise<any> {
     if (!filename) {
-      return { success: false, error: 'Filename is required' }
+      return { success: false, error: 'Filename is required' };
     }
 
-    const filePath = await this.getConfigFilePath(filename)
-    
+    const filePath = await this.getConfigFilePath(filename);
+
     try {
-      const content = await readFile(filePath, 'utf-8')
-      
+      const content = await readFile(filePath, 'utf-8');
+
       // Try to parse as JSON if it looks like JSON
-      let data = content
+      let data = content;
       if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
         try {
-          data = JSON.parse(content)
+          data = JSON.parse(content);
         } catch {
           // Not valid JSON, return as string
         }
       }
-      
+
       return {
         success: true,
         operation: 'read',
@@ -132,7 +132,7 @@ export class ConfigCommand implements ICommand {
         path: filePath,
         data,
         content,
-      }
+      };
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         return {
@@ -140,9 +140,9 @@ export class ConfigCommand implements ICommand {
           error: 'Config file not found',
           filename,
           notFound: true,
-        }
+        };
       }
-      throw error
+      throw error;
     }
   }
 
@@ -151,60 +151,60 @@ export class ConfigCommand implements ICommand {
    */
   private async writeConfig(filename: string, data: any): Promise<any> {
     if (!filename) {
-      return { success: false, error: 'Filename is required' }
+      return { success: false, error: 'Filename is required' };
     }
 
-    const filePath = await this.getConfigFilePath(filename)
-    
+    const filePath = await this.getConfigFilePath(filename);
+
     // Convert data to string if it's an object
-    let content: string
+    let content: string;
     if (typeof data === 'string') {
-      content = data
+      content = data;
     } else {
-      content = JSON.stringify(data, null, 2)
+      content = JSON.stringify(data, null, 2);
     }
-    
-    await writeFile(filePath, content, 'utf-8')
-    
+
+    await writeFile(filePath, content, 'utf-8');
+
     return {
       success: true,
       operation: 'write',
       filename,
       path: filePath,
       size: content.length,
-    }
+    };
   }
 
   /**
    * List all config files
    */
   private async listConfigs(): Promise<any> {
-    const configDir = await this.ensureConfigDir()
-    
-    const files = await readdir(configDir)
-    const configFiles: Array<{ name: string; path: string }> = []
-    
+    const configDir = await this.ensureConfigDir();
+
+    const files = await readdir(configDir);
+    const configFiles: Array<{ name: string; path: string }> = [];
+
     for (const file of files) {
-      const filePath = path.join(configDir, file)
+      const filePath = path.join(configDir, file);
       try {
-        const stats = await fs.promises.stat(filePath)
+        const stats = await fs.promises.stat(filePath);
         if (stats.isFile()) {
           configFiles.push({
             name: file,
             path: filePath,
-          })
+          });
         }
       } catch {
         // Skip files we can't stat
       }
     }
-    
+
     return {
       success: true,
       operation: 'list',
       configDir,
       files: configFiles,
-    }
+    };
   }
 
   /**
@@ -212,20 +212,20 @@ export class ConfigCommand implements ICommand {
    */
   private async deleteConfig(filename: string): Promise<any> {
     if (!filename) {
-      return { success: false, error: 'Filename is required' }
+      return { success: false, error: 'Filename is required' };
     }
 
-    const filePath = await this.getConfigFilePath(filename)
-    
+    const filePath = await this.getConfigFilePath(filename);
+
     try {
-      await fs.promises.unlink(filePath)
-      
+      await fs.promises.unlink(filePath);
+
       return {
         success: true,
         operation: 'delete',
         filename,
         path: filePath,
-      }
+      };
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         return {
@@ -233,9 +233,9 @@ export class ConfigCommand implements ICommand {
           error: 'Config file not found',
           filename,
           notFound: true,
-        }
+        };
       }
-      throw error
+      throw error;
     }
   }
 
@@ -244,20 +244,20 @@ export class ConfigCommand implements ICommand {
    */
   private async configExists(filename: string): Promise<any> {
     if (!filename) {
-      return { success: false, error: 'Filename is required' }
+      return { success: false, error: 'Filename is required' };
     }
 
-    const filePath = await this.getConfigFilePath(filename)
-    
+    const filePath = await this.getConfigFilePath(filename);
+
     try {
-      await access(filePath)
+      await access(filePath);
       return {
         success: true,
         operation: 'exists',
         filename,
         exists: true,
         path: filePath,
-      }
+      };
     } catch {
       return {
         success: true,
@@ -265,12 +265,12 @@ export class ConfigCommand implements ICommand {
         filename,
         exists: false,
         path: filePath,
-      }
+      };
     }
   }
 
   getDescription(): string {
-    return 'Manage configuration files in ~/n2htoolbox/'
+    return 'Manage configuration files in ~/n2htoolbox/';
   }
 
   getParameters(): CommandParameter[] {
@@ -293,6 +293,6 @@ export class ConfigCommand implements ICommand {
         description: 'Data to write (object or string)',
         required: false,
       },
-    ]
+    ];
   }
 }

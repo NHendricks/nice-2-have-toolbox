@@ -4,8 +4,8 @@
  */
 
 import { CalculateCommand } from './calculate-command.js';
-import { ConfigCommand } from './config-command.js';
 import { ICommand } from './command-interface.js';
+import { ConfigCommand } from './config-command.js';
 import { FileOperationsCommand } from './file-operations-command.js';
 import { FTPCommand } from './ftp-command.js';
 import { GarbageFinderCommand } from './garbage-finder-command.js';

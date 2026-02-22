@@ -11,6 +11,7 @@ The configuration system provides a safe way to store preferences in `~/n2htoolb
 Location: `backend/commands/config-command.ts`
 
 Operations:
+
 - `get-dir` - Get config directory path
 - `read` - Read a config file
 - `write` - Write a config file
@@ -25,38 +26,42 @@ Location: `ui/src/js/simpleweb/boundary/services/ConfigService.ts`
 ## Usage Examples
 
 ### Get config directory
-```typescript
-import { ConfigService } from './services/ConfigService'
 
-const configDir = await ConfigService.getConfigDir()
-console.log('Config directory:', configDir) // ~/n2htoolbox/
+```typescript
+import { ConfigService } from './services/ConfigService';
+
+const configDir = await ConfigService.getConfigDir();
+console.log('Config directory:', configDir); // ~/n2htoolbox/
 ```
 
 ### Save preferences
+
 ```typescript
 // Save settings to a config file
 await ConfigService.writeConfig('my-app-settings.json', {
   theme: 'dark',
   language: 'en',
-  lastPath: '/home/user/documents'
-})
+  lastPath: '/home/user/documents',
+});
 ```
 
 ### Load preferences
+
 ```typescript
 // Read settings from config file
-const settings = await ConfigService.readConfig('my-app-settings.json')
+const settings = await ConfigService.readConfig('my-app-settings.json');
 
 if (settings) {
-  console.log('Theme:', settings.theme)
+  console.log('Theme:', settings.theme);
 } else {
-  console.log('No saved settings found')
+  console.log('No saved settings found');
 }
 ```
 
 ### Check if config exists
+
 ```typescript
-const exists = await ConfigService.configExists('my-app-settings.json')
+const exists = await ConfigService.configExists('my-app-settings.json');
 if (exists) {
   // Load existing config
 } else {
@@ -65,15 +70,17 @@ if (exists) {
 ```
 
 ### List all config files
+
 ```typescript
-const files = await ConfigService.listConfigs()
-console.log('Config files:', files)
+const files = await ConfigService.listConfigs();
+console.log('Config files:', files);
 // [{name: 'settings.json', path: '/home/user/n2htoolbox/settings.json'}, ...]
 ```
 
 ### Delete a config file
+
 ```typescript
-await ConfigService.deleteConfig('old-settings.json')
+await ConfigService.deleteConfig('old-settings.json');
 ```
 
 ## Security Notes
@@ -94,17 +101,17 @@ class MyApp extends LitElement {
       theme: this.theme,
       // DON'T include passwords automatically
       // lastPath: this.lastPath,
-    }
-    
+    };
+
     // Save to config file
-    await ConfigService.writeConfig('my-app.json', settings)
-    alert('Settings saved to ~/n2htoolbox/my-app.json')
+    await ConfigService.writeConfig('my-app.json', settings);
+    alert('Settings saved to ~/n2htoolbox/my-app.json');
   }
-  
+
   async loadSettings() {
-    const settings = await ConfigService.readConfig('my-app.json')
+    const settings = await ConfigService.readConfig('my-app.json');
     if (settings) {
-      this.theme = settings.theme
+      this.theme = settings.theme;
       // Apply other settings...
     }
   }
@@ -114,6 +121,7 @@ class MyApp extends LitElement {
 ## File Format
 
 Config files are stored as JSON by default:
+
 ```json
 {
   "theme": "dark",
