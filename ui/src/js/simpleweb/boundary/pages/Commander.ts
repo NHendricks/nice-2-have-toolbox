@@ -1119,7 +1119,11 @@ export class Commander extends LitElement {
     }
   }
 
-  async handleDrop(e: DragEvent, targetPath?: string) {
+  async handleDrop(
+    e: DragEvent,
+    targetPath?: string,
+    dropPane?: 'left' | 'right',
+  ) {
     e.preventDefault()
     e.stopPropagation()
 
@@ -1129,8 +1133,14 @@ export class Commander extends LitElement {
       return
     }
 
-    // Use target path if provided (dropping on folder), otherwise use current directory
-    const destinationPath = targetPath || this.getActivePane().currentPath
+    // Use target path if provided (dropping on folder), otherwise use the pane that received the drop
+    const destinationPath =
+      targetPath ||
+      (dropPane === 'left'
+        ? this.leftPane.currentPath
+        : dropPane === 'right'
+          ? this.rightPane.currentPath
+          : this.getActivePane().currentPath)
 
     console.log('[drop] Dropping', files.length, 'files into:', destinationPath)
 
@@ -1272,28 +1282,38 @@ export class Commander extends LitElement {
 
       // Refresh both panes if moving (source and destination)
       if (shouldMove && sourcePath) {
-        // Refresh destination pane
-        await this.loadDirectory(
-          this.activePane,
-          destinationPath,
-          destinationPath,
-        )
-        // Refresh source directory in the other pane if it matches
-        const otherPane = this.activePane === 'left' ? 'right' : 'left'
-        const otherPanePath =
-          otherPane === 'left'
-            ? this.leftPane.currentPath
-            : this.rightPane.currentPath
-        if (otherPanePath === sourcePath) {
-          await this.loadDirectory(otherPane, otherPanePath, otherPanePath)
+        // Refresh destination pane (where the drop happened)
+        if (dropPane) {
+          await this.loadDirectory(dropPane, destinationPath, destinationPath)
+        } else {
+          await this.loadDirectory(
+            this.activePane,
+            destinationPath,
+            destinationPath,
+          )
+        }
+
+        // Find and refresh the source pane
+        const sourcePane =
+          this.leftPane.currentPath === sourcePath
+            ? 'left'
+            : this.rightPane.currentPath === sourcePath
+              ? 'right'
+              : null
+        if (sourcePane) {
+          await this.loadDirectory(sourcePane, sourcePath, sourcePath)
         }
       } else {
         // Just refresh the destination directory
-        await this.loadDirectory(
-          this.activePane,
-          destinationPath,
-          destinationPath,
-        )
+        if (dropPane) {
+          await this.loadDirectory(dropPane, destinationPath, destinationPath)
+        } else {
+          await this.loadDirectory(
+            this.activePane,
+            destinationPath,
+            destinationPath,
+          )
+        }
       }
     } catch (error: any) {
       console.error('[drop] Error:', error)
@@ -3713,7 +3733,7 @@ export class Commander extends LitElement {
         <div
           class="file-list"
           @dragover=${(e: DragEvent) => this.handleDragOver(e)}
-          @drop=${(e: DragEvent) => this.handleDrop(e)}
+          @drop=${(e: DragEvent) => this.handleDrop(e, undefined, side)}
         >
           ${filteredItems.map(
             (item, displayIndex) => html`
