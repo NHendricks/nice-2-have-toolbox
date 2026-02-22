@@ -1233,7 +1233,7 @@ export class Commander extends LitElement {
         }
 
         if (movedCount === 0) {
-          this.setStatus('Files already in destination', 'info')
+          this.setStatus('Files already in destination', 'normal')
         } else {
           this.setStatus(
             `Moved ${movedCount} file(s) to ${destinationPath}`,
@@ -1271,7 +1271,7 @@ export class Commander extends LitElement {
         }
 
         if (copiedCount === 0) {
-          this.setStatus('Files already in destination', 'info')
+          this.setStatus('Files already in destination', 'normal')
         } else {
           this.setStatus(
             `Copied ${copiedCount} file(s) to ${destinationPath}`,
@@ -3783,7 +3783,7 @@ export class Commander extends LitElement {
                     e.preventDefault()
                   }
                 }}
-                @dragend=${(e: DragEvent) => {
+                @dragend=${() => {
                   // Clean up drag state when drag ends (regardless of drop success)
                   console.log('[dragend] Cleaning up drag state')
                   this.isDraggingInternal = false
