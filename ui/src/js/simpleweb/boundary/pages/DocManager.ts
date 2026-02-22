@@ -1,6 +1,5 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import companiesData from '../../json/companies.json' with { type: 'json' }
 import './docmanager/DocManagerPreferences.js'
 import { scannerPreferencesService } from './docmanager/ScannerPreferencesService.js'
 import { userPreferencesService } from './docmanager/UserPreferencesService.js'
@@ -555,117 +554,28 @@ export class DocManager extends LitElement {
       )
 
       // 1. POPULATE COMPANY/DOMAIN DROPDOWN
-      const companyMatches: Array<{
-        value: string
-        label: string
-        score: number
-      }> = []
+      this.companyOptions = []
 
-      // Search for company matches
-      const searchTerms = [
-        ...(analysis.domains || []),
-        ...(analysis.sender ? [analysis.sender] : []),
-        ...(analysis.organizations || []),
-        ...(analysis.people || []).slice(0, 3), // Only first 3 people as potential company names
-      ]
-
-      const companies = companiesData as Array<{
-        id: number
-        name: string
-        branche: string
-      }>
-
-      for (const term of searchTerms) {
-        if (!term || term.length < 3) continue
-
-        const termLower = term.toLowerCase()
-
-        for (const company of companies) {
-          const companyNameLower = company.name.toLowerCase()
-
-          // Calculate match score
-          let score = 0
-
-          // Exact match (highest score)
-          if (companyNameLower === termLower) {
-            score = 100
-          }
-          // Contains term
-          else if (companyNameLower.includes(termLower)) {
-            score = 50
-          }
-          // Term contains company (for domains like "ruv.de" matching "R+V")
-          else if (
-            termLower.includes(companyNameLower.replace(/[^a-z0-9]/g, ''))
-          ) {
-            score = 40
-          }
-          // Term words match company words
-          else {
-            const termWords = termLower.split(/\s+/)
-            const companyWords = companyNameLower.split(/\s+/)
-            const matchingWords = termWords.filter((tw: string) =>
-              companyWords.some(
-                (cw: string) => cw.includes(tw) || tw.includes(cw),
-              ),
-            )
-            if (matchingWords.length > 0) {
-              score = 30 * (matchingWords.length / companyWords.length)
-            }
-          }
-
-          // Add match if score is significant
-          if (score >= 30) {
-            const existingMatch = companyMatches.find(
-              (m) => m.value === company.name,
-            )
-            if (!existingMatch) {
-              companyMatches.push({
-                value: this.sanitizeFilename(company.name),
-                label: `${company.name} (${company.branche})`,
-                score,
-              })
-            } else if (existingMatch.score < score) {
-              existingMatch.score = score
-            }
-          }
-        }
-      }
-
-      // Sort by score and add to options
-      companyMatches.sort((a, b) => b.score - a.score)
-      this.companyOptions = companyMatches.slice(0, 10).map((m) => ({
-        value: m.value,
-        label: m.label,
-      }))
-
-      // Add raw domains/sender as fallback options
+      // Add domains as company options
       if (analysis.domains) {
         for (const domain of analysis.domains) {
           const cleanDomain = domain
             .replace(/^www\./, '')
             .replace(/\.[a-z]{2,}$/i, '')
-          if (
-            !this.companyOptions.find((o) =>
-              o.value.toLowerCase().includes(cleanDomain.toLowerCase()),
-            )
-          ) {
-            this.companyOptions.push({
-              value: this.sanitizeFilename(cleanDomain),
-              label: `${cleanDomain} (Domain)`,
-            })
-          }
+
+          this.companyOptions.push({
+            value: this.sanitizeFilename(cleanDomain),
+            label: `${cleanDomain} (Domain)`,
+          })
         }
       }
 
+      // Add sender if not already in options
       if (analysis.sender && analysis.sender !== 'Unknown') {
-        if (
-          !this.companyOptions.find(
-            (o) => o.value === this.sanitizeFilename(analysis.sender),
-          )
-        ) {
+        const senderValue = this.sanitizeFilename(analysis.sender)
+        if (!this.companyOptions.find((o) => o.value === senderValue)) {
           this.companyOptions.push({
-            value: this.sanitizeFilename(analysis.sender),
+            value: senderValue,
             label: `${analysis.sender} (Sender)`,
           })
         }
