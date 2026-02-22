@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
+import { Router } from '@vaadin/router'
 import './docmanager/DocManagerPreferences.js'
 import { userPreferencesService } from './docmanager/UserPreferencesService.js'
 
@@ -808,6 +809,26 @@ export class DocManager extends LitElement {
   }
 
   /**
+   * Open the scan directory in Commander
+   */
+  private openFolderInCommander(): void {
+    if (!this.scanDirectory) {
+      console.warn('[DocManager] No scan directory set')
+      return
+    }
+
+    // Store the path in sessionStorage for Commander to pick up
+    sessionStorage.setItem('commander-navigate-to', this.scanDirectory)
+    console.log(
+      '[DocManager] Navigating to Commander with path:',
+      this.scanDirectory,
+    )
+
+    // Navigate to Commander
+    Router.go('/commander')
+  }
+
+  /**
    * Compose the final filename from dropdown selections
    */
   private updateComposedFilename(): void {
@@ -1605,6 +1626,15 @@ export class DocManager extends LitElement {
           <div class="button-group">
             <button @click="${this.loadDocuments}" ?disabled="${this.loading}">
               🔄 Refresh Documents
+            </button>
+            <button
+              @click="${this.openFolderInCommander}"
+              ?disabled="${!this.scanDirectory}"
+              title="${this.scanDirectory
+                ? `Open ${this.scanDirectory} in Commander`
+                : 'No scan directory set'}"
+            >
+              📁 Open Folder in Commander
             </button>
           </div>
 

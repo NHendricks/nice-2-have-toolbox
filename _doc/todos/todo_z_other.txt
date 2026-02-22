@@ -1,3 +1,10 @@
+- ocr scan for all pdfs in a specified directory
+- split pdf incl. preview
+- find text in pdfs 
+  - write textfile for each pdf
+  - find text within text files
+- file rename batch utility
+
 - simple db show and edit tool for sql databases
 - check gnu-tools
 - check licence

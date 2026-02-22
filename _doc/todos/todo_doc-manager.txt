@@ -1,12 +1,4 @@
-- ✅ äöüß in filename should be valid characters
-- add optoin open folder (with scan results)in n2h commander
-- new tools app
-  - define own managed folder
-  - ocr scan for all pdfs in a specified directory
-  - split pdf incl. preview
-  - find text in pdfs 
-    - write textfile for each pdf
-    - find text within text files
+
 
 
 

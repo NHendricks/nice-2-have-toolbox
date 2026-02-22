@@ -297,14 +297,26 @@ export class Commander extends LitElement {
     // Initialize PaneManager with current pane states
     this.paneManager = new PaneManager(this.leftPane, this.rightPane)
 
-    // Load paths from localStorage using PaneManager
-    const savedPaths = this.paneManager.loadPanePaths()
+    // Check if we should navigate to a specific path (from DocManager or other sources)
+    const navigateToPath = sessionStorage.getItem('commander-navigate-to')
+    if (navigateToPath) {
+      console.log(
+        '[Commander] Navigating to path from sessionStorage:',
+        navigateToPath,
+      )
+      this.leftPane.currentPath = navigateToPath
+      // Clear the sessionStorage item after reading
+      sessionStorage.removeItem('commander-navigate-to')
+    } else {
+      // Load paths from localStorage using PaneManager
+      const savedPaths = this.paneManager.loadPanePaths()
 
-    if (savedPaths.left) {
-      this.leftPane.currentPath = savedPaths.left
-    }
-    if (savedPaths.right) {
-      this.rightPane.currentPath = savedPaths.right
+      if (savedPaths.left) {
+        this.leftPane.currentPath = savedPaths.left
+      }
+      if (savedPaths.right) {
+        this.rightPane.currentPath = savedPaths.right
+      }
     }
 
     // Update PaneManager with loaded paths
@@ -656,9 +668,8 @@ export class Commander extends LitElement {
         }
       }
 
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       const response = await FileService.loadDirectory(path)
 
       console.log('Response:', response)
@@ -866,9 +877,8 @@ export class Commander extends LitElement {
       this.setStatus(`Connecting to ${path}...`, 'normal')
       console.log(`Loading directory with SMB credentials for ${pane}: ${path}`)
 
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       const response = await FileService.loadDirectory(path, smbUrl)
 
       console.log('SMB Response:', response)
@@ -1134,9 +1144,8 @@ export class Commander extends LitElement {
 
     try {
       // Copy files to destination
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
 
       for (const sourcePath of filePaths) {
         const fileName = sourcePath.split(/[\\/]/).pop()
@@ -1242,9 +1251,8 @@ export class Commander extends LitElement {
     try {
       this.setStatus('Loading file...', 'normal')
 
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       const response = await FileService.readFile(filePath)
 
       if (response.success && response.data) {
@@ -1383,9 +1391,8 @@ export class Commander extends LitElement {
     }
 
     // Call service to create directory (dynamic import to ensure runtime availability)
-    const handlerModule = await import(
-      './commander/services/FileOperationsHandler.js'
-    )
+    const handlerModule =
+      await import('./commander/services/FileOperationsHandler.js')
     const result = await handlerModule.executeMkdir(
       currentPath,
       folderName.trim(),
@@ -1544,9 +1551,8 @@ export class Commander extends LitElement {
     try {
       this.setStatus(`Executing: ${filePath}`, 'normal')
 
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       const response = await FileService.executeFile(filePath)
 
       if (response.success) {
@@ -1599,9 +1605,8 @@ export class Commander extends LitElement {
     }
 
     try {
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       console.log('[UI] Calling FileService.getDirectorySize with:', item.path)
       const response = await FileService.getDirectorySize(item.path)
       console.log('[UI] Full response:', JSON.stringify(response, null, 2))
@@ -2606,9 +2611,8 @@ export class Commander extends LitElement {
     }
 
     try {
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       const response = await FileService.readFile(item.path)
 
       // Check if dialog was closed (e.g., user pressed ESC during loading)
@@ -2654,9 +2658,8 @@ export class Commander extends LitElement {
 
     // Cancel the backend operation
     try {
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       await FileService.cancelOperation()
       const operation = this.textEditorDialog.loading ? 'loading' : 'saving'
       this.setStatus(`File ${operation} cancelled`, 'normal')
@@ -2685,9 +2688,8 @@ export class Commander extends LitElement {
     }
 
     try {
-      const { FileService } = await import(
-        './commander/services/FileService.js'
-      )
+      const { FileService } =
+        await import('./commander/services/FileService.js')
       const response = await FileService.writeFile(filePath, content)
 
       // Check if dialog was closed (e.g., user pressed ESC during saving)

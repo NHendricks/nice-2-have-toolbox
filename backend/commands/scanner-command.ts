@@ -1,7 +1,6 @@
 import { ChildProcess, exec, spawn } from 'child_process';
 import * as fs from 'fs';
 import sizeOf from 'image-size';
-import * as os from 'os';
 import * as path from 'path';
 import PDFDocument from 'pdfkit';
 import { promisify } from 'util';
