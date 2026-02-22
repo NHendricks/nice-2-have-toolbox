@@ -1078,7 +1078,7 @@ export class DocManager extends LitElement {
           resolution: this.resolution,
           multiPage: this.multiPage,
           duplex: this.duplex,
-          autoSetFileName: this.autoSetFileName,
+          autoSetFileName: false, // Never run OCR for additional pages
         },
       )
       const result = response.data || response
