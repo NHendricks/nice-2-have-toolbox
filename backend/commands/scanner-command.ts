@@ -147,6 +147,7 @@ export class ScannerCommand implements ICommand {
             resolution,
             multiPage !== false,
             duplex === true,
+            autoSetFileName === true,
           );
         case 'finalize-scan':
           return await this.finalizeScan(
@@ -566,8 +567,12 @@ try {
                           base64Preview,
                         );
 
-                        // Perform OCR on the first image only
-                        if (pageCounter === 1 && !firstImageProcessed) {
+                        // Perform OCR on the first image only if enabled
+                        if (
+                          pageCounter === 1 &&
+                          !firstImageProcessed &&
+                          (this as any).performOCR
+                        ) {
                           firstImageProcessed = true;
                           try {
                             // Send UI feedback: OCR scan starting (only if callback exists)
@@ -1011,8 +1016,12 @@ try {
                         base64Preview,
                       );
 
-                      // Perform OCR on the first image only
-                      if (pageCounter === 1 && !firstImageProcessed) {
+                      // Perform OCR on the first image only if enabled
+                      if (
+                        pageCounter === 1 &&
+                        !firstImageProcessed &&
+                        (this as any).performOCR
+                      ) {
                         firstImageProcessed = true;
                         try {
                           // Send UI feedback: OCR scan starting (only if callback exists)
@@ -1404,12 +1413,16 @@ try {
     resolution: string = '300',
     multiPage: boolean = true,
     duplex: boolean = false,
+    performOCR: boolean = false,
   ): Promise<any> {
     try {
       const tmpBase = process.env.TMPDIR || process.env.TEMP || '/tmp';
       const tempDir = path.join(tmpBase, `scan_preview_${Date.now()}`);
       fs.mkdirSync(tempDir, { recursive: true });
       const tempOutputFile = path.join(tempDir, 'page.jpg');
+
+      // Store performOCR flag in instance variable for scanning methods to access
+      (this as any).performOCR = performOCR;
 
       const result =
         process.platform === 'win32'

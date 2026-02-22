@@ -88,6 +88,20 @@ export class OcrService {
       );
       console.log(`Subject: ${analysis.subject}`);
       console.log(`Keywords: ${analysis.keywords?.join(', ')}`);
+      console.log('\n--- ID/Number Sequences Found ---');
+      if (analysis.numberSequences?.length > 0) {
+        analysis.numberSequences.forEach(
+          (
+            item: { sequence: string; context: string; type: string },
+            index: number,
+          ) => {
+            console.log(`${index + 1}. [${item.type}] ${item.sequence}`);
+            console.log(`   Context: ${item.context}`);
+          },
+        );
+      } else {
+        console.log('No long number sequences found.');
+      }
       console.log('\n--- Text Statistics ---');
       console.log(`Total characters: ${analysis.statistics?.totalCharacters}`);
       console.log(`Total lines: ${analysis.statistics?.totalLines}`);
@@ -184,6 +198,20 @@ export class OcrService {
     );
     console.log(`Subject: ${analysis.subject}`);
     console.log(`Keywords: ${analysis.keywords?.join(', ')}`);
+    console.log('\n--- ID/Number Sequences Found ---');
+    if (analysis.numberSequences?.length > 0) {
+      analysis.numberSequences.forEach(
+        (
+          item: { sequence: string; context: string; type: string },
+          index: number,
+        ) => {
+          console.log(`${index + 1}. [${item.type}] ${item.sequence}`);
+          console.log(`   Context: ${item.context}`);
+        },
+      );
+    } else {
+      console.log('No long number sequences found.');
+    }
     console.log('\n--- Text Statistics ---');
     console.log(`Total characters: ${analysis.statistics?.totalCharacters}`);
     console.log(`Total lines: ${analysis.statistics?.totalLines}`);
@@ -253,6 +281,133 @@ export class OcrService {
 
     // Remove duplicates and return unique dates
     return Array.from(new Set(dates));
+  }
+
+  /**
+   * Extract long number sequences (>8 characters) with context
+   * Detects account numbers, insurance numbers, and other IDs
+   */
+  private extractNumberSequences(text: string): Array<{
+    sequence: string;
+    context: string;
+    type: string;
+  }> {
+    const results: Array<{ sequence: string; context: string; type: string }> =
+      [];
+    const seen = new Set<string>();
+
+    // Split text into lines for better context extraction
+    const lines = text.split('\n');
+
+    for (const line of lines) {
+      // Pattern 1: Pure numeric sequences (8+ digits) - Account numbers, customer IDs
+      const numericPattern = /\b(\d{8,})\b/g;
+      let match;
+      while ((match = numericPattern.exec(line)) !== null) {
+        const sequence = match[1];
+        if (!seen.has(sequence)) {
+          seen.add(sequence);
+          // Extract context: text around the number
+          const context = this.extractContext(line, match.index, sequence);
+          results.push({
+            sequence: sequence,
+            context: context,
+            type: 'numeric_id',
+          });
+        }
+      }
+
+      // Pattern 2: Alphanumeric sequences (8+ chars with mix of letters and numbers)
+      // Common for insurance numbers, policy numbers, reference numbers
+      const alphanumericPattern = /\b([A-Z0-9]{8,})\b/gi;
+      while ((match = alphanumericPattern.exec(line)) !== null) {
+        const sequence = match[1];
+        // Check if it contains both letters and numbers and hasn't been seen
+        if (
+          /\d/.test(sequence) &&
+          /[A-Z]/i.test(sequence) &&
+          !seen.has(sequence)
+        ) {
+          seen.add(sequence);
+          const context = this.extractContext(line, match.index, sequence);
+          results.push({
+            sequence: sequence,
+            context: context,
+            type: 'alphanumeric_id',
+          });
+        }
+      }
+
+      // Pattern 3: German IBAN format (DE followed by 20 digits)
+      const ibanPattern = /\b(DE\d{20})\b/gi;
+      while ((match = ibanPattern.exec(line)) !== null) {
+        const sequence = match[1];
+        if (!seen.has(sequence)) {
+          seen.add(sequence);
+          const context = this.extractContext(line, match.index, sequence);
+          results.push({
+            sequence: sequence,
+            context: context,
+            type: 'iban',
+          });
+        }
+      }
+
+      // Pattern 4: Numbers with spaces or dashes (account/insurance numbers often formatted)
+      // e.g., "1234 5678 9012" or "12-34-56-78-90"
+      const formattedNumberPattern =
+        /\b(\d{2,}[\s\-]\d{2,}[\s\-]\d{2,}(?:[\s\-]\d{2,})*)\b/g;
+      while ((match = formattedNumberPattern.exec(line)) !== null) {
+        const sequence = match[1];
+        // Remove spaces/dashes to check length
+        const cleanSequence = sequence.replace(/[\s\-]/g, '');
+        if (cleanSequence.length >= 8 && !seen.has(cleanSequence)) {
+          seen.add(cleanSequence);
+          const context = this.extractContext(line, match.index, sequence);
+          results.push({
+            sequence: sequence,
+            context: context,
+            type: 'formatted_number',
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Extract context around a matched sequence
+   * Returns text between spaces surrounding the match
+   */
+  private extractContext(
+    line: string,
+    matchIndex: number,
+    sequence: string,
+  ): string {
+    // Find the start of the context (previous space or line start)
+    let contextStart = matchIndex;
+    while (contextStart > 0 && line[contextStart - 1] !== ' ') {
+      contextStart--;
+    }
+
+    // Find the end of the context (next space or line end)
+    let contextEnd = matchIndex + sequence.length;
+    while (contextEnd < line.length && line[contextEnd] !== ' ') {
+      contextEnd++;
+    }
+
+    // Expand context to include surrounding words (up to 50 chars before and after)
+    const expandStart = Math.max(0, contextStart - 50);
+    const expandEnd = Math.min(line.length, contextEnd + 50);
+
+    let context = line.substring(expandStart, expandEnd).trim();
+
+    // Add ellipsis if truncated
+    if (expandStart > 0) context = '...' + context;
+    if (expandEnd < line.length) context = context + '...';
+
+    return context;
   }
 
   /**
@@ -335,8 +490,12 @@ export class OcrService {
    * Analyze extracted text for sender and other information
    */
   private analyzeText(text: string): any {
+    const analysisStartTime = Date.now();
+    const timings: Record<string, number> = {};
+
     try {
       // Basic sender extraction using regex patterns (with German umlaut support)
+      const senderStartTime = Date.now();
       const senderPatterns = [
         /(?:from|sender|von|absender|von:|sender:)\s*[:\s]*([^\n]+)/gi,
         /^([\wäöüßÄÖÜ\s.,\-']+)\s*$/m, // Name at beginning with umlaut support
@@ -356,11 +515,15 @@ export class OcrService {
           }
         }
       }
+      timings.senderExtraction = Date.now() - senderStartTime;
 
       // Use compromise for NLP analysis
+      const nlpStartTime = Date.now();
       const doc = nlp(text);
+      timings.nlpInitialization = Date.now() - nlpStartTime;
 
       // Extract entities (compromise handles basic entity extraction)
+      const entityStartTime = Date.now();
       const people = doc
         .people()
         .out('array')
@@ -373,8 +536,10 @@ export class OcrService {
         .places()
         .out('array')
         .filter((p: string) => p.length > 2);
+      timings.entityExtraction = Date.now() - entityStartTime;
 
       // Get word frequency - extract meaningful terms
+      const wordStartTime = Date.now();
       const allWords = text
         .toLowerCase()
         .split(/[\s\n.,;:!?()[\]{}"'\-]+/)
@@ -385,10 +550,19 @@ export class OcrService {
         );
 
       // Extract dates from text
+      const datesStartTime = Date.now();
       const dates = this.extractDates(text);
+      timings.dateExtraction = Date.now() - datesStartTime;
 
       // Extract websites, emails, and domains
+      const webStartTime = Date.now();
       const webData = this.extractWebsitesAndEmails(text);
+      timings.webEmailExtraction = Date.now() - webStartTime;
+
+      // Extract number sequences (account numbers, insurance IDs, etc.)
+      const numberSeqStartTime = Date.now();
+      const numberSequences = this.extractNumberSequences(text);
+      timings.numberSequenceExtraction = Date.now() - numberSeqStartTime;
 
       // Count word frequency
       const wordFreqMap = new Map<string, number>();
@@ -401,8 +575,10 @@ export class OcrService {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([word]) => word);
+      timings.wordFrequencyAnalysis = Date.now() - wordStartTime;
 
       // Calculate text statistics
+      const statsStartTime = Date.now();
       const sentences = doc.sentences().length;
       const characterCount = text.length;
       const lineCount = text.split('\n').length;
@@ -413,6 +589,26 @@ export class OcrService {
         .map((line) => line.trim())
         .filter((line) => line.length > 5);
       const subject = lines.length > 0 ? lines[0].substring(0, 100) : 'N/A';
+      timings.statisticsCalculation = Date.now() - statsStartTime;
+
+      // Calculate total analysis time
+      timings.totalAnalysisTime = Date.now() - analysisStartTime;
+
+      // Log performance timings
+      console.log('\n[Performance] Analysis timing breakdown:');
+      console.log(`  Sender extraction: ${timings.senderExtraction}ms`);
+      console.log(`  NLP initialization: ${timings.nlpInitialization}ms`);
+      console.log(`  Entity extraction: ${timings.entityExtraction}ms`);
+      console.log(`  Word frequency: ${timings.wordFrequencyAnalysis}ms`);
+      console.log(`  Date extraction: ${timings.dateExtraction}ms`);
+      console.log(`  Web/Email extraction: ${timings.webEmailExtraction}ms`);
+      console.log(
+        `  Number sequence extraction: ${timings.numberSequenceExtraction}ms`,
+      );
+      console.log(
+        `  Statistics calculation: ${timings.statisticsCalculation}ms`,
+      );
+      console.log(`  TOTAL: ${timings.totalAnalysisTime}ms`);
 
       return {
         sender: sender,
@@ -423,6 +619,7 @@ export class OcrService {
         websites: webData.websites.length > 0 ? webData.websites : [],
         emails: webData.emails.length > 0 ? webData.emails : [],
         domains: webData.domains.length > 0 ? webData.domains : [],
+        numberSequences: numberSequences.length > 0 ? numberSequences : [],
         keywords: wordFreq,
         statistics: {
           totalCharacters: characterCount,
