@@ -2,31 +2,50 @@
   "mainNavigation": [
     {
       "label": "Commander",
-      "path": "/commander"
+      "path": "/commander",
+      "icon": "📁"
     },
     {
       "label": "GarbageFinder",
-      "path": "/garbagefinder"
+      "path": "/garbagefinder",
+      "icon": "🗑️"
     },
     {
       "label": "MoneyFinder",
-      "path": "/moneyfinder"
+      "path": "/moneyfinder",
+      "icon": "💰"
     },
     {
       "label": "Restic UI",
-      "path": "/restic"
+      "path": "/restic",
+      "icon": "💾"
     },
     {
       "label": "TaskBoard",
-      "path": "/taskboard"
+      "path": "/taskboard",
+      "icon": "✅"
     },
     {
       "label": "DocManager",
-      "path": "/docmanager"
+      "path": "/docmanager",
+      "icon": "📄"
     },
     {
       "label": "Help",
-      "path": "/faq"
+      "path": "/faq",
+      "icon": "❓"
+    },
+    {
+      "label": "Tools",
+      "icon": "📂",
+      "hasSubmenu": true,
+      "submenu": [
+        {
+          "label": "JSON Formatter",
+          "path": "/tools/jsonformatter",
+          "icon": "📝"
+        }
+      ]
     }
   ],
   "bonusActions": [
@@ -61,6 +80,10 @@
       "addBodyClass": "force-portrait"
     },
     "/docmanager": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/tools/jsonformatter": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }

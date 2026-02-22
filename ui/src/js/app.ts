@@ -8,6 +8,7 @@ import './simpleweb/boundary/pages/GarbageFinder'
 import './simpleweb/boundary/pages/MoneyFinder'
 import './simpleweb/boundary/pages/restic/ResticUI'
 import './simpleweb/boundary/pages/taskboard/TaskBoard'
+import './simpleweb/boundary/pages/JSONFormatter'
 
 const LAST_APP_KEY = 'nh-toolbox-last-app'
 
@@ -21,6 +22,7 @@ const validPaths = [
   '/restic',
   '/taskboard',
   '/docmanager',
+  '/tools/jsonformatter',
 ]
 
 const outlet = document.querySelector('.view')
@@ -37,6 +39,7 @@ router.setRoutes([
   { path: '/restic', component: 'nh-restic' },
   { path: '/taskboard', component: 'nh-taskboard' },
   { path: '/docmanager', component: 'nh-docmanager' },
+  { path: '/tools/jsonformatter', component: 'nh-json-formatter' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 

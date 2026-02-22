@@ -6,6 +6,7 @@ import menuConfig from './menu-config.json' with { type: 'json' }
 interface MenuItem {
   label: string
   path?: string
+  icon?: string
   hasSubmenu?: boolean
   submenu?: MenuItem[]
 }
@@ -40,6 +41,7 @@ export class ResponsiveMenu extends LitElement {
   @state() private isScrolled = false
   @state() private openSubmenu: string | null = null
   @state() private isActionsOverlayOpen = false
+  @state() private openFolderMenu: MenuItem | null = null
   @property({ type: Boolean, reflect: true, attribute: 'force-portrait' })
   public forcePortrait = ResponsiveMenu.initialSettings?.forcePortrait ?? false
 
@@ -83,9 +85,11 @@ export class ResponsiveMenu extends LitElement {
     }
 
     .burger-btn {
-      background: var(--secondary-bg);
-      border: 2px solid var(--accent-color);
-      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
       width: 50px;
       height: 50px;
       cursor: pointer;
@@ -95,11 +99,11 @@ export class ResponsiveMenu extends LitElement {
       align-items: center;
       gap: 5px;
       transition: all var(--transition-speed);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
 
     .burger-btn:hover {
-      background: var(--accent-color);
+      background: rgba(255, 255, 255, 0.2);
       transform: scale(1.05);
     }
 
@@ -145,11 +149,9 @@ export class ResponsiveMenu extends LitElement {
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(
-        135deg,
-        var(--primary-bg) 0%,
-        var(--secondary-bg) 100%
-      );
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
       z-index: 999;
       display: flex;
       flex-direction: column;
@@ -166,159 +168,224 @@ export class ResponsiveMenu extends LitElement {
     }
 
     .portrait-nav {
-      display: flex;
-      flex-direction: column;
-      gap: clamp(0.5rem, 1.5vh, 1rem);
-      width: 85%;
-      max-width: 400px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: clamp(1rem, 3vh, 2rem);
+      width: 90%;
+      max-width: 600px;
       max-height: 85vh;
       overflow-y: auto;
+      padding: 2rem 1rem;
+      justify-items: center;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
+    .portrait-nav::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .portrait-nav::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .portrait-nav::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+
+    .portrait-nav::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(255, 255, 255, 0.5);
     }
 
     .portrait-nav-item {
-      background: var(--secondary-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: clamp(0.8rem, 2vh, 1.2rem);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 1.2rem 0.8rem;
       color: var(--text-primary);
       text-decoration: none;
-      font-size: clamp(1rem, 3.5vh, 1.5rem);
-      font-weight: 500;
-      text-align: center;
       cursor: pointer;
-      transition: all var(--transition-speed);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .portrait-nav-item-wrapper {
-      position: relative;
-    }
-
-    .portrait-submenu {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
       gap: 0.5rem;
-      margin-top: 0.5rem;
-      margin-left: 1rem;
-      margin-right: 1rem;
-      padding-left: 0.75rem;
-      border-left: 3px solid var(--highlight-color);
-      max-height: 0;
-      opacity: 0;
-      overflow: hidden;
-      transform: translateY(-10px);
-      z-index: 10;
-      transition:
-        max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 0.3s ease,
-        transform 0.3s ease,
-        margin-top 0.3s ease;
-    }
-
-    .portrait-submenu.open {
-      max-height: 500px;
-      opacity: 1;
-      transform: translateY(0);
-      margin-top: 0.75rem;
-      background: linear-gradient(
-        135deg,
-        var(--primary-bg) 0%,
-        var(--secondary-bg) 100%
-      );
-    }
-
-    .portrait-submenu-item {
-      background: linear-gradient(
-        135deg,
-        var(--accent-color) 0%,
-        rgba(15, 52, 96, 0.8) 100%
-      );
-      border: 1px solid rgba(233, 69, 96, 0.3);
-      border-radius: 6px;
-      padding: clamp(0.8rem, 2vh, 1rem);
-      color: var(--text-primary);
-      text-decoration: none;
-      font-size: clamp(0.9rem, 2.5vh, 1.2rem);
-      font-weight: 400;
+      width: 110px;
+      height: 110px;
       text-align: center;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
       position: relative;
-      overflow: hidden;
     }
 
-    .portrait-submenu-item::before {
-      content: '';
-      position: absolute;
+    .portrait-nav-item:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .portrait-nav-item:active {
+      transform: scale(0.95);
+    }
+
+    .app-icon {
+      font-size: 3rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+
+    .app-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      line-height: 1.2;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    /* Folder popup styles */
+    .folder-popup {
+      position: fixed;
       top: 0;
-      left: -100%;
+      left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(233, 69, 96, 0.3),
-        transparent
-      );
-      transition: left 0.5s ease;
+      background: rgba(0, 0, 0, 0.90);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      z-index: 1002;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
     }
 
-    .portrait-submenu-item:hover::before {
-      left: 100%;
+    .folder-popup.open {
+      opacity: 1;
+      pointer-events: all;
     }
 
-    .portrait-submenu-item:hover {
-      background: linear-gradient(
-        135deg,
-        var(--highlight-color) 0%,
-        rgba(233, 69, 96, 0.9) 100%
-      );
-      border-color: var(--highlight-color);
-      transform: translateX(8px) scale(1.02);
-      box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+    .folder-popup-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      color: var(--text-primary);
     }
 
-    .portrait-submenu-item:active {
-      transform: translateX(6px) scale(0.98);
+    .folder-popup-icon {
+      font-size: 2.5rem;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+    }
+
+    .folder-popup-title {
+      font-size: 1.8rem;
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .folder-popup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 1.5rem;
+      width: 90%;
+      max-width: 500px;
+      justify-items: center;
+      padding: 1rem;
+    }
+
+    .folder-popup-item {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      padding: 1.2rem 0.8rem;
+      color: var(--text-primary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 110px;
+      height: 110px;
+      text-align: center;
+    }
+
+    .folder-popup-item:hover {
+      background: rgba(255, 255, 255, 0.18);
+      transform: scale(1.08);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .folder-popup-item:active {
+      transform: scale(0.95);
+    }
+
+    .folder-popup-close {
+      position: absolute;
+      bottom: 3rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 0.8rem 2rem;
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .folder-popup-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateX(-50%) scale(1.05);
+    }
+
+    .folder-indicator {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.7rem;
+      opacity: 0.7;
     }
 
     .portrait-bonus {
-      margin-top: clamp(1rem, 3vh, 2rem);
-      padding-top: clamp(1rem, 3vh, 2rem);
-      border-top: 2px solid var(--border-color);
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
       display: flex;
-      flex-direction: column;
-      gap: clamp(0.4rem, 1.5vh, 0.8rem);
+      justify-content: center;
+      gap: 1rem;
+      width: 100%;
     }
 
     .portrait-bonus-item {
       background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: clamp(0.6rem, 1.5vh, 0.8rem);
-      color: var(--text-secondary);
+      border: none;
+      padding: 0.5rem 1rem;
+      color: rgba(255, 255, 255, 0.6);
       text-decoration: none;
-      font-size: clamp(0.85rem, 2vh, 1rem);
+      font-size: 0.8rem;
       text-align: center;
       cursor: pointer;
-      transition: all var(--transition-speed);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      transition: all 0.2s;
     }
 
     .portrait-bonus-item:hover {
-      background: var(--secondary-bg);
-      color: var(--text-primary);
-      border-color: var(--accent-color);
+      color: rgba(255, 255, 255, 0.9);
     }
 
     /* Actions Overlay (Portrait Mode) */
@@ -750,6 +817,17 @@ export class ResponsiveMenu extends LitElement {
 
   private toggleMenu() {
     this.isMenuOpen = !this.isMenuOpen
+    if (!this.isMenuOpen) {
+      this.openFolderMenu = null
+    }
+  }
+
+  private openFolder(item: MenuItem) {
+    this.openFolderMenu = item
+  }
+
+  private closeFolder() {
+    this.openFolderMenu = null
   }
 
   private toggleSubmenu(menu: string) {
@@ -760,6 +838,7 @@ export class ResponsiveMenu extends LitElement {
     this.isMenuOpen = false
     this.openSubmenu = null
     this.isActionsOverlayOpen = false
+    this.openFolderMenu = null
 
     // Check if path is external URL
     if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -787,33 +866,14 @@ export class ResponsiveMenu extends LitElement {
   private renderPortraitMainNav() {
     return this.config.mainNavigation.map((item) => {
       if (item.hasSubmenu && item.submenu) {
-        const key = item.label.toLowerCase()
-
         return html`
-          <div class="portrait-nav-item-wrapper">
-            <div
-              class="portrait-nav-item"
-              @click=${() => this.toggleSubmenu(key)}
-            >
-              ${item.label}
-              <span style="float:right">
-                ${this.openSubmenu === key ? '✕' : '▸'}
-              </span>
-            </div>
-            <div
-              class="portrait-submenu ${this.openSubmenu === key ? 'open' : ''}"
-            >
-              ${item.submenu.map(
-                (sub) => html`
-                  <div
-                    class="portrait-submenu-item"
-                    @click=${() => this.handleNavigation(sub.path || '#')}
-                  >
-                    ${sub.label}
-                  </div>
-                `,
-              )}
-            </div>
+          <div
+            class="portrait-nav-item"
+            @click=${() => this.openFolder(item)}
+          >
+            <div class="app-icon">${item.icon || '📂'}</div>
+            <div class="app-label">${item.label}</div>
+            <span class="folder-indicator">▸</span>
           </div>
         `
       }
@@ -823,10 +883,44 @@ export class ResponsiveMenu extends LitElement {
           class="portrait-nav-item"
           @click=${() => this.handleNavigation(item.path || '#')}
         >
-          ${item.label}
+          <div class="app-icon">${item.icon || '📱'}</div>
+          <div class="app-label">${item.label}</div>
         </div>
       `
     })
+  }
+
+  private renderFolderPopup() {
+    if (!this.openFolderMenu || !this.openFolderMenu.submenu) {
+      return ''
+    }
+
+    return html`
+      <div class="folder-popup ${this.openFolderMenu ? 'open' : ''}">
+        <div class="folder-popup-header">
+          <div class="folder-popup-icon">${this.openFolderMenu.icon || '📂'}</div>
+          <div class="folder-popup-title">${this.openFolderMenu.label}</div>
+        </div>
+        
+        <div class="folder-popup-grid">
+          ${this.openFolderMenu.submenu.map(
+            (subItem) => html`
+              <div
+                class="folder-popup-item"
+                @click=${() => this.handleNavigation(subItem.path || '#')}
+              >
+                <div class="app-icon">${subItem.icon || '📱'}</div>
+                <div class="app-label">${subItem.label}</div>
+              </div>
+            `,
+          )}
+        </div>
+
+        <button class="folder-popup-close" @click=${this.closeFolder}>
+          Close
+        </button>
+      </div>
+    `
   }
 
   private renderActionsOverlay() {
@@ -869,6 +963,9 @@ export class ResponsiveMenu extends LitElement {
   }
 
   private renderPortraitBonusNav() {
+    if (!this.config.bonusActions || this.config.bonusActions.length === 0) {
+      return ''
+    }
     return this.config.bonusActions.map(
       (item) => html`
         <a
@@ -957,14 +1054,17 @@ export class ResponsiveMenu extends LitElement {
         </div>
 
         <div class="fullscreen-menu ${this.isMenuOpen ? 'open' : ''}">
-          <nav class="portrait-nav">
-            <!-- Main Navigation -->
+          <div class="portrait-nav">
+            <!-- Main Navigation Grid -->
             ${this.renderPortraitMainNav()}
+          </div>
 
-            <!-- Bonus Actions -->
-            <div class="portrait-bonus">${this.renderPortraitBonusNav()}</div>
-          </nav>
+          <!-- Bonus Actions -->
+          <div class="portrait-bonus">${this.renderPortraitBonusNav()}</div>
         </div>
+
+        <!-- Folder Popup -->
+        ${this.renderFolderPopup()}
 
         <!-- Actions Overlay -->
         ${this.renderActionsOverlay()}
