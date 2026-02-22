@@ -52,7 +52,10 @@ export class OcrService {
   /**
    * Perform OCR on an image and analyze the text
    */
-  async recognizeAndAnalyze(imagePath: string): Promise<{
+  async recognizeAndAnalyze(
+    imagePath: string,
+    lastName?: string,
+  ): Promise<{
     text: string;
     analysis: any;
   }> {
@@ -61,7 +64,7 @@ export class OcrService {
 
       // Analyze the extracted text
       console.log('[OCR Analysis] Starting text analysis...');
-      const analysis = this.analyzeText(text);
+      const analysis = this.analyzeText(text, lastName);
 
       console.log('\n=== OCR TEXT ANALYSIS RESULTS ===');
       console.log(`Sender: ${analysis.sender}`);
@@ -85,6 +88,9 @@ export class OcrService {
       );
       console.log(
         `Domains found: ${analysis.domains?.length > 0 ? analysis.domains.join(', ') : 'None'}`,
+      );
+      console.log(
+        `Full names found: ${analysis.fullNames?.length > 0 ? analysis.fullNames.join(', ') : 'None'}`,
       );
       console.log(`Subject: ${analysis.subject}`);
       console.log(`Keywords: ${analysis.keywords?.join(', ')}`);
@@ -304,13 +310,16 @@ export class OcrService {
       const numericPattern = /\b(\d{8,})\b/g;
       let match;
       while ((match = numericPattern.exec(line)) !== null) {
-        const sequence = match[1];
-        if (!seen.has(sequence)) {
-          seen.add(sequence);
-          // Extract context: text around the number
-          const context = this.extractContext(line, match.index, sequence);
+        // Extract the whole string from blank to blank
+        const wholeString = this.extractWholeStringBetweenBlanks(
+          line,
+          match.index,
+        );
+        if (!seen.has(wholeString)) {
+          seen.add(wholeString);
+          const context = this.extractContext(line, match.index, match[1]);
           results.push({
-            sequence: sequence,
+            sequence: wholeString,
             context: context,
             type: 'numeric_id',
           });
@@ -318,62 +327,92 @@ export class OcrService {
       }
 
       // Pattern 2: Alphanumeric sequences (8+ chars with mix of letters and numbers)
-      // Common for insurance numbers, policy numbers, reference numbers
       const alphanumericPattern = /\b([A-Z0-9]{8,})\b/gi;
       while ((match = alphanumericPattern.exec(line)) !== null) {
         const sequence = match[1];
-        // Check if it contains both letters and numbers and hasn't been seen
-        if (
-          /\d/.test(sequence) &&
-          /[A-Z]/i.test(sequence) &&
-          !seen.has(sequence)
-        ) {
-          seen.add(sequence);
-          const context = this.extractContext(line, match.index, sequence);
-          results.push({
-            sequence: sequence,
-            context: context,
-            type: 'alphanumeric_id',
-          });
+        if (/\d/.test(sequence) && /[A-Z]/i.test(sequence)) {
+          const wholeString = this.extractWholeStringBetweenBlanks(
+            line,
+            match.index,
+          );
+          if (!seen.has(wholeString)) {
+            seen.add(wholeString);
+            const context = this.extractContext(line, match.index, sequence);
+            results.push({
+              sequence: wholeString,
+              context: context,
+              type: 'alphanumeric_id',
+            });
+          }
         }
       }
 
       // Pattern 3: German IBAN format (DE followed by 20 digits)
       const ibanPattern = /\b(DE\d{20})\b/gi;
       while ((match = ibanPattern.exec(line)) !== null) {
-        const sequence = match[1];
-        if (!seen.has(sequence)) {
-          seen.add(sequence);
-          const context = this.extractContext(line, match.index, sequence);
+        const wholeString = this.extractWholeStringBetweenBlanks(
+          line,
+          match.index,
+        );
+        if (!seen.has(wholeString)) {
+          seen.add(wholeString);
+          const context = this.extractContext(line, match.index, match[1]);
           results.push({
-            sequence: sequence,
+            sequence: wholeString,
             context: context,
             type: 'iban',
           });
         }
       }
 
-      // Pattern 4: Numbers with spaces or dashes (account/insurance numbers often formatted)
-      // e.g., "1234 5678 9012" or "12-34-56-78-90"
+      // Pattern 4: Numbers with spaces or dashes (already formatted)
       const formattedNumberPattern =
         /\b(\d{2,}[\s\-]\d{2,}[\s\-]\d{2,}(?:[\s\-]\d{2,})*)\b/g;
       while ((match = formattedNumberPattern.exec(line)) !== null) {
         const sequence = match[1];
-        // Remove spaces/dashes to check length
         const cleanSequence = sequence.replace(/[\s\-]/g, '');
-        if (cleanSequence.length >= 8 && !seen.has(cleanSequence)) {
-          seen.add(cleanSequence);
-          const context = this.extractContext(line, match.index, sequence);
-          results.push({
-            sequence: sequence,
-            context: context,
-            type: 'formatted_number',
-          });
+        if (cleanSequence.length >= 8) {
+          const wholeString = this.extractWholeStringBetweenBlanks(
+            line,
+            match.index,
+          );
+          if (!seen.has(wholeString)) {
+            seen.add(wholeString);
+            const context = this.extractContext(line, match.index, sequence);
+            results.push({
+              sequence: wholeString,
+              context: context,
+              type: 'formatted_number',
+            });
+          }
         }
       }
     }
 
     return results;
+  }
+
+  /**
+   * Extract the whole string between blanks (whitespace boundaries)
+   * Returns the complete text segment containing the match
+   */
+  private extractWholeStringBetweenBlanks(
+    line: string,
+    matchIndex: number,
+  ): string {
+    // Find the start (previous blank/space or line start)
+    let start = matchIndex;
+    while (start > 0 && line[start - 1] !== ' ' && line[start - 1] !== '\t') {
+      start--;
+    }
+
+    // Find the end (next blank/space or line end)
+    let end = matchIndex;
+    while (end < line.length && line[end] !== ' ' && line[end] !== '\t') {
+      end++;
+    }
+
+    return line.substring(start, end).trim();
   }
 
   /**
@@ -489,7 +528,7 @@ export class OcrService {
   /**
    * Analyze extracted text for sender and other information
    */
-  private analyzeText(text: string): any {
+  private analyzeText(text: string, lastName?: string): any {
     const analysisStartTime = Date.now();
     const timings: Record<string, number> = {};
 
@@ -564,6 +603,11 @@ export class OcrService {
       const numberSequences = this.extractNumberSequences(text);
       timings.numberSequenceExtraction = Date.now() - numberSeqStartTime;
 
+      // Extract full names based on user's last name
+      const fullNameStartTime = Date.now();
+      const fullNames = lastName ? this.extractFullNames(text, lastName) : [];
+      timings.fullNameExtraction = Date.now() - fullNameStartTime;
+
       // Count word frequency
       const wordFreqMap = new Map<string, number>();
       allWords.forEach((word) => {
@@ -605,6 +649,7 @@ export class OcrService {
       console.log(
         `  Number sequence extraction: ${timings.numberSequenceExtraction}ms`,
       );
+      console.log(`  Full name extraction: ${timings.fullNameExtraction}ms`);
       console.log(
         `  Statistics calculation: ${timings.statisticsCalculation}ms`,
       );
@@ -620,6 +665,7 @@ export class OcrService {
         emails: webData.emails.length > 0 ? webData.emails : [],
         domains: webData.domains.length > 0 ? webData.domains : [],
         numberSequences: numberSequences.length > 0 ? numberSequences : [],
+        fullNames: fullNames.length > 0 ? fullNames : [],
         keywords: wordFreq,
         statistics: {
           totalCharacters: characterCount,
@@ -640,6 +686,116 @@ export class OcrService {
         error: error.message,
       };
     }
+  }
+
+  /**
+   * Extract full names based on user's last name
+   * Searches for the last name in text and extracts the word(s) before it
+   */
+  private extractFullNames(text: string, lastName: string): string[] {
+    const fullNames: string[] = [];
+    const seen = new Set<string>();
+
+    // Normalize last name for case-insensitive matching
+    const normalizedLastName = lastName.toLowerCase().trim();
+    const escapedLastName = normalizedLastName.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&',
+    );
+
+    // Split text into lines for better context
+    const lines = text.split('\n');
+
+    // Pattern 1: Explicitly match "FirstName (and|or|und|&) LastName"
+    // This handles cases like "John and Smith" -> extract "John Smith"
+    const connectorPattern = new RegExp(
+      `\\b([A-ZÄÖÜ][a-zäöüß]+(?:\\s+[A-ZÄÖÜ][a-zäöüß]+)?)\\s+(?:and|or|und|&)\\s+${escapedLastName}\\b`,
+      'gi',
+    );
+
+    for (const line of lines) {
+      let match;
+      while ((match = connectorPattern.exec(line)) !== null) {
+        const firstName = match[1]?.trim();
+        if (firstName && firstName.length > 1) {
+          const fullName = `${firstName} ${lastName}`;
+          const normalizedFullName = fullName.toLowerCase();
+
+          if (!seen.has(normalizedFullName)) {
+            seen.add(normalizedFullName);
+            fullNames.push(fullName);
+            console.log(
+              `[OCR] Found full name with connector: ${fullName} (context: "${line.substring(Math.max(0, match.index - 10), Math.min(line.length, match.index + 60))}")`,
+            );
+          }
+        }
+      }
+    }
+
+    // Pattern 2: Standard "FirstName LastName" pattern
+    const standardPattern = new RegExp(
+      `\\b([A-ZÄÖÜ][a-zäöüß]+(?:\\s+[A-ZÄÖÜ][a-zäöüß]+)?)\\s+${escapedLastName}\\b`,
+      'gi',
+    );
+
+    for (const line of lines) {
+      let match;
+      while ((match = standardPattern.exec(line)) !== null) {
+        const firstName = match[1]?.trim();
+        if (firstName && firstName.length > 1) {
+          // Skip connector words
+          const firstNameLower = firstName.toLowerCase();
+          if (['and', 'or', 'und'].includes(firstNameLower)) {
+            continue; // Skip this match, it's a connector word
+          }
+
+          const fullName = `${firstName} ${lastName}`;
+          const normalizedFullName = fullName.toLowerCase();
+
+          if (!seen.has(normalizedFullName)) {
+            seen.add(normalizedFullName);
+            fullNames.push(fullName);
+            console.log(
+              `[OCR] Found full name: ${fullName} (context: "${line.substring(Math.max(0, match.index - 20), Math.min(line.length, match.index + 50))}")`,
+            );
+          }
+        }
+      }
+    }
+
+    // Pattern 3: German format "LastName, FirstName"
+    const germanPattern = new RegExp(
+      `${escapedLastName},?\\s+([A-ZÄÖÜ][a-zäöüß]+)\\b`,
+      'gi',
+    );
+
+    for (const line of lines) {
+      let match;
+      while ((match = germanPattern.exec(line)) !== null) {
+        const firstName = match[1]?.trim();
+        if (firstName && firstName.length > 1) {
+          // Skip connector words
+          const firstNameLower = firstName.toLowerCase();
+          if (['and', 'or', 'und'].includes(firstNameLower)) {
+            continue;
+          }
+
+          const fullName = `${firstName} ${lastName}`;
+          const normalizedFullName = fullName.toLowerCase();
+
+          if (!seen.has(normalizedFullName)) {
+            seen.add(normalizedFullName);
+            fullNames.push(fullName);
+            console.log(`[OCR] Found full name (German format): ${fullName}`);
+          }
+        }
+      }
+    }
+
+    console.log(
+      `[OCR] Full name extraction complete: ${fullNames.length} unique names found`,
+    );
+    return fullNames;
   }
 
   /**

@@ -1,6 +1,6 @@
 - pdf manager
-  - add preferernce dialog and save setting in userhome n2htoolbox settings file locally.let me configure my last name to be included in filename later
-  - set default settings in porefrence dialog
+- search 1 name further back when first name found is and or und or &
+- ✅ for account or number use whole string from blank to blank
 - new tools app
   - define own managed folder
   - ocr scan for all pdfs in a specified directory

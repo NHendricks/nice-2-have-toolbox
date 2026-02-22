@@ -2,6 +2,8 @@ import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import companiesData from '../../json/companies.json' with { type: 'json' }
 import { scannerPreferencesService } from './docmanager/ScannerPreferencesService.js'
+import { userPreferencesService } from './docmanager/UserPreferencesService.js'
+import './docmanager/DocManagerPreferences.js'
 
 // bring in the commander viewer component and type so we can reuse it here
 import type { ViewerFile } from './commander/commander.types.js'
@@ -59,9 +61,12 @@ export class DocManager extends LitElement {
   @state() private companyOptions: Array<{ value: string; label: string }> = []
   @state() private accountOptions: Array<{ value: string; label: string }> = []
   @state() private dateOptions: Array<{ value: string; label: string }> = []
+  @state() private fullNameOptions: Array<{ value: string; label: string }> = []
   @state() private selectedCompany = ''
   @state() private selectedAccount = ''
   @state() private selectedDate = ''
+  @state() private selectedFullName = ''
+  @state() private showPreferencesDialog = false
 
   static styles = css`
     :host {
@@ -78,11 +83,38 @@ export class DocManager extends LitElement {
       margin: 0 auto;
     }
 
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
     h1 {
       color: white;
-      margin-bottom: 10px;
+      margin: 0;
       font-size: 2.5em;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .preferences-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preferences-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.6);
+      transform: translateY(-2px);
     }
 
     .subtitle {
@@ -493,8 +525,9 @@ export class DocManager extends LitElement {
     }
   `
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback()
+    await userPreferencesService.ensureLoaded()
     this.loadPreferences()
     this.loadDocuments()
     this.loadScanners()
@@ -744,6 +777,22 @@ export class DocManager extends LitElement {
       this.selectedDate =
         this.dateOptions.length > 0 ? this.dateOptions[0].value : todayFormatted
 
+      // 4. POPULATE FULL NAME DROPDOWN
+      this.fullNameOptions = []
+
+      if (analysis.fullNames && analysis.fullNames.length > 0) {
+        for (const fullName of analysis.fullNames) {
+          this.fullNameOptions.push({
+            value: this.sanitizeFilename(fullName),
+            label: fullName,
+          })
+        }
+      }
+
+      // Set default selection (first match)
+      this.selectedFullName =
+        this.fullNameOptions.length > 0 ? this.fullNameOptions[0].value : ''
+
       // Update the composed filename
       this.updateComposedFilename()
 
@@ -751,6 +800,7 @@ export class DocManager extends LitElement {
         companies: this.companyOptions.length,
         accounts: this.accountOptions.length,
         dates: this.dateOptions.length,
+        fullNames: this.fullNameOptions.length,
       })
     } catch (err) {
       console.error('[DocManager] Error extracting filename from OCR:', err)
@@ -759,9 +809,11 @@ export class DocManager extends LitElement {
       this.companyOptions = [{ value: 'document', label: 'Document' }]
       this.accountOptions = []
       this.dateOptions = [{ value: timestamp, label: `Today (${timestamp})` }]
+      this.fullNameOptions = []
       this.selectedCompany = 'document'
       this.selectedAccount = ''
       this.selectedDate = timestamp
+      this.selectedFullName = ''
       this.updateComposedFilename()
     }
   }
@@ -786,8 +838,19 @@ export class DocManager extends LitElement {
     const parts = []
 
     if (this.selectedCompany) parts.push(this.selectedCompany)
+    if (this.selectedFullName) parts.push(this.selectedFullName)
     if (this.selectedAccount) parts.push(this.selectedAccount)
     if (this.selectedDate) parts.push(this.selectedDate)
+
+    // Add last name if enabled in preferences AND no fullName was selected
+    if (!this.selectedFullName) {
+      const includeLastName =
+        userPreferencesService.getIncludeLastNameInFilename()
+      const lastName = userPreferencesService.getLastName()
+      if (includeLastName && lastName) {
+        parts.push(lastName.toLowerCase().replace(/[^a-z0-9-_]/gi, '-'))
+      }
+    }
 
     const baseName = parts.join('_') || 'document'
     const extension = this.format || 'pdf'
@@ -1010,6 +1073,18 @@ export class DocManager extends LitElement {
       this.previewFiles = []
       this.previewDataUrls = []
       this.previewTempDir = ''
+
+      // Initialize filename selection fields for new scan
+      this.companyOptions = []
+      this.accountOptions = []
+      this.dateOptions = []
+      this.fullNameOptions = []
+      this.selectedCompany = ''
+      this.selectedAccount = ''
+      this.selectedDate = ''
+      this.selectedFullName = ''
+      this.ocrStatus = ''
+
       this.showPreviewDialog = true
       this.showMessage('Scanning... Please wait.', 'info')
 
@@ -1370,7 +1445,15 @@ export class DocManager extends LitElement {
   render() {
     return html`
       <div class="container">
-        <h1>📄 DocManager</h1>
+        <div class="header-container">
+          <h1>📄 DocManager</h1>
+          <button
+            class="preferences-btn"
+            @click="${() => (this.showPreferencesDialog = true)}"
+          >
+            ⚙️ Preferences
+          </button>
+        </div>
         <p class="subtitle">Scan, manage and organize your documents</p>
 
         ${this.message
@@ -1580,6 +1663,23 @@ export class DocManager extends LitElement {
         </div>
 
         ${this.showPreviewDialog ? this.renderPreviewDialog() : ''}
+        ${this.showPreferencesDialog
+          ? html`<nh-docmanager-preferences
+              @close=${(e: CustomEvent) => {
+                this.showPreferencesDialog = false
+                if (e.detail?.saved) {
+                  this.showMessage(
+                    '✅ Preferences saved successfully!',
+                    'success',
+                  )
+                  // Refresh filename if OCR data is available
+                  if (this.companyOptions.length > 0) {
+                    this.updateComposedFilename()
+                  }
+                }
+              }}
+            ></nh-docmanager-preferences>`
+          : ''}
         ${this.viewerFile
           ? html`<viewer-dialog
               .file=${this.viewerFile}
@@ -1740,6 +1840,34 @@ export class DocManager extends LitElement {
                                 value="${opt.value}"
                                 ?selected="${opt.value ===
                                 this.selectedCompany}"
+                              >
+                                ${opt.label}
+                              </option>
+                            `,
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          style="display: block; margin-bottom: 6px; font-weight: 600; color: #555;"
+                          >Full Name</label
+                        >
+                        <select
+                          .value="${this.selectedFullName}"
+                          @change="${(e: any) => {
+                            this.selectedFullName = e.target.value
+                            this.updateComposedFilename()
+                          }}"
+                          style="width: 100%; padding: 10px; border: 2px solid #4CAF50; border-radius: 4px; background-color: #f0f8ff; font-size: 0.95em;"
+                        >
+                          <option value="">None</option>
+                          ${this.fullNameOptions.map(
+                            (opt) => html`
+                              <option
+                                value="${opt.value}"
+                                ?selected="${opt.value ===
+                                this.selectedFullName}"
                               >
                                 ${opt.label}
                               </option>
