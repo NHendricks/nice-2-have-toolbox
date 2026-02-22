@@ -634,31 +634,6 @@ try {
                               '[OCR] Starting OCR scan of first page...',
                             );
 
-                            // Read user preferences to get lastName
-                            let lastName = '';
-                            try {
-                              const prefsPath = path.join(
-                                os.homedir(),
-                                'n2htoolbox',
-                                'user-preferences.json',
-                              );
-                              if (fs.existsSync(prefsPath)) {
-                                const prefsContent = fs.readFileSync(
-                                  prefsPath,
-                                  'utf-8',
-                                );
-                                const prefs = JSON.parse(prefsContent);
-                                lastName = prefs.lastName || '';
-                                console.log(
-                                  `[OCR] Using lastName from preferences: ${lastName}`,
-                                );
-                              }
-                            } catch (prefError: any) {
-                              console.warn(
-                                `[OCR] Could not read user preferences: ${prefError.message}`,
-                              );
-                            }
-
                             const { getOcrService } =
                               await import('./ocr-service.js');
                             const ocrService = getOcrService();
@@ -666,10 +641,7 @@ try {
 
                             // OCR and analyze the first image (PNG/JPG)
                             const { text, analysis } =
-                              await ocrService.recognizeAndAnalyze(
-                                filePath,
-                                lastName,
-                              );
+                              await ocrService.recognizeAndAnalyze(filePath);
                             console.log(
                               `[OCR] Extracted ${text.length} characters from first page`,
                             );
@@ -1112,31 +1084,6 @@ try {
                             '[OCR] Starting OCR scan of first page...',
                           );
 
-                          // Read user preferences to get lastName
-                          let lastName = '';
-                          try {
-                            const prefsPath = path.join(
-                              os.homedir(),
-                              'n2htoolbox',
-                              'user-preferences.json',
-                            );
-                            if (fs.existsSync(prefsPath)) {
-                              const prefsContent = fs.readFileSync(
-                                prefsPath,
-                                'utf-8',
-                              );
-                              const prefs = JSON.parse(prefsContent);
-                              lastName = prefs.lastName || '';
-                              console.log(
-                                `[OCR] Using lastName from preferences: ${lastName}`,
-                              );
-                            }
-                          } catch (prefError: any) {
-                            console.warn(
-                              `[OCR] Could not read user preferences: ${prefError.message}`,
-                            );
-                          }
-
                           const { getOcrService } =
                             await import('./ocr-service.js');
                           const ocrService = getOcrService();
@@ -1144,10 +1091,7 @@ try {
 
                           // OCR and analyze the first image (PNG/JPG)
                           const { text, analysis } =
-                            await ocrService.recognizeAndAnalyze(
-                              filePath,
-                              lastName,
-                            );
+                            await ocrService.recognizeAndAnalyze(filePath);
                           console.log(
                             `[OCR] Extracted ${text.length} characters from first page`,
                           );

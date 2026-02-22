@@ -5,13 +5,13 @@
 const PREFERENCES_FILENAME = 'user-preferences.json'
 
 export interface UserPreferences {
-  lastName?: string
   defaultScanDirectory?: string
   defaultResolution?: string
   defaultFormat?: string
-  includeLastNameInFilename?: boolean
+  autoSetFileName?: boolean // Enable OCR scan for first page
   senders?: string[] // Fixed sender strings to match in OCR
   accountNumbers?: string[] // Fixed account numbers/topics to match in OCR
+  fullNames?: string[] // Fixed full names to match in OCR
   // Scanner session preferences (last used settings)
   lastScannerId?: string
   resolution?: string
@@ -124,38 +124,10 @@ export class UserPreferencesService {
   }
 
   /**
-   * Get last name
+   * Get fixed account numbers list
    */
-  getLastName(): string {
-    return this.preferences.lastName || ''
-  }
-
-  /**
-   * Get whether to include last name in filename
-   */
-  getIncludeLastNameInFilename(): boolean {
-    return this.preferences.includeLastNameInFilename !== false // default true
-  }
-
-  /**
-   * Get default scan directory
-   */
-  getDefaultScanDirectory(): string {
-    return this.preferences.defaultScanDirectory || ''
-  }
-
-  /**
-   * Get default resolution
-   */
-  getDefaultResolution(): string {
-    return this.preferences.defaultResolution || '300'
-  }
-
-  /**
-   * Get default format
-   */
-  getDefaultFormat(): string {
-    return this.preferences.defaultFormat || 'pdf'
+  getAccountNumbers(): string[] {
+    return this.preferences.accountNumbers || []
   }
 
   /**
@@ -166,10 +138,24 @@ export class UserPreferencesService {
   }
 
   /**
-   * Get fixed account numbers list
+   * Get fixed full names list
    */
-  getAccountNumbers(): string[] {
-    return this.preferences.accountNumbers || []
+  getFullNames(): string[] {
+    return this.preferences.fullNames || []
+  }
+
+  /**
+   * Get default scan directory
+   */
+  getDefaultScanDirectory(): string {
+    return this.preferences.defaultScanDirectory || ''
+  }
+
+  /**
+   * Get auto set file name (OCR scan enabled)
+   */
+  getAutoSetFileName(): boolean {
+    return this.preferences.autoSetFileName || false
   }
 
   /**

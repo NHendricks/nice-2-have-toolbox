@@ -723,12 +723,30 @@ export class DocManager extends LitElement {
       // 4. POPULATE FULL NAME DROPDOWN
       this.fullNameOptions = []
 
-      if (analysis.fullNames && analysis.fullNames.length > 0) {
-        for (const fullName of analysis.fullNames) {
+      // Get fixed full names from preferences and check if OCR text contains them
+      const fixedFullNames = userPreferencesService.getFullNames()
+      const ocrTextForNames = JSON.stringify(analysis).toLowerCase()
+
+      for (const fullName of fixedFullNames) {
+        if (ocrTextForNames.includes(fullName.toLowerCase())) {
           this.fullNameOptions.push({
             value: this.sanitizeFilename(fullName),
-            label: fullName,
+            label: `${fullName} (Fixed)`,
           })
+        }
+      }
+
+      // Add OCR-detected full names
+      if (analysis.fullNames && analysis.fullNames.length > 0) {
+        for (const fullName of analysis.fullNames) {
+          const fullNameValue = this.sanitizeFilename(fullName)
+          // Only add if not already in options
+          if (!this.fullNameOptions.find((o) => o.value === fullNameValue)) {
+            this.fullNameOptions.push({
+              value: fullNameValue,
+              label: fullName,
+            })
+          }
         }
       }
 
@@ -767,12 +785,13 @@ export class DocManager extends LitElement {
   /**
    * Sanitize a string for use in filenames
    * Removes special characters including / \ : * ? " < > | to prevent file system errors
+   * Allows German umlauts (äöüß) and standard alphanumeric characters
    */
   private sanitizeFilename(str: string): string {
     return str
       .toLowerCase()
       .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '') // Remove all special chars including / \ : * ? " < > |
+      .replace(/[^a-z0-9äöüß-]/g, '') // Allow German umlauts, remove other special chars
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
       .substring(0, 30)
@@ -801,17 +820,6 @@ export class DocManager extends LitElement {
     if (this.selectedAccount)
       parts.push(this.sanitizeFilename(this.selectedAccount))
     if (this.selectedDate) parts.push(this.sanitizeFilename(this.selectedDate))
-
-    // Add last name if enabled in preferences AND no fullName was selected
-    if (!this.selectedFullName) {
-      const includeLastName =
-        userPreferencesService.getIncludeLastNameInFilename()
-      const lastName = userPreferencesService.getLastName()
-      if (includeLastName && lastName) {
-        // Sanitize lastName consistently - no special chars including /
-        parts.push(this.sanitizeFilename(lastName))
-      }
-    }
 
     const baseName = parts.join('_') || 'document'
     const extension = this.format || 'pdf'
@@ -904,6 +912,7 @@ export class DocManager extends LitElement {
     this.multiPage = userPreferencesService.getMultiPage()
     this.duplex = userPreferencesService.getDuplex()
     this.scanDirectory = userPreferencesService.getDefaultScanDirectory()
+    this.autoSetFileName = userPreferencesService.getAutoSetFileName()
 
     console.log(
       '[DocManager] Loaded preferences - Resolution:',

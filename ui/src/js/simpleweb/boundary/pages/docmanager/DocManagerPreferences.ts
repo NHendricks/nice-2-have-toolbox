@@ -5,15 +5,16 @@ import { userPreferencesService } from './UserPreferencesService.js'
 
 @customElement('nh-docmanager-preferences')
 export class DocManagerPreferences extends LitElement {
-  @state() private lastName = ''
   @state() private defaultScanDirectory = ''
   @state() private defaultResolution = '300'
   @state() private defaultFormat = 'pdf'
-  @state() private includeLastNameInFilename = true
+  @state() private autoSetFileName = false
   @state() private senders: string[] = []
   @state() private newSender = ''
   @state() private accountNumbers: string[] = []
   @state() private newAccountNumber = ''
+  @state() private fullNames: string[] = []
+  @state() private newFullName = ''
   @state() private saving = false
   @state() private message = ''
 
@@ -270,13 +271,13 @@ export class DocManagerPreferences extends LitElement {
       '[DocManagerPreferences] Loading preferences into dialog:',
       prefs,
     )
-    this.lastName = prefs.lastName || ''
     this.defaultScanDirectory = prefs.defaultScanDirectory || ''
     this.defaultResolution = prefs.defaultResolution || '300'
     this.defaultFormat = prefs.defaultFormat || 'pdf'
-    this.includeLastNameInFilename = prefs.includeLastNameInFilename !== false
+    this.autoSetFileName = prefs.autoSetFileName || false
     this.senders = prefs.senders || []
     this.accountNumbers = prefs.accountNumbers || []
+    this.fullNames = prefs.fullNames || []
   }
 
   private async handleSave() {
@@ -284,13 +285,13 @@ export class DocManagerPreferences extends LitElement {
     this.message = ''
 
     const prefs: UserPreferences = {
-      lastName: this.lastName,
       defaultScanDirectory: this.defaultScanDirectory,
       defaultResolution: this.defaultResolution,
       defaultFormat: this.defaultFormat,
-      includeLastNameInFilename: this.includeLastNameInFilename,
+      autoSetFileName: this.autoSetFileName,
       senders: this.senders,
       accountNumbers: this.accountNumbers,
+      fullNames: this.fullNames,
     }
 
     const success = await userPreferencesService.save(prefs)
@@ -337,6 +338,18 @@ export class DocManagerPreferences extends LitElement {
     this.accountNumbers = this.accountNumbers.filter((a) => a !== accountNumber)
   }
 
+  private addFullName() {
+    const trimmed = this.newFullName.trim()
+    if (trimmed && !this.fullNames.includes(trimmed)) {
+      this.fullNames = [...this.fullNames, trimmed]
+      this.newFullName = ''
+    }
+  }
+
+  private removeFullName(fullName: string) {
+    this.fullNames = this.fullNames.filter((f) => f !== fullName)
+  }
+
   render() {
     return html`
       <div
@@ -371,31 +384,48 @@ export class DocManagerPreferences extends LitElement {
             </div>
 
             <div class="form-group">
-              <label for="lastName">Your Last Name</label>
-              <input
-                type="text"
-                id="lastName"
-                .value="${this.lastName}"
-                @input="${(e: any) => (this.lastName = e.target.value)}"
-                placeholder="e.g., Smith, Müller, etc."
-              />
+              <label>Fixed Full Names</label>
               <small
-                >Will be included in generated filenames (e.g.,
-                company_account_date_Smith.pdf)</small
+                >Define full names to match in OCR text. These will appear in
+                the full name dropdown when found.</small
               >
-            </div>
-
-            <div class="checkbox-group">
-              <input
-                type="checkbox"
-                id="includeLastName"
-                .checked="${this.includeLastNameInFilename}"
-                @change="${(e: any) =>
-                  (this.includeLastNameInFilename = e.target.checked)}"
-              />
-              <label for="includeLastName"
-                >Include last name in generated filenames</label
-              >
+              ${this.fullNames.length > 0
+                ? html`
+                    <div class="sender-list">
+                      ${this.fullNames.map(
+                        (fullName) => html`
+                          <div class="sender-item">
+                            <span>${fullName}</span>
+                            <button
+                              @click="${() => this.removeFullName(fullName)}"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        `,
+                      )}
+                    </div>
+                  `
+                : html`
+                    <div class="sender-list">
+                      <div class="empty-senders">No full names defined yet</div>
+                    </div>
+                  `}
+              <div class="add-sender-group">
+                <input
+                  type="text"
+                  placeholder="e.g., John Smith, Jane Doe"
+                  .value="${this.newFullName}"
+                  @input="${(e: any) => (this.newFullName = e.target.value)}"
+                  @keydown="${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      this.addFullName()
+                    }
+                  }}"
+                />
+                <button @click="${this.addFullName}">Add</button>
+              </div>
             </div>
 
             <div class="form-group">
@@ -438,6 +468,19 @@ export class DocManagerPreferences extends LitElement {
                 <option value="png">PNG</option>
                 <option value="jpg">JPG</option>
               </select>
+            </div>
+
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="autoSetFileName"
+                .checked="${this.autoSetFileName}"
+                @change="${(e: any) =>
+                  (this.autoSetFileName = e.target.checked)}"
+              />
+              <label for="autoSetFileName"
+                >Enable OCR scan for first page</label
+              >
             </div>
 
             <div class="form-group">

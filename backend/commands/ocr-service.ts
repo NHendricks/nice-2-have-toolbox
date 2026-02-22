@@ -52,10 +52,7 @@ export class OcrService {
   /**
    * Perform OCR on an image and analyze the text
    */
-  async recognizeAndAnalyze(
-    imagePath: string,
-    lastName?: string,
-  ): Promise<{
+  async recognizeAndAnalyze(imagePath: string): Promise<{
     text: string;
     analysis: any;
   }> {
@@ -64,7 +61,7 @@ export class OcrService {
 
       // Analyze the extracted text
       console.log('[OCR Analysis] Starting text analysis...');
-      const analysis = this.analyzeText(text, lastName);
+      const analysis = this.analyzeText(text);
 
       console.log('\n=== OCR TEXT ANALYSIS RESULTS ===');
       console.log(`Sender: ${analysis.sender}`);
@@ -528,7 +525,7 @@ export class OcrService {
   /**
    * Analyze extracted text for sender and other information
    */
-  private analyzeText(text: string, lastName?: string): any {
+  private analyzeText(text: string): any {
     const analysisStartTime = Date.now();
     const timings: Record<string, number> = {};
 
@@ -603,9 +600,9 @@ export class OcrService {
       const numberSequences = this.extractNumberSequences(text);
       timings.numberSequenceExtraction = Date.now() - numberSeqStartTime;
 
-      // Extract full names based on user's last name
+      // Extract full names based on user's last name (no longer used)
       const fullNameStartTime = Date.now();
-      const fullNames = lastName ? this.extractFullNames(text, lastName) : [];
+      const fullNames: string[] = [];
       timings.fullNameExtraction = Date.now() - fullNameStartTime;
 
       // Count word frequency
@@ -686,186 +683,6 @@ export class OcrService {
         error: error.message,
       };
     }
-  }
-
-  /**
-   * Extract full names based on user's last name
-   * Searches for the last name in text and extracts the word(s) before it
-   */
-  private extractFullNames(text: string, lastName: string): string[] {
-    const fullNames: string[] = [];
-    const seen = new Set<string>();
-
-    // Normalize last name for case-insensitive matching
-    const normalizedLastName = lastName.toLowerCase().trim();
-    const escapedLastName = normalizedLastName.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      '\\$&',
-    );
-
-    // Split text into lines for better context
-    const lines = text.split('\n');
-
-    // Pattern 0: Compound first names with connector (PRIORITY)
-    // Handles "FirstName1 und FirstName2 LastName" -> extract "FirstName1 und FirstName2 LastName"
-    const compoundNamePattern = new RegExp(
-      `\\b([A-ZÄÖÜ][a-zäöüß]+)\\s+(and|or|und|&)\\s+([A-ZÄÖÜ][a-zäöüß]+)\\s+${escapedLastName}\\b`,
-      'gi',
-    );
-
-    for (const line of lines) {
-      let match;
-      while ((match = compoundNamePattern.exec(line)) !== null) {
-        const firstName1 = match[1]?.trim();
-        const connector = match[2]?.trim();
-        const firstName2 = match[3]?.trim();
-
-        if (
-          firstName1 &&
-          firstName2 &&
-          firstName1.length > 1 &&
-          firstName2.length > 1
-        ) {
-          // Create compound full name: "FirstName1 und FirstName2 LastName"
-          const fullName = `${firstName1} ${connector} ${firstName2} ${lastName}`;
-          const normalizedFullName = fullName.toLowerCase();
-
-          if (!seen.has(normalizedFullName)) {
-            seen.add(normalizedFullName);
-            fullNames.push(fullName);
-            console.log(
-              `[OCR] Found compound full name: ${fullName} (context: "${line.substring(Math.max(0, match.index - 10), Math.min(line.length, match.index + 70))}")`,
-            );
-          }
-        }
-      }
-    }
-
-    // Pattern 1: Explicitly match "FirstName (and|or|und|&) LastName"
-    // This handles cases like "John and Smith" -> extract "John Smith"
-    const connectorPattern = new RegExp(
-      `\\b([A-ZÄÖÜ][a-zäöüß]+(?:\\s+[A-ZÄÖÜ][a-zäöüß]+)?)\\s+(?:and|or|und|&)\\s+${escapedLastName}\\b`,
-      'gi',
-    );
-
-    for (const line of lines) {
-      let match;
-      while ((match = connectorPattern.exec(line)) !== null) {
-        const firstName = match[1]?.trim();
-        if (firstName && firstName.length > 1) {
-          const fullName = `${firstName} ${lastName}`;
-          const normalizedFullName = fullName.toLowerCase();
-
-          if (!seen.has(normalizedFullName)) {
-            seen.add(normalizedFullName);
-            fullNames.push(fullName);
-            console.log(
-              `[OCR] Found full name with connector: ${fullName} (context: "${line.substring(Math.max(0, match.index - 10), Math.min(line.length, match.index + 60))}")`,
-            );
-          }
-        }
-      }
-    }
-
-    // Pattern 2: Standard "FirstName LastName" pattern
-    const standardPattern = new RegExp(
-      `\\b([A-ZÄÖÜ][a-zäöüß]+(?:\\s+[A-ZÄÖÜ][a-zäöüß]+)?)\\s+${escapedLastName}\\b`,
-      'gi',
-    );
-
-    for (const line of lines) {
-      let match;
-      while ((match = standardPattern.exec(line)) !== null) {
-        let firstName = match[1]?.trim();
-        if (firstName && firstName.length > 1) {
-          const firstNameLower = firstName.toLowerCase();
-
-          // Check if this match is part of a compound name already extracted
-          // Look backwards to see if there's "Name (connector)" before this match
-          const beforeMatch = line.substring(0, match.index);
-          const hasCompoundBefore =
-            /[A-ZÄÖÜ][a-zäöüß]+\s+(?:and|or|und|&)\s*$/i.test(beforeMatch);
-
-          if (hasCompoundBefore) {
-            // This is part of a compound name, skip individual extraction
-            console.log(
-              `[OCR] Skipping "${firstName} ${lastName}" - part of compound name`,
-            );
-            continue;
-          }
-
-          // Check if firstName starts with a connector word
-          const startsWithConnector = ['and ', 'or ', 'und ', '& '].some(
-            (conn) => firstNameLower.startsWith(conn),
-          );
-
-          if (startsWithConnector) {
-            // Extract the part after the connector
-            const parts = firstName.split(/\s+/);
-            if (parts.length > 1) {
-              // Remove the first word (connector) and use the rest
-              firstName = parts.slice(1).join(' ');
-              console.log(`[OCR] Stripped connector word, using: ${firstName}`);
-            } else {
-              // Only a connector word, skip it
-              continue;
-            }
-          }
-
-          // Skip if entire firstName is just a connector word
-          if (
-            ['and', 'or', 'und', '&'].includes(firstName.toLowerCase().trim())
-          ) {
-            continue;
-          }
-
-          const fullName = `${firstName} ${lastName}`;
-          const normalizedFullName = fullName.toLowerCase();
-
-          if (!seen.has(normalizedFullName)) {
-            seen.add(normalizedFullName);
-            fullNames.push(fullName);
-            console.log(
-              `[OCR] Found full name: ${fullName} (context: "${line.substring(Math.max(0, match.index - 20), Math.min(line.length, match.index + 50))}")`,
-            );
-          }
-        }
-      }
-    }
-
-    // Pattern 3: German format "LastName, FirstName"
-    const germanPattern = new RegExp(
-      `${escapedLastName},?\\s+([A-ZÄÖÜ][a-zäöüß]+)\\b`,
-      'gi',
-    );
-
-    for (const line of lines) {
-      let match;
-      while ((match = germanPattern.exec(line)) !== null) {
-        const firstName = match[1]?.trim();
-        if (firstName && firstName.length > 1) {
-          // Skip connector words
-          const firstNameLower = firstName.toLowerCase();
-          if (['and', 'or', 'und'].includes(firstNameLower)) {
-            continue;
-          }
-
-          const fullName = `${firstName} ${lastName}`;
-          const normalizedFullName = fullName.toLowerCase();
-
-          if (!seen.has(normalizedFullName)) {
-            seen.add(normalizedFullName);
-            fullNames.push(fullName);
-            console.log(`[OCR] Found full name (German format): ${fullName}`);
-          }
-        }
-      }
-    }
-
-    console.log(
-      `[OCR] Full name extraction complete: ${fullNames.length} unique names found`,
-    );
-    return fullNames;
   }
 
   /**
