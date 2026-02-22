@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
+import companiesData from '../../json/companies.json' with { type: 'json' }
 import { scannerPreferencesService } from './docmanager/ScannerPreferencesService.js'
 
 // bring in the commander viewer component and type so we can reuse it here
@@ -53,6 +54,14 @@ export class DocManager extends LitElement {
   @state() private previewTempDir = ''
   @state() private viewerFile: ViewerFile | null = null
   @state() private ocrStatus: string = '' // OCR scan status message
+
+  // OCR filename proposal dropdowns
+  @state() private companyOptions: Array<{ value: string; label: string }> = []
+  @state() private accountOptions: Array<{ value: string; label: string }> = []
+  @state() private dateOptions: Array<{ value: string; label: string }> = []
+  @state() private selectedCompany = ''
+  @state() private selectedAccount = ''
+  @state() private selectedDate = ''
 
   static styles = css`
     :host {
@@ -500,6 +509,292 @@ export class DocManager extends LitElement {
     this.removeScannerEventListener()
   }
 
+  /**
+   * Extract filename components from OCR analysis data and populate dropdowns
+   * Creates three dropdown options: company/domain, account number, and date
+   */
+  private extractFilenameFromOCR(analysisJson: string): void {
+    try {
+      const analysis = JSON.parse(analysisJson)
+      console.log(
+        '[DocManager] Extracting filename components from OCR analysis:',
+        analysis,
+      )
+
+      // 1. POPULATE COMPANY/DOMAIN DROPDOWN
+      const companyMatches: Array<{
+        value: string
+        label: string
+        score: number
+      }> = []
+
+      // Search for company matches
+      const searchTerms = [
+        ...(analysis.domains || []),
+        ...(analysis.sender ? [analysis.sender] : []),
+        ...(analysis.organizations || []),
+        ...(analysis.people || []).slice(0, 3), // Only first 3 people as potential company names
+      ]
+
+      const companies = companiesData as Array<{
+        id: number
+        name: string
+        branche: string
+      }>
+
+      for (const term of searchTerms) {
+        if (!term || term.length < 3) continue
+
+        const termLower = term.toLowerCase()
+
+        for (const company of companies) {
+          const companyNameLower = company.name.toLowerCase()
+
+          // Calculate match score
+          let score = 0
+
+          // Exact match (highest score)
+          if (companyNameLower === termLower) {
+            score = 100
+          }
+          // Contains term
+          else if (companyNameLower.includes(termLower)) {
+            score = 50
+          }
+          // Term contains company (for domains like "ruv.de" matching "R+V")
+          else if (
+            termLower.includes(companyNameLower.replace(/[^a-z0-9]/g, ''))
+          ) {
+            score = 40
+          }
+          // Term words match company words
+          else {
+            const termWords = termLower.split(/\s+/)
+            const companyWords = companyNameLower.split(/\s+/)
+            const matchingWords = termWords.filter((tw: string) =>
+              companyWords.some(
+                (cw: string) => cw.includes(tw) || tw.includes(cw),
+              ),
+            )
+            if (matchingWords.length > 0) {
+              score = 30 * (matchingWords.length / companyWords.length)
+            }
+          }
+
+          // Add match if score is significant
+          if (score >= 30) {
+            const existingMatch = companyMatches.find(
+              (m) => m.value === company.name,
+            )
+            if (!existingMatch) {
+              companyMatches.push({
+                value: this.sanitizeFilename(company.name),
+                label: `${company.name} (${company.branche})`,
+                score,
+              })
+            } else if (existingMatch.score < score) {
+              existingMatch.score = score
+            }
+          }
+        }
+      }
+
+      // Sort by score and add to options
+      companyMatches.sort((a, b) => b.score - a.score)
+      this.companyOptions = companyMatches.slice(0, 10).map((m) => ({
+        value: m.value,
+        label: m.label,
+      }))
+
+      // Add raw domains/sender as fallback options
+      if (analysis.domains) {
+        for (const domain of analysis.domains) {
+          const cleanDomain = domain
+            .replace(/^www\./, '')
+            .replace(/\.[a-z]{2,}$/i, '')
+          if (
+            !this.companyOptions.find((o) =>
+              o.value.toLowerCase().includes(cleanDomain.toLowerCase()),
+            )
+          ) {
+            this.companyOptions.push({
+              value: this.sanitizeFilename(cleanDomain),
+              label: `${cleanDomain} (Domain)`,
+            })
+          }
+        }
+      }
+
+      if (analysis.sender && analysis.sender !== 'Unknown') {
+        if (
+          !this.companyOptions.find(
+            (o) => o.value === this.sanitizeFilename(analysis.sender),
+          )
+        ) {
+          this.companyOptions.push({
+            value: this.sanitizeFilename(analysis.sender),
+            label: `${analysis.sender} (Sender)`,
+          })
+        }
+      }
+
+      // Set default selection
+      this.selectedCompany =
+        this.companyOptions.length > 0 ? this.companyOptions[0].value : ''
+
+      // 2. POPULATE ACCOUNT/BILLING NUMBER DROPDOWN
+      this.accountOptions = []
+
+      if (analysis.numberSequences && analysis.numberSequences.length > 0) {
+        // Prioritize sequences by type and length
+        const sortedSequences = [...analysis.numberSequences].sort((a, b) => {
+          // Prefer numeric IDs over formatted numbers
+          if (a.type === 'numeric_id' && b.type !== 'numeric_id') return -1
+          if (b.type === 'numeric_id' && a.type !== 'numeric_id') return 1
+
+          // Prefer medium-length sequences (6-15 chars)
+          const aLen = a.sequence.replace(/\s+/g, '').length
+          const bLen = b.sequence.replace(/\s+/g, '').length
+          const aScore = aLen >= 6 && aLen <= 15 ? 100 : 50
+          const bScore = bLen >= 6 && bLen <= 15 ? 100 : 50
+
+          return bScore - aScore
+        })
+
+        for (const seq of sortedSequences) {
+          const cleanSeq = seq.sequence.replace(/\s+/g, '')
+          const typeLabel =
+            seq.type === 'numeric_id'
+              ? 'Account'
+              : seq.type === 'alphanumeric_id'
+                ? 'Reference'
+                : seq.type === 'iban'
+                  ? 'IBAN'
+                  : 'Number'
+
+          this.accountOptions.push({
+            value: cleanSeq,
+            label: `${seq.sequence} (${typeLabel})`,
+          })
+        }
+      }
+
+      // Set default selection
+      this.selectedAccount =
+        this.accountOptions.length > 0 ? this.accountOptions[0].value : ''
+
+      // 3. POPULATE DATE DROPDOWN
+      this.dateOptions = []
+
+      if (analysis.dates && analysis.dates.length > 0) {
+        // Parse and sort dates
+        const parsedDates = analysis.dates
+          .map((d: string) => {
+            // Try German format DD.MM.YYYY
+            const germanMatch = d.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/)
+            if (germanMatch) {
+              const day = germanMatch[1].padStart(2, '0')
+              const month = germanMatch[2].padStart(2, '0')
+              let year = germanMatch[3]
+              if (year.length === 2) {
+                year = (parseInt(year) > 50 ? '19' : '20') + year
+              }
+              return {
+                original: d,
+                sortable: `${year}${month}${day}`,
+                formatted: `${year}${month}${day}`,
+              }
+            }
+            // Try ISO format YYYY-MM-DD
+            const isoMatch = d.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/)
+            if (isoMatch) {
+              const year = isoMatch[1]
+              const month = isoMatch[2].padStart(2, '0')
+              const day = isoMatch[3].padStart(2, '0')
+              return {
+                original: d,
+                sortable: `${year}${month}${day}`,
+                formatted: `${year}${month}${day}`,
+              }
+            }
+            return null
+          })
+          .filter((d: any) => d !== null)
+          .sort((a: any, b: any) => b.sortable.localeCompare(a.sortable))
+
+        for (const date of parsedDates) {
+          this.dateOptions.push({
+            value: date.formatted,
+            label: `${date.original} (${date.formatted})`,
+          })
+        }
+      }
+
+      // Add current date as fallback
+      const today = new Date()
+      const todayFormatted = today.toISOString().slice(0, 10).replace(/-/g, '')
+      if (!this.dateOptions.find((o) => o.value === todayFormatted)) {
+        this.dateOptions.push({
+          value: todayFormatted,
+          label: `Today (${todayFormatted})`,
+        })
+      }
+
+      // Set default selection (newest date)
+      this.selectedDate =
+        this.dateOptions.length > 0 ? this.dateOptions[0].value : todayFormatted
+
+      // Update the composed filename
+      this.updateComposedFilename()
+
+      console.log('[DocManager] Dropdown options populated:', {
+        companies: this.companyOptions.length,
+        accounts: this.accountOptions.length,
+        dates: this.dateOptions.length,
+      })
+    } catch (err) {
+      console.error('[DocManager] Error extracting filename from OCR:', err)
+      // Set fallback options
+      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+      this.companyOptions = [{ value: 'document', label: 'Document' }]
+      this.accountOptions = []
+      this.dateOptions = [{ value: timestamp, label: `Today (${timestamp})` }]
+      this.selectedCompany = 'document'
+      this.selectedAccount = ''
+      this.selectedDate = timestamp
+      this.updateComposedFilename()
+    }
+  }
+
+  /**
+   * Sanitize a string for use in filenames
+   */
+  private sanitizeFilename(str: string): string {
+    return str
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 30)
+  }
+
+  /**
+   * Compose the final filename from dropdown selections
+   */
+  private updateComposedFilename(): void {
+    const parts = []
+
+    if (this.selectedCompany) parts.push(this.selectedCompany)
+    if (this.selectedAccount) parts.push(this.selectedAccount)
+    if (this.selectedDate) parts.push(this.selectedDate)
+
+    const baseName = parts.join('_') || 'document'
+    const extension = this.format || 'pdf'
+    this.fileName = `${baseName}.${extension}`
+    console.log('[DocManager] Composed filename:', this.fileName)
+  }
+
   private setupScannerEventListener() {
     // Listen for real-time page scan events
     // Note: preload.js strips the event parameter, so we only get data
@@ -519,13 +814,23 @@ export class DocManager extends LitElement {
         // Check for OCR-specific events
         if (data.fileName === 'OCR_SCAN_START') {
           console.log('[DocManager] ✅ OCR_SCAN_START detected!')
-          this.ocrStatus = '🔍 OCR scan läuft...'
+          this.ocrStatus = '🔍 OCR scan running...'
           return
         }
 
         if (data.fileName === 'OCR_SCAN_COMPLETE') {
           console.log('[DocManager] ✅ OCR_SCAN_COMPLETE detected!')
+          console.log('[DocManager] OCR analysis data:', data.filePath)
+
+          // Populate dropdown options from OCR analysis
+          this.extractFilenameFromOCR(data.filePath)
+
           this.ocrStatus = `✅ OCR scan abgeschlossen: ${data.fileSize} Zeichen erkannt`
+          this.showMessage(
+            `📝 Dateiname-Optionen aus OCR extrahiert: ${this.companyOptions.length} Unternehmen, ${this.accountOptions.length} Konten, ${this.dateOptions.length} Daten`,
+            'info',
+          )
+
           // Clear OCR status after 5 seconds
           setTimeout(() => {
             this.ocrStatus = ''
@@ -656,6 +961,10 @@ export class DocManager extends LitElement {
   handleFormatChange(e: any) {
     this.format = e.target.value
     scannerPreferencesService.setFormat(this.format)
+    // Update filename extension if OCR mode is enabled
+    if (this.autoSetFileName && this.companyOptions.length > 0) {
+      this.updateComposedFilename()
+    }
   }
 
   handleMultiPageChange(e: any) {
@@ -670,6 +979,16 @@ export class DocManager extends LitElement {
 
   handleAutoSetFileNameChange(e: any) {
     this.autoSetFileName = e.target.checked
+    // Clear the filename and dropdowns when toggling OCR off
+    if (!this.autoSetFileName) {
+      this.fileName = ''
+      this.companyOptions = []
+      this.accountOptions = []
+      this.dateOptions = []
+      this.selectedCompany = ''
+      this.selectedAccount = ''
+      this.selectedDate = ''
+    }
   }
 
   handleScannerChange(e: any) {
@@ -1086,15 +1405,32 @@ export class DocManager extends LitElement {
                 placeholder="Leave empty for default (Documents/Scans)"
               />
             </div>
-            <div class="form-group">
-              <label>File Name (optional)</label>
-              <input
-                type="text"
-                .value="${this.fileName}"
-                @input="${(e: any) => (this.fileName = e.target.value)}"
-                placeholder="Auto-generated if empty"
-              />
-            </div>
+            ${!this.autoSetFileName
+              ? html`
+                  <div class="form-group">
+                    <label>File Name (optional)</label>
+                    <input
+                      type="text"
+                      .value="${this.fileName}"
+                      @input="${(e: any) => (this.fileName = e.target.value)}"
+                      placeholder="Auto-generated if empty"
+                    />
+                  </div>
+                `
+              : html`
+                  <div class="form-group">
+                    <label>File Name</label>
+                    <div
+                      style="padding: 12px; background: #e3f2fd; border-radius: 6px; color: #1565c0;"
+                    >
+                      <strong>ℹ️ OCR Filename Mode</strong>
+                      <p style="margin: 8px 0 0 0; font-size: 0.9em;">
+                        After scanning, you'll choose company, account, and date
+                        from dropdowns in the preview dialog.
+                      </p>
+                    </div>
+                  </div>
+                `}
             <div class="form-group">
               <label>Resolution (DPI)</label>
               <select @change="${this.handleResolutionChange}">
@@ -1272,7 +1608,7 @@ export class DocManager extends LitElement {
                         ? '#721c24'
                         : '#0c5460'}; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-weight: 600;"
                   >
-                    ${this.ocrStatus.includes('läuft')
+                    ${this.ocrStatus.includes('running')
                       ? html`<div
                           class="spinner"
                           style="width: 20px; height: 20px; border-width: 3px; border-color: #0c5460 transparent #0c5460 transparent;"
@@ -1358,6 +1694,123 @@ export class DocManager extends LitElement {
                   : html`<div class="empty-state">
                       <p>All pages removed.</p>
                     </div>`}
+            ${this.autoSetFileName && this.companyOptions.length > 0
+              ? html`
+                  <div
+                    style="padding: 20px; background: #f8f9fa; border-top: 2px solid #e0e0e0; border-bottom: 2px solid #e0e0e0;"
+                  >
+                    <h3
+                      style="margin: 0 0 16px 0; color: #333; font-size: 1.1em;"
+                    >
+                      📝 Filename Selection
+                    </h3>
+                    <div
+                      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;"
+                    >
+                      <div>
+                        <label
+                          style="display: block; margin-bottom: 6px; font-weight: 600; color: #555;"
+                          >Company / Domain</label
+                        >
+                        <select
+                          .value="${this.selectedCompany}"
+                          @change="${(e: any) => {
+                            this.selectedCompany = e.target.value
+                            this.updateComposedFilename()
+                          }}"
+                          style="width: 100%; padding: 10px; border: 2px solid #4CAF50; border-radius: 4px; background-color: #f0f8ff; font-size: 0.95em;"
+                        >
+                          ${this.companyOptions.map(
+                            (opt) => html`
+                              <option
+                                value="${opt.value}"
+                                ?selected="${opt.value ===
+                                this.selectedCompany}"
+                              >
+                                ${opt.label}
+                              </option>
+                            `,
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          style="display: block; margin-bottom: 6px; font-weight: 600; color: #555;"
+                          >Account / Billing Number</label
+                        >
+                        <select
+                          .value="${this.selectedAccount}"
+                          @change="${(e: any) => {
+                            this.selectedAccount = e.target.value
+                            this.updateComposedFilename()
+                          }}"
+                          style="width: 100%; padding: 10px; border: 2px solid #4CAF50; border-radius: 4px; background-color: #f0f8ff; font-size: 0.95em;"
+                        >
+                          <option value="">None</option>
+                          ${this.accountOptions.map(
+                            (opt) => html`
+                              <option
+                                value="${opt.value}"
+                                ?selected="${opt.value ===
+                                this.selectedAccount}"
+                              >
+                                ${opt.label}
+                              </option>
+                            `,
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          style="display: block; margin-bottom: 6px; font-weight: 600; color: #555;"
+                          >Date</label
+                        >
+                        <select
+                          .value="${this.selectedDate}"
+                          @change="${(e: any) => {
+                            this.selectedDate = e.target.value
+                            this.updateComposedFilename()
+                          }}"
+                          style="width: 100%; padding: 10px; border: 2px solid #4CAF50; border-radius: 4px; background-color: #f0f8ff; font-size: 0.95em;"
+                        >
+                          ${this.dateOptions.map(
+                            (opt) => html`
+                              <option
+                                value="${opt.value}"
+                                ?selected="${opt.value === this.selectedDate}"
+                              >
+                                ${opt.label}
+                              </option>
+                            `,
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style="margin-top: 16px;">
+                      <label
+                        style="display: block; margin-bottom: 6px; font-weight: 600; color: #555;"
+                        >📄 Final Filename (editable)</label
+                      >
+                      <input
+                        type="text"
+                        .value="${this.fileName}"
+                        @input="${(e: any) => (this.fileName = e.target.value)}"
+                        placeholder="Composed filename"
+                        style="width: 100%; padding: 12px; border: 2px solid #2196F3; border-radius: 4px; background-color: #ffffcc; font-weight: bold; font-size: 1em;"
+                      />
+                      <small
+                        style="color: #666; font-size: 0.85em; margin-top: 6px; display: block;"
+                      >
+                        ℹ️ Select your preferred options above, then click Save.
+                        You can also edit the filename directly.
+                      </small>
+                    </div>
+                  </div>
+                `
+              : ''}
           </div>
           <div class="preview-footer">
             <span class="page-count"

@@ -16,10 +16,16 @@
     "test": "echo nothing",
     "buildWindowsApp": "npm run build && npx rimraf dist && cd tools && npm run build-win",
     "buildMacApp": "npm run build && npx rimraf dist && cd tools && npm run build-mac",
-    "buildLinuxApp": "npm run build && npx rimraf dist && cd tools && npm run build-linux"
+    "buildLinuxApp": "npm run build && npx rimraf dist && cd tools && npm run build-linux",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,js,json,md}": "prettier --write"
   },
   "devDependencies": {
     "@types/node": "^25.0.10",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "typescript": "^5.9.3"
   },
   "dependencies": {

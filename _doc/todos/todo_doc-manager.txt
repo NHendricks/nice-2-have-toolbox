@@ -1,9 +1,9 @@
 - pdf manager
-  - create a config file in userhome/n2htoolbox to save some preferences in the future. do not save the current prefs automatically because they contains passwords.
+- do not ocr scan for "scan more" in dialog"
   -  when ocr is selected, propose a file name from found domain, account, newest date
-  - arrange scan and files in 2 tabs
-    - files tab: add new features here
-  - add hint for duplex (use naps2)
+  - add hint for duplex (use naps2) when duplex scan did not work
+
+- new tools app
   - remember all settings
   - define own managed folder
   - show text in popup (save text as filename.txt)

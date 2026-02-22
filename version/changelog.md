@@ -10,6 +10,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+- redesign menu to look like mac launchpad
+- add tools section for simple tools
+  - add json formatter ui
 - new app documentManager
   - scan documents (pdf, png, jpg)
   - remove images option in live preview, save as pdf
@@ -22,9 +25,6 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - garbagefinder
   - fix drive detection on mac
   - show progress dialog when deleting files
-- redesign menu to look like mac launchpad
-- add tools section for simple tools
-  - add json formatter ui
 
 ### v2.1.0 (14.02.2026)
 

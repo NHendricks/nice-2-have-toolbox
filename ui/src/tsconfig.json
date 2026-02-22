@@ -24,6 +24,7 @@
     "forceConsistentCasingInFileNames": true,
     "useUnknownInCatchVariables": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true
   }
 }

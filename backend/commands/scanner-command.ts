@@ -607,7 +607,7 @@ try {
                                 0,
                                 'OCR_SCAN_COMPLETE',
                                 text.length,
-                                '',
+                                JSON.stringify(analysis),
                                 '',
                               );
                             }
@@ -1056,7 +1056,7 @@ try {
                               0,
                               'OCR_SCAN_COMPLETE',
                               text.length,
-                              '',
+                              JSON.stringify(analysis),
                               '',
                             );
                           }

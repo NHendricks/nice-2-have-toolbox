@@ -1,2 +1,3 @@
 Commander:
+- doubleclick file n commander should start open with dialog if not image file or plain text file < 200KB
 - ask user when existing file exists during copy, dont alwaýs create copies
