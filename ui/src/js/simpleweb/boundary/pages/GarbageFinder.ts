@@ -996,11 +996,16 @@ export class GarbageFinder extends LitElement {
   nodeContainsPath(node: FolderNode, targetPath: string): boolean {
     // Check if the target path is this node or under this node
     if (targetPath === node.path) return true
-    if (targetPath.startsWith(node.path + '\\') || targetPath.startsWith(node.path + '/')) {
+    if (
+      targetPath.startsWith(node.path + '\\') ||
+      targetPath.startsWith(node.path + '/')
+    ) {
       return true
     }
     // Check children recursively
-    return node.children.some((child) => this.nodeContainsPath(child, targetPath))
+    return node.children.some((child) =>
+      this.nodeContainsPath(child, targetPath),
+    )
   }
 
   formatSize(bytes: number): string {
