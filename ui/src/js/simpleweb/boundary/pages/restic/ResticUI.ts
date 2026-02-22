@@ -3622,8 +3622,7 @@ export class ResticUI extends LitElement {
             <span>${stats.removed.size} Removed</span>
           </div>
           <div
-            class="diff-stat diff-stat-modified ${this.diffFilter ===
-            'modified'
+            class="diff-stat diff-stat-modified ${this.diffFilter === 'modified'
               ? 'active'
               : ''}"
             @click=${() => {
