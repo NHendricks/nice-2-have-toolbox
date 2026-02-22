@@ -1,7 +1,7 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { userPreferencesService } from './UserPreferencesService.js'
 import type { UserPreferences } from './UserPreferencesService.js'
+import { userPreferencesService } from './UserPreferencesService.js'
 
 @customElement('nh-docmanager-preferences')
 export class DocManagerPreferences extends LitElement {

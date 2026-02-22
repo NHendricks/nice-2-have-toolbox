@@ -1,9 +1,9 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import companiesData from '../../json/companies.json' with { type: 'json' }
+import './docmanager/DocManagerPreferences.js'
 import { scannerPreferencesService } from './docmanager/ScannerPreferencesService.js'
 import { userPreferencesService } from './docmanager/UserPreferencesService.js'
-import './docmanager/DocManagerPreferences.js'
 
 // bring in the commander viewer component and type so we can reuse it here
 import type { ViewerFile } from './commander/commander.types.js'
@@ -821,14 +821,28 @@ export class DocManager extends LitElement {
   /**
    * Sanitize a string for use in filenames
    */
+  /**
+   * Sanitize a string for use in filenames
+   * Removes special characters including / \ : * ? " < > | to prevent file system errors
+   */
   private sanitizeFilename(str: string): string {
     return str
       .toLowerCase()
       .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
+      .replace(/[^a-z0-9-]/g, '') // Remove all special chars including / \ : * ? " < > |
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
       .substring(0, 30)
+  }
+
+  /**
+   * Handle filename input change with sanitization
+   * Removes invalid characters including / to prevent file system errors
+   */
+  private handleFileNameInput(e: any): void {
+    const value = e.target.value
+    // Remove invalid filename characters: / \ : * ? " < > |
+    this.fileName = value.replace(/[\/\\:*?"<>|]/g, '')
   }
 
   /**
@@ -837,10 +851,13 @@ export class DocManager extends LitElement {
   private updateComposedFilename(): void {
     const parts = []
 
-    if (this.selectedCompany) parts.push(this.selectedCompany)
-    if (this.selectedFullName) parts.push(this.selectedFullName)
-    if (this.selectedAccount) parts.push(this.selectedAccount)
-    if (this.selectedDate) parts.push(this.selectedDate)
+    if (this.selectedCompany)
+      parts.push(this.sanitizeFilename(this.selectedCompany))
+    if (this.selectedFullName)
+      parts.push(this.sanitizeFilename(this.selectedFullName))
+    if (this.selectedAccount)
+      parts.push(this.sanitizeFilename(this.selectedAccount))
+    if (this.selectedDate) parts.push(this.sanitizeFilename(this.selectedDate))
 
     // Add last name if enabled in preferences AND no fullName was selected
     if (!this.selectedFullName) {
@@ -848,7 +865,8 @@ export class DocManager extends LitElement {
         userPreferencesService.getIncludeLastNameInFilename()
       const lastName = userPreferencesService.getLastName()
       if (includeLastName && lastName) {
-        parts.push(lastName.toLowerCase().replace(/[^a-z0-9-_]/gi, '-'))
+        // Sanitize lastName consistently - no special chars including /
+        parts.push(this.sanitizeFilename(lastName))
       }
     }
 
@@ -1509,7 +1527,7 @@ export class DocManager extends LitElement {
                     <input
                       type="text"
                       .value="${this.fileName}"
-                      @input="${(e: any) => (this.fileName = e.target.value)}"
+                      @input="${this.handleFileNameInput}"
                       placeholder="Auto-generated if empty"
                     />
                   </div>
@@ -1939,7 +1957,7 @@ export class DocManager extends LitElement {
                       <input
                         type="text"
                         .value="${this.fileName}"
-                        @input="${(e: any) => (this.fileName = e.target.value)}"
+                        @input="${this.handleFileNameInput}"
                         placeholder="Composed filename"
                         style="width: 100%; padding: 12px; border: 2px solid #2196F3; border-radius: 4px; background-color: #ffffcc; font-weight: bold; font-size: 1em;"
                       />

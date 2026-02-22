@@ -1,6 +1,7 @@
 - pdf manager
-- search 1 name further back when first name found is and or und or &
-- ✅ for account or number use whole string from blank to blank
+- ✅ search 1 word further back when found full name starts with and or und or & (compound names like "Nils und Frauke Hendricks" now extracted correctly)
+- add optoin open folder (with scan results)in n2h commander
+
 - new tools app
   - define own managed folder
   - ocr scan for all pdfs in a specified directory

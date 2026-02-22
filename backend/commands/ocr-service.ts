@@ -706,6 +706,41 @@ export class OcrService {
     // Split text into lines for better context
     const lines = text.split('\n');
 
+    // Pattern 0: Compound first names with connector (PRIORITY)
+    // Handles "FirstName1 und FirstName2 LastName" -> extract "FirstName1 und FirstName2 LastName"
+    const compoundNamePattern = new RegExp(
+      `\\b([A-ZÄÖÜ][a-zäöüß]+)\\s+(and|or|und|&)\\s+([A-ZÄÖÜ][a-zäöüß]+)\\s+${escapedLastName}\\b`,
+      'gi',
+    );
+
+    for (const line of lines) {
+      let match;
+      while ((match = compoundNamePattern.exec(line)) !== null) {
+        const firstName1 = match[1]?.trim();
+        const connector = match[2]?.trim();
+        const firstName2 = match[3]?.trim();
+
+        if (
+          firstName1 &&
+          firstName2 &&
+          firstName1.length > 1 &&
+          firstName2.length > 1
+        ) {
+          // Create compound full name: "FirstName1 und FirstName2 LastName"
+          const fullName = `${firstName1} ${connector} ${firstName2} ${lastName}`;
+          const normalizedFullName = fullName.toLowerCase();
+
+          if (!seen.has(normalizedFullName)) {
+            seen.add(normalizedFullName);
+            fullNames.push(fullName);
+            console.log(
+              `[OCR] Found compound full name: ${fullName} (context: "${line.substring(Math.max(0, match.index - 10), Math.min(line.length, match.index + 70))}")`,
+            );
+          }
+        }
+      }
+    }
+
     // Pattern 1: Explicitly match "FirstName (and|or|und|&) LastName"
     // This handles cases like "John and Smith" -> extract "John Smith"
     const connectorPattern = new RegExp(
@@ -741,12 +776,47 @@ export class OcrService {
     for (const line of lines) {
       let match;
       while ((match = standardPattern.exec(line)) !== null) {
-        const firstName = match[1]?.trim();
+        let firstName = match[1]?.trim();
         if (firstName && firstName.length > 1) {
-          // Skip connector words
           const firstNameLower = firstName.toLowerCase();
-          if (['and', 'or', 'und'].includes(firstNameLower)) {
-            continue; // Skip this match, it's a connector word
+
+          // Check if this match is part of a compound name already extracted
+          // Look backwards to see if there's "Name (connector)" before this match
+          const beforeMatch = line.substring(0, match.index);
+          const hasCompoundBefore =
+            /[A-ZÄÖÜ][a-zäöüß]+\s+(?:and|or|und|&)\s*$/i.test(beforeMatch);
+
+          if (hasCompoundBefore) {
+            // This is part of a compound name, skip individual extraction
+            console.log(
+              `[OCR] Skipping "${firstName} ${lastName}" - part of compound name`,
+            );
+            continue;
+          }
+
+          // Check if firstName starts with a connector word
+          const startsWithConnector = ['and ', 'or ', 'und ', '& '].some(
+            (conn) => firstNameLower.startsWith(conn),
+          );
+
+          if (startsWithConnector) {
+            // Extract the part after the connector
+            const parts = firstName.split(/\s+/);
+            if (parts.length > 1) {
+              // Remove the first word (connector) and use the rest
+              firstName = parts.slice(1).join(' ');
+              console.log(`[OCR] Stripped connector word, using: ${firstName}`);
+            } else {
+              // Only a connector word, skip it
+              continue;
+            }
+          }
+
+          // Skip if entire firstName is just a connector word
+          if (
+            ['and', 'or', 'und', '&'].includes(firstName.toLowerCase().trim())
+          ) {
+            continue;
           }
 
           const fullName = `${firstName} ${lastName}`;
