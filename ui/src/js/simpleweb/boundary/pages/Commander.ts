@@ -11,7 +11,6 @@ import {
   cancelOperation,
   executeDelete,
   executeFileOperation,
-  executeMkdir,
   executeRename,
   executeZip,
 } from './commander/services/FileOperationsHandler.js'
@@ -1378,33 +1377,32 @@ export class Commander extends LitElement {
 
     const { currentPath, folderName } = this.mkdirDialog
     if (!folderName.trim()) {
-
-    // Show progress message while deleting
-    this.deleteProgress = { message: `Deleting ${files.length} file(s)...` }
-    this.requestUpdate()
-
-    const result = await executeDelete(files, (msg: string) => {
-      this.deleteProgress = { message: msg }
+      // Show progress message while deleting
+      this.deleteProgress = { message: `Deleting ${files.length} file(s)...` }
       this.requestUpdate()
-    })
 
-    // Clear progress
-    this.deleteProgress = null
+      const result = await executeDelete(files, (msg: string) => {
+        this.deleteProgress = { message: msg }
+        this.requestUpdate()
+      })
 
-    this.setStatus(result.message, result.success ? 'success' : 'error')
+      // Clear progress
+      this.deleteProgress = null
 
-    if (!result.success) {
-      alert(`Failed to delete: ${result.message}`)
-    }
+      this.setStatus(result.message, result.success ? 'success' : 'error')
 
-    if (result.success) {
-      await this.loadDirectory(
-        this.activePane,
-        this.getActivePane().currentPath,
-      )
-    }
+      if (!result.success) {
+        alert(`Failed to delete: ${result.message}`)
+      }
 
-    this.deleteDialog = null
+      if (result.success) {
+        await this.loadDirectory(
+          this.activePane,
+          this.getActivePane().currentPath,
+        )
+      }
+
+      this.deleteDialog = null
       const newDirIndex = pane.items.findIndex(
         (item) => item.name === folderName.trim() && item.isDirectory,
       )
@@ -3105,7 +3103,9 @@ export class Commander extends LitElement {
           ? html`<div class="confirm-overlay">
               <div class="confirm-dialog">
                 <div class="confirm-title">Deleting…</div>
-                <div class="confirm-message">${this.deleteProgress.message}</div>
+                <div class="confirm-message">
+                  ${this.deleteProgress.message}
+                </div>
                 <div style="margin-top:12px;text-align:center">
                   <span class="spinner"></span>
                 </div>
