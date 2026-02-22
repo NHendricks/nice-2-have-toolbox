@@ -254,7 +254,7 @@ export class ResponsiveMenu extends LitElement {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.90);
+      background: rgba(0, 0, 0, 0.9);
       backdrop-filter: blur(40px);
       -webkit-backdrop-filter: blur(40px);
       z-index: 1002;
@@ -867,10 +867,7 @@ export class ResponsiveMenu extends LitElement {
     return this.config.mainNavigation.map((item) => {
       if (item.hasSubmenu && item.submenu) {
         return html`
-          <div
-            class="portrait-nav-item"
-            @click=${() => this.openFolder(item)}
-          >
+          <div class="portrait-nav-item" @click=${() => this.openFolder(item)}>
             <div class="app-icon">${item.icon || '📂'}</div>
             <div class="app-label">${item.label}</div>
             <span class="folder-indicator">▸</span>
@@ -898,10 +895,12 @@ export class ResponsiveMenu extends LitElement {
     return html`
       <div class="folder-popup ${this.openFolderMenu ? 'open' : ''}">
         <div class="folder-popup-header">
-          <div class="folder-popup-icon">${this.openFolderMenu.icon || '📂'}</div>
+          <div class="folder-popup-icon">
+            ${this.openFolderMenu.icon || '📂'}
+          </div>
           <div class="folder-popup-title">${this.openFolderMenu.label}</div>
         </div>
-        
+
         <div class="folder-popup-grid">
           ${this.openFolderMenu.submenu.map(
             (subItem) => html`

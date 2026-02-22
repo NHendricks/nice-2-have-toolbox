@@ -14,7 +14,8 @@ export class JSONFormatter extends LitElement {
       height: 100vh;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       color: #eaeaea;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       overflow: hidden;
     }
 
@@ -292,11 +293,11 @@ export class JSONFormatter extends LitElement {
 
   private getStats(text: string) {
     if (!text) return { chars: 0, lines: 0, size: '0 B' }
-    
+
     const chars = text.length
     const lines = text.split('\n').length
     const bytes = new Blob([text]).size
-    
+
     let size = `${bytes} B`
     if (bytes > 1024) {
       size = `${(bytes / 1024).toFixed(2)} KB`
@@ -304,7 +305,7 @@ export class JSONFormatter extends LitElement {
     if (bytes > 1024 * 1024) {
       size = `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     }
-    
+
     return { chars, lines, size }
   }
 
@@ -326,9 +327,7 @@ export class JSONFormatter extends LitElement {
             <button class="btn btn-secondary" @click=${this.minifyJSON}>
               Minify
             </button>
-            <button class="btn" @click=${this.validateJSON}>
-              Validate
-            </button>
+            <button class="btn" @click=${this.validateJSON}>Validate</button>
             <button class="btn btn-danger" @click=${this.clearInput}>
               Clear All
             </button>

@@ -22,6 +22,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - garbagefinder
   - fix drive detection on mac
   - show progress dialog when deleting files
+- redesign menu to look like mac launchpad
+- add tools section for simple tools
+  - add json formatter ui
 
 ### v2.1.0 (14.02.2026)
 

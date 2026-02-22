@@ -5,10 +5,10 @@ import './simpleweb/boundary/pages/CommandParameter'
 import './simpleweb/boundary/pages/DocManager'
 import './simpleweb/boundary/pages/Faq'
 import './simpleweb/boundary/pages/GarbageFinder'
+import './simpleweb/boundary/pages/JSONFormatter'
 import './simpleweb/boundary/pages/MoneyFinder'
 import './simpleweb/boundary/pages/restic/ResticUI'
 import './simpleweb/boundary/pages/taskboard/TaskBoard'
-import './simpleweb/boundary/pages/JSONFormatter'
 
 const LAST_APP_KEY = 'nh-toolbox-last-app'
 
