@@ -85,11 +85,16 @@ export class ResponsiveMenu extends LitElement {
     }
 
     @keyframes subtlePulse {
-      0%, 100% {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 255, 255, 0.2);
+      0%,
+      100% {
+        box-shadow:
+          0 4px 12px rgba(0, 0, 0, 0.4),
+          0 0 0 0 rgba(255, 255, 255, 0.2);
       }
       50% {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 8px 2px rgba(255, 255, 255, 0.15);
+        box-shadow:
+          0 4px 16px rgba(0, 0, 0, 0.5),
+          0 0 8px 2px rgba(255, 255, 255, 0.15);
       }
     }
 
@@ -108,7 +113,9 @@ export class ResponsiveMenu extends LitElement {
       align-items: center;
       gap: 5px;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 255, 255, 0.2);
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        0 0 0 0 rgba(255, 255, 255, 0.2);
       position: relative;
     }
 
@@ -118,8 +125,14 @@ export class ResponsiveMenu extends LitElement {
       inset: -2px;
       border-radius: 16px;
       padding: 2px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.15),
+        rgba(255, 255, 255, 0.05)
+      );
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
       opacity: 0;
@@ -129,7 +142,9 @@ export class ResponsiveMenu extends LitElement {
     .burger-btn:hover {
       background: rgba(255, 255, 255, 0.2);
       transform: scale(1.08);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 255, 255, 0.2);
+      box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(255, 255, 255, 0.2);
     }
 
     .burger-btn:hover::after {
