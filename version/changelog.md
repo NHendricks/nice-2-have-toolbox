@@ -20,6 +20,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - add help entry how to select files on mac
 - garbagefinder
   - fix drive detection on mac
+  - show progress dialog when deleting files
 
 ### v2.1.0 (14.02.2026)
 

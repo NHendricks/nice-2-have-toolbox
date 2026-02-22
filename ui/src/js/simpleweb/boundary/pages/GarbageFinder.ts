@@ -878,6 +878,10 @@ export class GarbageFinder extends LitElement {
     this.deleteConfirm = { show: false, node: null }
   }
 
+  // Indicates a delete operation is currently in progress (shows wait dialog)
+  deleteInProgress: boolean = false
+  deleteInProgressPath: string | null = null
+
   async confirmDelete() {
     if (!this.deleteConfirm.node) return
 
@@ -885,6 +889,11 @@ export class GarbageFinder extends LitElement {
     const nodePath = node.path
     const deletedSize = node.size
     this.hideDeleteConfirm()
+
+    // Show wait dialog while deletion is in progress
+    this.deleteInProgress = true
+    this.deleteInProgressPath = nodePath
+    this.requestUpdate()
 
     try {
       const response = await (window as any).electron.ipcRenderer.invoke(
@@ -919,6 +928,10 @@ export class GarbageFinder extends LitElement {
     } catch (error) {
       console.error('Delete failed:', error)
       alert(`Failed to delete: ${error}`)
+    } finally {
+      this.deleteInProgress = false
+      this.deleteInProgressPath = null
+      this.requestUpdate()
     }
   }
 
@@ -1306,6 +1319,21 @@ export class GarbageFinder extends LitElement {
               </div>
             `
           })()
+        : ''}
+      ${this.deleteInProgress
+        ? html`
+            <div class="confirm-overlay">
+              <div class="confirm-dialog">
+                <div class="confirm-title">Deleting…</div>
+                <div class="confirm-message">
+                  Deleting ${this.deleteInProgressPath}
+                </div>
+                <div style="margin-top:12px;text-align:center">
+                  <span class="spinner"></span>
+                </div>
+              </div>
+            </div>
+          `
         : ''}
     `
   }

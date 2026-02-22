@@ -2,3 +2,4 @@ Commander:
 - delete dir: show progress and show error if it fails
 - ask user when existing file exists during copy, dont alwaýs create copies
 - open editor with first 100 lines, then lazy load more
+- cancel copy files dialog does not cancel copy action
