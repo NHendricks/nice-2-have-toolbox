@@ -2,8 +2,8 @@
  * FileOperationsHandler - Handles file operation logic (copy, move, delete, zip)
  */
 
-import { FileService } from './FileService.js'
 import { getFileName, getPathSeparator, isFtpPath } from '../utils/PathUtils.js'
+import { FileService } from './FileService.js'
 
 export interface OperationResult {
   success: boolean
@@ -26,7 +26,9 @@ export async function executeFileOperation(
   const isDestFTP = isFtpPath(destination)
 
   if (!anySourceIsFtp && !isDestFTP) {
-    onProgress?.(`${type === 'copy' ? 'Copying' : 'Moving'} ${files.length} file(s)...`)
+    onProgress?.(
+      `${type === 'copy' ? 'Copying' : 'Moving'} ${files.length} file(s)...`,
+    )
 
     const response = await (window as any).electron.ipcRenderer.invoke(
       'cli-execute',
@@ -285,7 +287,8 @@ export async function executeMkdir(
     }
   } else {
     // Local mkdir
-    const dirPath = currentPath + (currentPath.endsWith('/') ? '' : '/') + folderName
+    const dirPath =
+      currentPath + (currentPath.endsWith('/') ? '' : '/') + folderName
 
     const response = await (window as any).electron.ipcRenderer.invoke(
       'cli-execute',

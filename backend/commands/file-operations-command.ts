@@ -151,7 +151,10 @@ export class FileOperationsCommand implements ICommand {
         case 'copy':
           // Support copying multiple files in one operation when sourcePath is an array
           if (Array.isArray(params.sourcePath)) {
-            return await this.copyMultipleFiles(params.sourcePath, destinationPath);
+            return await this.copyMultipleFiles(
+              params.sourcePath,
+              destinationPath,
+            );
           }
           return await this.copyFile(sourcePath, destinationPath);
         case 'move':
@@ -2018,10 +2021,7 @@ export class FileOperationsCommand implements ICommand {
 
       try {
         const baseName = path.basename(src);
-        const destPath = path.join(
-          destinationDir,
-          baseName,
-        );
+        const destPath = path.join(destinationDir, baseName);
 
         // Use existing single-file copy logic
         const result = await this.copyFile(src, destPath);
