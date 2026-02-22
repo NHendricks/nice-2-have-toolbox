@@ -19,5 +19,9 @@
   },
   "devDependencies": {
     "archiver": "^7.0.1"
+  },
+  "overrides": {
+    "minimatch": "^10.2.2",
+    "glob": "^13.0.6"
   }
 }

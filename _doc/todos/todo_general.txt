@@ -1,9 +1,5 @@
 now:
 
-- cleanup npm security issues (upgrade jest etc)
-
-- cleanup mess with ipcbridge.ts and regis
-
 - change menu to look like applauncher in mac
 - integrate menu button better in apps
 
