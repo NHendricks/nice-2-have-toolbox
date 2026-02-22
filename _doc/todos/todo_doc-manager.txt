@@ -1,5 +1,6 @@
 - pdf manager
-  - suggest file name from ocs result. add dropdown options or plain text edit
+  - create a config file in userhome/n2htoolbox to save some preferences in the future. do not save the current prefs automatically because they contains passwords.
+  -  when ocr is selected, propose a file name from found domain, account, newest date
   - arrange scan and files in 2 tabs
     - files tab: add new features here
   - add hint for duplex (use naps2)

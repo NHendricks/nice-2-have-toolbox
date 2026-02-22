@@ -4,6 +4,7 @@
  */
 
 import { CalculateCommand } from './calculate-command.js';
+import { ConfigCommand } from './config-command.js';
 import { ICommand } from './command-interface.js';
 import { FileOperationsCommand } from './file-operations-command.js';
 import { FTPCommand } from './ftp-command.js';
@@ -35,6 +36,7 @@ export class CommandRegistry {
     this.register('garbage-finder', new GarbageFinderCommand());
     this.register('restic', new ResticCommand());
     this.register('scanner', new ScannerCommand());
+    this.register('config', new ConfigCommand());
   }
 
   /**
