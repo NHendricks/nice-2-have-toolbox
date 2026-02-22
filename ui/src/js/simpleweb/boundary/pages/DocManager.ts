@@ -1,6 +1,6 @@
+import { Router } from '@vaadin/router'
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { Router } from '@vaadin/router'
 import './docmanager/DocManagerPreferences.js'
 import { userPreferencesService } from './docmanager/UserPreferencesService.js'
 
