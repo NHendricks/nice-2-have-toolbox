@@ -158,6 +158,13 @@ export class FileOperationsCommand implements ICommand {
           }
           return await this.copyFile(sourcePath, destinationPath);
         case 'move':
+          // Support moving multiple files in one operation when sourcePath is an array
+          if (Array.isArray(params.sourcePath)) {
+            return await this.moveMultipleFiles(
+              params.sourcePath,
+              destinationPath,
+            );
+          }
           return await this.moveFile(sourcePath, destinationPath);
         case 'rename':
           return await this.renameFile(sourcePath, destinationPath);
@@ -2140,6 +2147,55 @@ export class FileOperationsCommand implements ICommand {
         continue;
       }
     }
+  }
+
+  /**
+   * Move multiple files to a destination directory
+   */
+  private async moveMultipleFiles(
+    sourcePaths: string[],
+    destinationDir: string,
+  ): Promise<any> {
+    if (!Array.isArray(sourcePaths) || sourcePaths.length === 0) {
+      return { success: false, error: 'No source files provided' };
+    }
+
+    const total = sourcePaths.length;
+    let moved = 0;
+
+    for (const src of sourcePaths) {
+      if (this.cancelled) {
+        throw new Error('Operation cancelled by user');
+      }
+
+      try {
+        const baseName = path.basename(src);
+        const destPath = path.join(destinationDir, baseName);
+
+        // Use existing single-file move logic
+        const result = await this.moveFile(src, destPath);
+
+        // If moveFile returns an error-like object, propagate
+        if (result && result.success === false) {
+          return { success: false, error: result.error || 'Move failed' };
+        }
+
+        moved++;
+        // Report progress: current index, total, and current file name
+        this.progressCallback?.(moved, total, baseName);
+      } catch (error: any) {
+        if (error.message === 'Operation cancelled by user') {
+          throw error;
+        }
+        return { success: false, error: error.message || String(error) };
+      }
+    }
+
+    return {
+      success: true,
+      message: `Moved ${moved} file(s)`,
+      filesCopied: moved,
+    };
   }
 
   /**

@@ -1812,8 +1812,10 @@ export class DocManager extends LitElement {
                                 >
                                 <button
                                   class="preview-delete-btn"
-                                  @click="${() =>
-                                    this.removePreviewPage(index)}"
+                                  @click="${(e: Event) => {
+                                    e.stopPropagation()
+                                    this.removePreviewPage(index)
+                                  }}"
                                 >
                                   Remove
                                 </button>
