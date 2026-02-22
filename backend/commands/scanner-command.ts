@@ -20,6 +20,48 @@ export class ScannerCommand implements ICommand {
     fileSize: number,
   ) => void;
   private activeProcess: ChildProcess | null = null;
+  private scanimagePath: string | null = null;
+
+  /**
+   * Find the scanimage binary in common locations
+   * Caches the result for subsequent calls
+   */
+  private async findScanimage(): Promise<string> {
+    if (this.scanimagePath) {
+      return this.scanimagePath;
+    }
+
+    // Common paths where scanimage might be installed
+    const possiblePaths = [
+      '/opt/homebrew/bin/scanimage', // Homebrew Apple Silicon
+      '/usr/local/bin/scanimage', // Homebrew Intel, MacPorts
+      '/usr/bin/scanimage', // System install (Linux)
+      'scanimage', // Try PATH as fallback
+    ];
+
+    for (const scanPath of possiblePaths) {
+      try {
+        if (scanPath === 'scanimage') {
+          // Try executing without full path (relies on PATH)
+          await execAsync('which scanimage', { timeout: 2000 });
+          this.scanimagePath = 'scanimage';
+          return 'scanimage';
+        } else {
+          // Check if file exists
+          if (fs.existsSync(scanPath)) {
+            this.scanimagePath = scanPath;
+            return scanPath;
+          }
+        }
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+
+    throw new Error(
+      'scanimage not found. Please install SANE: brew install sane-backends',
+    );
+  }
 
   cancel(): void {
     if (this.activeProcess) {
@@ -299,7 +341,8 @@ try {
       } else if (process.platform === 'darwin') {
         // macOS: Try to use scanimage (if available)
         try {
-          const { stdout } = await execAsync('scanimage -L');
+          const scanimagePath = await this.findScanimage();
+          const { stdout } = await execAsync(`"${scanimagePath}" -L`);
           return {
             success: true,
             scanners: this.parseScanImageOutput(stdout),
@@ -318,7 +361,8 @@ try {
       } else {
         // Linux: Use scanimage
         try {
-          const { stdout } = await execAsync('scanimage -L');
+          const scanimagePath = await this.findScanimage();
+          const { stdout } = await execAsync(`"${scanimagePath}" -L`);
           return {
             success: true,
             scanners: this.parseScanImageOutput(stdout),
@@ -889,7 +933,8 @@ try {
     if (this.duplexInfo !== null) return this.duplexInfo;
 
     try {
-      const { stdout } = await execAsync('scanimage --help');
+      const scanimagePath = await this.findScanimage();
+      const { stdout } = await execAsync(`"${scanimagePath}" --help`);
       const text = stdout.toLowerCase();
 
       // Check if --duplex flag is supported
@@ -1151,8 +1196,9 @@ try {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         lastError = null;
         try {
-          await new Promise<void>((resolve, reject) => {
-            const scanProcess = spawn('scanimage', scanArgs);
+          await new Promise<void>(async (resolve, reject) => {
+            const scanimagePath = await this.findScanimage();
+            const scanProcess = spawn(scanimagePath, scanArgs);
             this.activeProcess = scanProcess;
             let stderr = '';
 

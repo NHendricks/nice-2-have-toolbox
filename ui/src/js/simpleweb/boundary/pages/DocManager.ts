@@ -556,6 +556,19 @@ export class DocManager extends LitElement {
       // 1. POPULATE COMPANY/DOMAIN DROPDOWN
       this.companyOptions = []
 
+      // Get fixed senders from preferences and check if OCR text contains them
+      const fixedSenders = userPreferencesService.getSenders()
+      const ocrTextLower = JSON.stringify(analysis).toLowerCase()
+
+      for (const sender of fixedSenders) {
+        if (ocrTextLower.includes(sender.toLowerCase())) {
+          this.companyOptions.push({
+            value: this.sanitizeFilename(sender),
+            label: `${sender} (Fixed)`,
+          })
+        }
+      }
+
       // Add domains as company options
       if (analysis.domains) {
         for (const domain of analysis.domains) {
@@ -587,6 +600,27 @@ export class DocManager extends LitElement {
 
       // 2. POPULATE ACCOUNT/BILLING NUMBER DROPDOWN
       this.accountOptions = []
+
+      // Get fixed account numbers from preferences and check if OCR text contains them
+      const fixedAccountNumbers = userPreferencesService.getAccountNumbers()
+      const ocrTextForAccounts = JSON.stringify(analysis).toLowerCase()
+
+      for (const accountNumber of fixedAccountNumbers) {
+        // Check if the account number (with or without spaces) appears in OCR text
+        const accountWithoutSpaces = accountNumber.replace(/\s+/g, '')
+        const accountLower = accountNumber.toLowerCase()
+
+        if (
+          ocrTextForAccounts.includes(accountLower) ||
+          ocrTextForAccounts.includes(accountWithoutSpaces.toLowerCase())
+        ) {
+          // Use the original format (with spaces if present) as the value
+          this.accountOptions.push({
+            value: this.sanitizeFilename(accountNumber),
+            label: `${accountNumber} (Fixed)`,
+          })
+        }
+      }
 
       if (analysis.numberSequences && analysis.numberSequences.length > 0) {
         // Prioritize sequences by type and length

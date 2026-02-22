@@ -10,6 +10,8 @@ export interface UserPreferences {
   defaultResolution?: string
   defaultFormat?: string
   includeLastNameInFilename?: boolean
+  senders?: string[] // Fixed sender strings to match in OCR
+  accountNumbers?: string[] // Fixed account numbers/topics to match in OCR
 }
 
 export class UserPreferencesService {
@@ -125,6 +127,20 @@ export class UserPreferencesService {
    */
   getDefaultFormat(): string {
     return this.preferences.defaultFormat || 'pdf'
+  }
+
+  /**
+   * Get fixed senders list
+   */
+  getSenders(): string[] {
+    return this.preferences.senders || []
+  }
+
+  /**
+   * Get fixed account numbers list
+   */
+  getAccountNumbers(): string[] {
+    return this.preferences.accountNumbers || []
   }
 
   /**

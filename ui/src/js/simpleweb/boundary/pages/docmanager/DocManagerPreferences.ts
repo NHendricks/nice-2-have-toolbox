@@ -10,6 +10,10 @@ export class DocManagerPreferences extends LitElement {
   @state() private defaultResolution = '300'
   @state() private defaultFormat = 'pdf'
   @state() private includeLastNameInFilename = true
+  @state() private senders: string[] = []
+  @state() private newSender = ''
+  @state() private accountNumbers: string[] = []
+  @state() private newAccountNumber = ''
   @state() private saving = false
   @state() private message = ''
 
@@ -193,6 +197,64 @@ export class DocManagerPreferences extends LitElement {
       color: #856404;
       font-size: 0.95em;
     }
+
+    .sender-list {
+      margin-top: 10px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .sender-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .sender-item:last-child {
+      border-bottom: none;
+    }
+
+    .sender-item button {
+      padding: 4px 8px;
+      font-size: 0.85em;
+      background: #dc3545;
+      color: white;
+    }
+
+    .sender-item button:hover {
+      background: #c82333;
+    }
+
+    .add-sender-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .add-sender-group input {
+      flex: 1;
+    }
+
+    .add-sender-group button {
+      padding: 10px 16px;
+      background: #28a745;
+      color: white;
+    }
+
+    .add-sender-group button:hover {
+      background: #218838;
+    }
+
+    .empty-senders {
+      padding: 12px;
+      text-align: center;
+      color: #999;
+      font-style: italic;
+    }
   `
 
   async connectedCallback() {
@@ -208,6 +270,8 @@ export class DocManagerPreferences extends LitElement {
     this.defaultResolution = prefs.defaultResolution || '300'
     this.defaultFormat = prefs.defaultFormat || 'pdf'
     this.includeLastNameInFilename = prefs.includeLastNameInFilename !== false
+    this.senders = prefs.senders || []
+    this.accountNumbers = prefs.accountNumbers || []
   }
 
   private async handleSave() {
@@ -220,6 +284,8 @@ export class DocManagerPreferences extends LitElement {
       defaultResolution: this.defaultResolution,
       defaultFormat: this.defaultFormat,
       includeLastNameInFilename: this.includeLastNameInFilename,
+      senders: this.senders,
+      accountNumbers: this.accountNumbers,
     }
 
     const success = await userPreferencesService.save(prefs)
@@ -240,6 +306,30 @@ export class DocManagerPreferences extends LitElement {
 
   private handleClose() {
     this.dispatchEvent(new CustomEvent('close'))
+  }
+
+  private addSender() {
+    const trimmed = this.newSender.trim()
+    if (trimmed && !this.senders.includes(trimmed)) {
+      this.senders = [...this.senders, trimmed]
+      this.newSender = ''
+    }
+  }
+
+  private removeSender(sender: string) {
+    this.senders = this.senders.filter((s) => s !== sender)
+  }
+
+  private addAccountNumber() {
+    const trimmed = this.newAccountNumber.trim()
+    if (trimmed && !this.accountNumbers.includes(trimmed)) {
+      this.accountNumbers = [...this.accountNumbers, trimmed]
+      this.newAccountNumber = ''
+    }
+  }
+
+  private removeAccountNumber(accountNumber: string) {
+    this.accountNumbers = this.accountNumbers.filter((a) => a !== accountNumber)
   }
 
   render() {
@@ -343,6 +433,99 @@ export class DocManagerPreferences extends LitElement {
                 <option value="png">PNG</option>
                 <option value="jpg">JPG</option>
               </select>
+            </div>
+
+            <div class="form-group">
+              <label>Fixed Sender Strings</label>
+              <small
+                >Define sender names to match in OCR text. These will appear in
+                the company dropdown when found.</small
+              >
+              ${this.senders.length > 0
+                ? html`
+                    <div class="sender-list">
+                      ${this.senders.map(
+                        (sender) => html`
+                          <div class="sender-item">
+                            <span>${sender}</span>
+                            <button @click="${() => this.removeSender(sender)}">
+                              Remove
+                            </button>
+                          </div>
+                        `,
+                      )}
+                    </div>
+                  `
+                : html`
+                    <div class="sender-list">
+                      <div class="empty-senders">No senders defined yet</div>
+                    </div>
+                  `}
+              <div class="add-sender-group">
+                <input
+                  type="text"
+                  placeholder="e.g., RUNDV, Allianz, Stadtwerke"
+                  .value="${this.newSender}"
+                  @input="${(e: any) => (this.newSender = e.target.value)}"
+                  @keydown="${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      this.addSender()
+                    }
+                  }}"
+                />
+                <button @click="${this.addSender}">Add</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Fixed Account Numbers / Topics</label>
+              <small
+                >Define account numbers or topics to match in OCR text (can
+                include spaces). These will appear in the account dropdown when
+                found.</small
+              >
+              ${this.accountNumbers.length > 0
+                ? html`
+                    <div class="sender-list">
+                      ${this.accountNumbers.map(
+                        (accountNumber) => html`
+                          <div class="sender-item">
+                            <span>${accountNumber}</span>
+                            <button
+                              @click="${() =>
+                                this.removeAccountNumber(accountNumber)}"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        `,
+                      )}
+                    </div>
+                  `
+                : html`
+                    <div class="sender-list">
+                      <div class="empty-senders">
+                        No account numbers defined yet
+                      </div>
+                    </div>
+                  `}
+              <div class="add-sender-group">
+                <input
+                  type="text"
+                  placeholder="e.g., 123456789, LU/0055807416/75"
+                  .value="${this.newAccountNumber}"
+                  @input="${(e: any) =>
+                    (this.newAccountNumber = e.target.value)}"
+                  @keydown="${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      this.addAccountNumber()
+                    }
+                  }}"
+                />
+                <button @click="${this.addAccountNumber}">Add</button>
+              </div>
             </div>
           </div>
 

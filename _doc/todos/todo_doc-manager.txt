@@ -1,7 +1,7 @@
-- pdf manager
+- in builkt add sane is not recognized ... in dev mode scanner ist found
 - add optoin open folder (with scan results)in n2h commander
-- use fix strings as sender defined in preferences
-- use fix strings as account nr defined in preferences (some have blank ´s ... )
+- use fix strings as sender search matches to be deinfable in preferences
+- use fix strings as account nr search matches defined in preferences (some have blank ´s ... )
 - new tools app
   - define own managed folder
   - ocr scan for all pdfs in a specified directory
