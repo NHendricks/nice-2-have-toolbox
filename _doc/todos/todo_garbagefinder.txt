@@ -1,2 +1,1 @@
-show wait dialog when deleting folder in garbagefinder
 - cancel analyze process does not teminate the command

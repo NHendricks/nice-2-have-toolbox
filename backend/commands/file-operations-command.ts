@@ -149,6 +149,10 @@ export class FileOperationsCommand implements ICommand {
         case 'read':
           return await this.readFile(filePath);
         case 'copy':
+          // Support copying multiple files in one operation when sourcePath is an array
+          if (Array.isArray(params.sourcePath)) {
+            return await this.copyMultipleFiles(params.sourcePath, destinationPath);
+          }
           return await this.copyFile(sourcePath, destinationPath);
         case 'move':
           return await this.moveFile(sourcePath, destinationPath);
@@ -1990,6 +1994,59 @@ export class FileOperationsCommand implements ICommand {
         `Source is neither a file nor a directory: ${absoluteSource}`,
       );
     }
+  }
+
+  /**
+   * Copy multiple files to a destination directory in a single operation.
+   * This ensures cancellation applies to the whole batch and progress is reported.
+   */
+  private async copyMultipleFiles(
+    sourcePaths: string[],
+    destinationDir: string,
+  ): Promise<any> {
+    if (!Array.isArray(sourcePaths) || sourcePaths.length === 0) {
+      return { success: false, error: 'No source files provided' };
+    }
+
+    const total = sourcePaths.length;
+    let copied = 0;
+
+    for (const src of sourcePaths) {
+      if (this.cancelled) {
+        throw new Error('Operation cancelled by user');
+      }
+
+      try {
+        const baseName = path.basename(src);
+        const destPath = path.join(
+          destinationDir,
+          baseName,
+        );
+
+        // Use existing single-file copy logic
+        const result = await this.copyFile(src, destPath);
+
+        // If copyFile returns an error-like object, propagate
+        if (result && result.success === false) {
+          return { success: false, error: result.error || 'Copy failed' };
+        }
+
+        copied++;
+        // Report progress: current index, total, and current file name
+        this.progressCallback?.(copied, total, baseName);
+      } catch (error: any) {
+        if (error.message === 'Operation cancelled by user') {
+          throw error;
+        }
+        return { success: false, error: error.message || String(error) };
+      }
+    }
+
+    return {
+      success: true,
+      message: `Copied ${copied} file(s)`,
+      filesCopied: copied,
+    };
   }
 
   /**

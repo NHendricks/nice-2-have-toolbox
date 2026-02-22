@@ -21,11 +21,43 @@ export async function executeFileOperation(
   onProgress?: (message: string) => void,
 ): Promise<OperationResult> {
   let successCount = 0
+  // If all sources are local and destination is local, perform a single batch operation
+  const anySourceIsFtp = files.some((f) => isFtpPath(f))
+  const isDestFTP = isFtpPath(destination)
 
+  if (!anySourceIsFtp && !isDestFTP) {
+    onProgress?.(`${type === 'copy' ? 'Copying' : 'Moving'} ${files.length} file(s)...`)
+
+    const response = await (window as any).electron.ipcRenderer.invoke(
+      'cli-execute',
+      'file-operations',
+      {
+        operation: type,
+        sourcePath: files,
+        destinationPath: destination,
+      },
+    )
+
+    if (response.success) {
+      const count = response.data?.filesCopied ?? files.length
+      return {
+        success: true,
+        message: `${count} file(s) successfully ${type === 'copy' ? 'copied' : 'moved'}`,
+        successCount: count,
+      }
+    }
+
+    return {
+      success: false,
+      message: response.error || 'Unknown error',
+      successCount: 0,
+    }
+  }
+
+  // Fallback: handle mixed FTP/local cases per file
   for (const file of files) {
     const fileName = getFileName(file) || 'file'
     const isSourceFTP = isFtpPath(file)
-    const isDestFTP = isFtpPath(destination)
 
     // Handle FTP operations
     if (isSourceFTP && !isDestFTP) {

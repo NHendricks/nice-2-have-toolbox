@@ -1,4 +1,5 @@
 - pdf manager
+  - suggest file name from ocs result. add dropdown options or plain text edit
   - arrange scan and files in 2 tabs
     - files tab: add new features here
   - add hint for duplex (use naps2)
