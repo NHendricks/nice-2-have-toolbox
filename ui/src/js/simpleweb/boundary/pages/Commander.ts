@@ -1383,7 +1383,9 @@ export class Commander extends LitElement {
     }
 
     // Call service to create directory (dynamic import to ensure runtime availability)
-    const handlerModule = await import('./commander/services/FileOperationsHandler.js')
+    const handlerModule = await import(
+      './commander/services/FileOperationsHandler.js'
+    )
     const result = await handlerModule.executeMkdir(
       currentPath,
       folderName.trim(),
