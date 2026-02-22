@@ -291,6 +291,10 @@ export class Commander extends LitElement {
 
   private smbConnectionCancelled = false
 
+  // Track internal drag operations
+  private isDraggingInternal = false
+  private dragSourcePath: string | null = null
+
   async connectedCallback() {
     super.connectedCallback()
 
@@ -1109,9 +1113,9 @@ export class Commander extends LitElement {
   handleDragOver(e: DragEvent) {
     e.preventDefault()
     e.stopPropagation()
-    // Allow drop
+    // Allow drop - show move if internal drag, copy if external
     if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'copy'
+      e.dataTransfer.dropEffect = this.isDraggingInternal ? 'move' : 'copy'
     }
   }
 
@@ -1129,6 +1133,36 @@ export class Commander extends LitElement {
     const destinationPath = targetPath || this.getActivePane().currentPath
 
     console.log('[drop] Dropping', files.length, 'files into:', destinationPath)
+
+    // Check if this is an internal drag (within Commander) or external
+    const isInternalDrag = this.isDraggingInternal
+    console.log(
+      '[drop] dragSourcePath:',
+      this.dragSourcePath,
+      'destinationPath:',
+      destinationPath,
+    )
+
+    const shouldMove =
+      isInternalDrag &&
+      this.dragSourcePath &&
+      this.dragSourcePath !== destinationPath
+
+    // Store source path before resetting for later use in refresh
+    const sourcePath = this.dragSourcePath
+
+    console.log(
+      '[drop] Internal drag:',
+      isInternalDrag,
+      'Should move:',
+      shouldMove,
+      'Source path:',
+      sourcePath,
+    )
+
+    // Reset drag state
+    this.isDraggingInternal = false
+    this.dragSourcePath = null
 
     // Get file paths from dropped files
     // Use webUtils.getPathForFile for sandboxed Electron
@@ -1155,38 +1189,115 @@ export class Commander extends LitElement {
     }
 
     try {
-      // Copy files to destination
       const { FileService } =
         await import('./commander/services/FileService.js')
 
-      for (const sourcePath of filePaths) {
-        const fileName = sourcePath.split(/[\\/]/).pop()
-        const destPath = `${destinationPath}/${fileName}`
+      if (shouldMove) {
+        // Move files (internal drag between panes)
+        let movedCount = 0
+        for (const sourcePath of filePaths) {
+          const fileName = sourcePath.split(/[\\/]/).pop()
+          const destPath = `${destinationPath}/${fileName}`
 
-        console.log('[drop] Copying:', sourcePath, 'to:', destPath)
+          // Skip if source and destination are the same
+          if (sourcePath === destPath) {
+            console.log(
+              '[drop] Skipping - file already in destination:',
+              fileName,
+            )
+            continue
+          }
 
-        const result = await FileService.copy(sourcePath, destPath)
-        if (!result.success) {
-          console.error('[drop] Failed to copy:', result.error)
-          this.setStatus(`Failed to copy ${fileName}: ${result.error}`, 'error')
-          return
+          console.log('[drop] Moving:', sourcePath, 'to:', destPath)
+
+          const result = await FileService.move(sourcePath, destPath)
+          if (!result.success) {
+            console.error('[drop] Failed to move:', result.error)
+            this.setStatus(
+              `Failed to move ${fileName}: ${result.error}`,
+              'error',
+            )
+            return
+          }
+          movedCount++
+        }
+
+        if (movedCount === 0) {
+          this.setStatus('Files already in destination', 'info')
+        } else {
+          this.setStatus(
+            `Moved ${movedCount} file(s) to ${destinationPath}`,
+            'success',
+          )
+        }
+      } else {
+        // Copy files (external drag or same directory)
+        let copiedCount = 0
+        for (const sourcePath of filePaths) {
+          const fileName = sourcePath.split(/[\\/]/).pop()
+          const destPath = `${destinationPath}/${fileName}`
+
+          // Skip if source and destination are the same
+          if (sourcePath === destPath) {
+            console.log(
+              '[drop] Skipping - file already in destination:',
+              fileName,
+            )
+            continue
+          }
+
+          console.log('[drop] Copying:', sourcePath, 'to:', destPath)
+
+          const result = await FileService.copy(sourcePath, destPath)
+          if (!result.success) {
+            console.error('[drop] Failed to copy:', result.error)
+            this.setStatus(
+              `Failed to copy ${fileName}: ${result.error}`,
+              'error',
+            )
+            return
+          }
+          copiedCount++
+        }
+
+        if (copiedCount === 0) {
+          this.setStatus('Files already in destination', 'info')
+        } else {
+          this.setStatus(
+            `Copied ${copiedCount} file(s) to ${destinationPath}`,
+            'success',
+          )
         }
       }
 
-      this.setStatus(
-        `Copied ${filePaths.length} file(s) to ${destinationPath}`,
-        'success',
-      )
-
-      // Refresh the directory
-      await this.loadDirectory(
-        this.activePane,
-        destinationPath,
-        destinationPath,
-      )
+      // Refresh both panes if moving (source and destination)
+      if (shouldMove && sourcePath) {
+        // Refresh destination pane
+        await this.loadDirectory(
+          this.activePane,
+          destinationPath,
+          destinationPath,
+        )
+        // Refresh source directory in the other pane if it matches
+        const otherPane = this.activePane === 'left' ? 'right' : 'left'
+        const otherPanePath =
+          otherPane === 'left'
+            ? this.leftPane.currentPath
+            : this.rightPane.currentPath
+        if (otherPanePath === sourcePath) {
+          await this.loadDirectory(otherPane, otherPanePath, otherPanePath)
+        }
+      } else {
+        // Just refresh the destination directory
+        await this.loadDirectory(
+          this.activePane,
+          destinationPath,
+          destinationPath,
+        )
+      }
     } catch (error: any) {
       console.error('[drop] Error:', error)
-      this.setStatus(`Error copying files: ${error.message}`, 'error')
+      this.setStatus(`Error: ${error.message}`, 'error')
     }
   }
 
@@ -3615,8 +3726,16 @@ export class Commander extends LitElement {
                   : ''}"
                 draggable="true"
                 @dragstart=${(e: DragEvent) => {
-                  e.preventDefault()
                   e.stopPropagation()
+
+                  // Mark as internal drag and store source directory
+                  this.isDraggingInternal = true
+                  this.dragSourcePath = pane.currentPath
+
+                  console.log(
+                    '[dragstart] Setting source path:',
+                    pane.currentPath,
+                  )
 
                   // Use window.electron.startDrag to initiate native drag
                   if (window.electron?.startDrag) {
@@ -3640,7 +3759,15 @@ export class Commander extends LitElement {
                       // Drag only the current item
                       window.electron.startDrag(item.path)
                     }
+                    // Prevent browser's default drag after Electron takes over
+                    e.preventDefault()
                   }
+                }}
+                @dragend=${(e: DragEvent) => {
+                  // Clean up drag state when drag ends (regardless of drop success)
+                  console.log('[dragend] Cleaning up drag state')
+                  this.isDraggingInternal = false
+                  this.dragSourcePath = null
                 }}
                 @click=${(e: MouseEvent) => {
                   // Find original index in pane.items
