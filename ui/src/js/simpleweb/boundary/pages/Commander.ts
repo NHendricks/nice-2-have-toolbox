@@ -1376,33 +1376,28 @@ export class Commander extends LitElement {
     if (!this.mkdirDialog) return
 
     const { currentPath, folderName } = this.mkdirDialog
+
     if (!folderName.trim()) {
-      // Show progress message while deleting
-      this.deleteProgress = { message: `Deleting ${files.length} file(s)...` }
-      this.requestUpdate()
+      this.setStatus('Folder name cannot be empty', 'error')
+      return
+    }
 
-      const result = await executeDelete(files, (msg: string) => {
-        this.deleteProgress = { message: msg }
-        this.requestUpdate()
-      })
+    // Call service to create directory (dynamic import to ensure runtime availability)
+    const handlerModule = await import('./commander/services/FileOperationsHandler.js')
+    const result = await handlerModule.executeMkdir(
+      currentPath,
+      folderName.trim(),
+    )
 
-      // Clear progress
-      this.deleteProgress = null
+    this.setStatus(result.message, result.success ? 'success' : 'error')
 
-      this.setStatus(result.message, result.success ? 'success' : 'error')
+    if (result.success) {
+      // Close dialog and refresh current pane
+      this.mkdirDialog = null
+      await this.loadDirectory(this.activePane, currentPath)
 
-      if (!result.success) {
-        alert(`Failed to delete: ${result.message}`)
-      }
-
-      if (result.success) {
-        await this.loadDirectory(
-          this.activePane,
-          this.getActivePane().currentPath,
-        )
-      }
-
-      this.deleteDialog = null
+      // Focus the newly created directory if present
+      const pane = this.getActivePane()
       const newDirIndex = pane.items.findIndex(
         (item) => item.name === folderName.trim() && item.isDirectory,
       )
