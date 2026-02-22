@@ -207,6 +207,9 @@ export class Commander extends LitElement {
     percentage: number
   } | null = null
 
+  @property({ type: Object })
+  deleteProgress: { message: string } | null = null
+
   // Clipboard state for file operations
   clipboardFiles: { files: string[]; operation: 'copy' | 'cut' } | null = null
 
@@ -1375,19 +1378,33 @@ export class Commander extends LitElement {
 
     const { currentPath, folderName } = this.mkdirDialog
     if (!folderName.trim()) {
-      this.setStatus('Folder name cannot be empty', 'error')
-      return
-    }
 
-    const result = await executeMkdir(currentPath, folderName)
+    // Show progress message while deleting
+    this.deleteProgress = { message: `Deleting ${files.length} file(s)...` }
+    this.requestUpdate()
+
+    const result = await executeDelete(files, (msg: string) => {
+      this.deleteProgress = { message: msg }
+      this.requestUpdate()
+    })
+
+    // Clear progress
+    this.deleteProgress = null
+
     this.setStatus(result.message, result.success ? 'success' : 'error')
 
-    if (result.success) {
-      this.mkdirDialog = null
-      await this.loadDirectory(this.activePane, currentPath)
+    if (!result.success) {
+      alert(`Failed to delete: ${result.message}`)
+    }
 
-      // Focus on the newly created directory
-      const pane = this.getActivePane()
+    if (result.success) {
+      await this.loadDirectory(
+        this.activePane,
+        this.getActivePane().currentPath,
+      )
+    }
+
+    this.deleteDialog = null
       const newDirIndex = pane.items.findIndex(
         (item) => item.name === folderName.trim() && item.isDirectory,
       )
@@ -3083,6 +3100,17 @@ export class Commander extends LitElement {
               @close=${this.cancelDelete}
               @execute=${this.executeDelete}
             ></delete-dialog>`
+          : ''}
+        ${this.deleteProgress
+          ? html`<div class="confirm-overlay">
+              <div class="confirm-dialog">
+                <div class="confirm-title">Deleting…</div>
+                <div class="confirm-message">${this.deleteProgress.message}</div>
+                <div style="margin-top:12px;text-align:center">
+                  <span class="spinner"></span>
+                </div>
+              </div>
+            </div>`
           : ''}
         ${this.commandDialog
           ? html`<command-dialog

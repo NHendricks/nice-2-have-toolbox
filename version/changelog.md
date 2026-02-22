@@ -18,6 +18,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - commander
   - add zoom functins to imageviewer
   - add help entry how to select files on mac
+  - delete dir: show progress and show error if it fails
 - garbagefinder
   - fix drive detection on mac
   - show progress dialog when deleting files
