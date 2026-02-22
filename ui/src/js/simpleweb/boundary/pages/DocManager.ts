@@ -1052,6 +1052,13 @@ export class DocManager extends LitElement {
         if (result.help) {
           this.showMessage(result.help, 'info')
         }
+        // Show duplex hint for Windows users
+        if (this.duplex && (window as any).process?.platform === 'win32') {
+          this.showMessage(
+            '💡 Duplex scanning on Windows often fails with WIA. For reliable duplex scanning, use NAPS2 (Windows), or scan on Linux/Mac.',
+            'info',
+          )
+        }
       }
     } catch (error: any) {
       this.showPreviewDialog = false
@@ -1104,6 +1111,13 @@ export class DocManager extends LitElement {
           'error',
         )
         if (result.help) this.showMessage(result.help, 'info')
+        // Show duplex hint for Windows users
+        if (this.duplex && (window as any).process?.platform === 'win32') {
+          this.showMessage(
+            '💡 Duplex scanning on Windows often fails with WIA. For reliable duplex scanning, use NAPS2 (Windows), or scan on Linux/Mac.',
+            'info',
+          )
+        }
       }
     } catch (error: any) {
       this.showMessage('Error scanning more pages: ' + error.message, 'error')

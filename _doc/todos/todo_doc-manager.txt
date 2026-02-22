@@ -1,25 +1,14 @@
 - pdf manager
-  - ✅ do not ocr scan for "scan more" in dialog"
-  - add hint for duplex (use naps2) when duplex scan did not work
   - add today as option for found dates in ocr scan result file suggestion dropdown
-
-- new tools app
   - remember all settings
+  - add preferernce dialog and save setting in userhome n2htoolbox settings file locally.let me configure my last name to be included in filename later
+- new tools app
   - define own managed folder
-  - show text in popup (save text as filename.txt)
-  - rescan pdf opton (ocr)
+  - ocr scan for all pdfs in a specified directory
   - split pdf incl. preview
   - find text in pdfs 
     - write textfile for each pdf
     - find text within text files
-  - rename and move to folder sender as sender(-account)_date_billingnr
-    - in dialog
-    - read text and extract 
-      - sender(-account)
-      - date
-      - billing nr
-      make these fields editable and save them in preferences for future scans 
-
 
 
 
