@@ -84,51 +84,85 @@ export class ResponsiveMenu extends LitElement {
       padding: 1rem;
     }
 
+    @keyframes subtlePulse {
+      0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 255, 255, 0.2);
+      }
+      50% {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 8px 2px rgba(255, 255, 255, 0.15);
+      }
+    }
+
     .burger-btn {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.12);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      width: 50px;
-      height: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 14px;
+      width: 52px;
+      height: 52px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       gap: 5px;
-      transition: all var(--transition-speed);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 255, 255, 0.2);
+      position: relative;
+    }
+
+    .burger-btn::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 16px;
+      padding: 2px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
     .burger-btn:hover {
       background: rgba(255, 255, 255, 0.2);
-      transform: scale(1.05);
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 255, 255, 0.2);
     }
 
-    :host([force-portrait]) .burger-btn:hover {
-      transition: all var(--transition-speed);
+    .burger-btn:hover::after {
       opacity: 1;
     }
 
-    /* force-portrait default opacity */
+    .burger-btn:active {
+      transform: scale(0.95);
+    }
+
     :host([force-portrait]) .burger-btn {
-      transition: opacity 2s ease;
-      opacity: 0.1;
+      opacity: 0.5;
+      animation: subtlePulse 4s ease-in-out infinite;
+    }
+
+    :host([force-portrait]) .burger-btn:hover {
+      opacity: 1;
+      animation: none;
     }
 
     /* TEMPORARY override when force-portrait just activated */
     :host([force-portrait]) .burger-btn.force-visible {
       opacity: 1;
+      animation: none;
     }
 
     .burger-line {
-      width: 30px;
+      width: 28px;
       height: 3px;
       background: var(--text-primary);
       border-radius: 2px;
-      transition: all var(--transition-speed);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
     .burger-btn.open .burger-line:nth-child(1) {
@@ -644,6 +678,40 @@ export class ResponsiveMenu extends LitElement {
       padding-left: 2rem;
     }
 
+    /* Responsive adjustments for menu button */
+    @media (max-width: 768px) {
+      .portrait-header {
+        padding: 0.75rem;
+      }
+
+      .burger-btn {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .portrait-header {
+        padding: 0.5rem;
+      }
+
+      .burger-btn {
+        width: 46px;
+        height: 46px;
+      }
+
+      .burger-line {
+        width: 26px;
+      }
+    }
+
+    /* Ensure button is visible on touch devices */
+    @media (hover: none) and (pointer: coarse) {
+      :host([force-portrait]) .burger-btn {
+        opacity: 0.65;
+      }
+    }
+
     /* Hide content based on orientation */
     .portrait-only {
       display: none;
@@ -1044,7 +1112,8 @@ export class ResponsiveMenu extends LitElement {
           <button
             class="burger-btn ${this.isMenuOpen ? 'open' : ''}"
             @click=${this.toggleMenu}
-            aria-label="Menu"
+            aria-label="${this.isMenuOpen ? 'Close menu' : 'Open menu'}"
+            title="${this.isMenuOpen ? 'Close menu' : 'Open app menu'}"
           >
             <span class="burger-line"></span>
             <span class="burger-line"></span>

@@ -1,1 +1,0 @@
-- cancel analyze process does not teminate the command

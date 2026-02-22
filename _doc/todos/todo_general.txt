@@ -1,8 +1,5 @@
 now:
 
-
-- integrate menu button better in apps
-
 new major features:
 - quick app launcher ctrl+Space (global shortcut)
 - quick text inserter (global shortcut)
