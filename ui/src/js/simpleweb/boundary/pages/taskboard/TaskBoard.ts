@@ -153,7 +153,10 @@ export class TaskBoard extends LitElement {
       flex: 1;
       padding: 0.5rem;
       overflow-y: auto;
+      overflow-x: hidden;
       min-height: 100px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .column-content.drag-over {

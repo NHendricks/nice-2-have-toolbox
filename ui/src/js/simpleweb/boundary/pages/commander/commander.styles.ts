@@ -84,6 +84,8 @@ export const commanderStyles = css`
     display: flex;
     flex-direction: column;
     opacity: 0.85;
+    overflow: hidden;
+    min-height: 0;
   }
 
   .pane.active {
@@ -121,8 +123,12 @@ export const commanderStyles = css`
 
   .file-list {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .file-item {

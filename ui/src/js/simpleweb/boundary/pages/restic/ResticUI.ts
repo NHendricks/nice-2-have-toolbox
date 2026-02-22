@@ -276,6 +276,9 @@ export class ResticUI extends LitElement {
       margin-bottom: 0.75rem;
       max-height: 200px;
       overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .path-item {
@@ -530,9 +533,12 @@ export class ResticUI extends LitElement {
     .tree-container {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       background: #1e293b;
       border-radius: 4px;
       padding: 0.5rem 0;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .tree-node {

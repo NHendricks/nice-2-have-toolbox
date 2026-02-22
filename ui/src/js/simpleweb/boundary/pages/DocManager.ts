@@ -388,7 +388,10 @@ export class DocManager extends LitElement {
     .preview-body {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 20px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .preview-grid {

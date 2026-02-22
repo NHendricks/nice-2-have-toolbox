@@ -264,6 +264,8 @@ export class MoneyFinder extends LitElement {
       border: 1px solid #e2e8f0;
       border-radius: 4px;
       max-height: 30em;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     table {

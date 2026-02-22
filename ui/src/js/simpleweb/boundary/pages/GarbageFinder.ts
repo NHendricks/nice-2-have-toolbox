@@ -258,6 +258,9 @@ export class GarbageFinder extends LitElement {
     .tree-body {
       max-height: calc(100vh - 300px);
       overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
 
     .tree-node {
