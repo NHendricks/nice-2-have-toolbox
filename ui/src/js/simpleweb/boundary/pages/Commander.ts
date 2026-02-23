@@ -294,6 +294,8 @@ export class Commander extends LitElement {
   // Track internal drag operations
   private isDraggingInternal = false
   private dragSourcePath: string | null = null
+  private dragPaths: string[] | null = null
+  private dragLeaveHandler: ((e: DragEvent) => void) | null = null
 
   async connectedCallback() {
     super.connectedCallback()
@@ -3787,7 +3789,6 @@ export class Commander extends LitElement {
                     e.preventDefault()
                   } else {
                     // Windows/Linux: use web DnD for internal pane-to-pane drops
-                    // (startDrag on Windows kills web DnD events)
                     e.dataTransfer?.setData(
                       'application/x-commander-paths',
                       JSON.stringify(pathsToDrag),
@@ -3799,13 +3800,56 @@ export class Commander extends LitElement {
                     if (e.dataTransfer) {
                       e.dataTransfer.effectAllowed = 'move'
                     }
+
+                    // Store paths so we can trigger native drag when leaving the window
+                    this.dragPaths = pathsToDrag
+
+                    // Listen for drag leaving the window to trigger native startDrag
+                    // for external apps (Windows Explorer etc.)
+                    if (this.dragLeaveHandler) {
+                      document.removeEventListener(
+                        'dragleave',
+                        this.dragLeaveHandler as any,
+                      )
+                    }
+                    this.dragLeaveHandler = (evt: DragEvent) => {
+                      // relatedTarget is null when drag leaves the browser window
+                      if (
+                        !evt.relatedTarget &&
+                        this.dragPaths &&
+                        window.electron?.startDrag
+                      ) {
+                        window.electron.startDrag(
+                          this.dragPaths.length === 1
+                            ? this.dragPaths[0]
+                            : this.dragPaths,
+                        )
+                        // Clean up listener after triggering
+                        document.removeEventListener(
+                          'dragleave',
+                          this.dragLeaveHandler as any,
+                        )
+                        this.dragLeaveHandler = null
+                      }
+                    }
+                    document.addEventListener(
+                      'dragleave',
+                      this.dragLeaveHandler as any,
+                    )
                   }
                 }}
                 @dragend=${() => {
-                  // Clean up drag state when drag ends (regardless of drop success)
-                  console.log('[dragend] Cleaning up drag state')
                   this.isDraggingInternal = false
                   this.dragSourcePath = null
+                  this.dragPaths = null
+                  // Clean up dragleave listener
+                  if (this.dragLeaveHandler) {
+                    document.removeEventListener(
+                      'dragleave',
+                      this.dragLeaveHandler as any,
+                    )
+                    this.dragLeaveHandler = null
+                  }
                 }}
                 @click=${(e: MouseEvent) => {
                   // Find original index in pane.items
