@@ -521,22 +521,22 @@ export class KeyboardHandler {
       // Page navigation
       case 'PageUp':
         event.preventDefault()
-        this.commander.moveFocus(-20, event.ctrlKey)
+        this.commander.moveFocus(-20, event.shiftKey)
         break
 
       case 'PageDown':
         event.preventDefault()
-        this.commander.moveFocus(20, event.ctrlKey)
+        this.commander.moveFocus(20, event.shiftKey)
         break
 
       case 'Home':
         event.preventDefault()
-        this.commander.moveFocus(-Infinity, event.ctrlKey)
+        this.commander.moveFocus(-Infinity, event.shiftKey)
         break
 
       case 'End':
         event.preventDefault()
-        this.commander.moveFocus(Infinity, event.ctrlKey)
+        this.commander.moveFocus(Infinity, event.shiftKey)
         break
 
       // Tab
@@ -548,7 +548,7 @@ export class KeyboardHandler {
 
       // Space
       case ' ':
-        if (event.ctrlKey) {
+        if (event.shiftKey) {
           event.preventDefault()
           this.commander.toggleSelection()
         }
@@ -567,7 +567,7 @@ export class KeyboardHandler {
    */
   private handleArrowUp(event: KeyboardEvent): void {
     event.preventDefault()
-    this.commander.moveFocus(-1, event.ctrlKey)
+    this.commander.moveFocus(-1, event.shiftKey)
   }
 
   /**
@@ -575,7 +575,7 @@ export class KeyboardHandler {
    */
   private handleArrowDown(event: KeyboardEvent): void {
     event.preventDefault()
-    this.commander.moveFocus(1, event.ctrlKey)
+    this.commander.moveFocus(1, event.shiftKey)
   }
 
   /**
