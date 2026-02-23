@@ -1127,11 +1127,8 @@ export class Commander extends LitElement {
     e.preventDefault()
     e.stopPropagation()
 
-    const files = e.dataTransfer?.files
-    if (!files || files.length === 0) {
-      console.log('[drop] No files dropped')
-      return
-    }
+    // Check if this is an internal drag (within Commander) or external
+    const isInternalDrag = this.isDraggingInternal
 
     // Use target path if provided (dropping on folder), otherwise use the pane that received the drop
     const destinationPath =
@@ -1142,17 +1139,6 @@ export class Commander extends LitElement {
           ? this.rightPane.currentPath
           : this.getActivePane().currentPath)
 
-    console.log('[drop] Dropping', files.length, 'files into:', destinationPath)
-
-    // Check if this is an internal drag (within Commander) or external
-    const isInternalDrag = this.isDraggingInternal
-    console.log(
-      '[drop] dragSourcePath:',
-      this.dragSourcePath,
-      'destinationPath:',
-      destinationPath,
-    )
-
     const shouldMove =
       isInternalDrag &&
       this.dragSourcePath &&
@@ -1161,34 +1147,40 @@ export class Commander extends LitElement {
     // Store source path before resetting for later use in refresh
     const sourcePath = this.dragSourcePath
 
-    console.log(
-      '[drop] Internal drag:',
-      isInternalDrag,
-      'Should move:',
-      shouldMove,
-      'Source path:',
-      sourcePath,
-    )
-
     // Reset drag state
     this.isDraggingInternal = false
     this.dragSourcePath = null
 
-    // Get file paths from dropped files
-    // Use webUtils.getPathForFile for sandboxed Electron
+    // Get file paths: internal web DnD uses dataTransfer data, external/macOS uses files
     const filePaths: string[] = []
 
-    for (const file of Array.from(files)) {
+    const internalData = e.dataTransfer?.getData(
+      'application/x-commander-paths',
+    )
+    if (isInternalDrag && internalData) {
+      // Internal drag on Windows/Linux: paths stored in dataTransfer
       try {
-        const filePath = window.electron?.getPathForFile?.(file)
-        if (filePath) {
-          console.log('[drop] Got path for file:', file.name, '→', filePath)
-          filePaths.push(filePath)
-        } else {
-          console.error('[drop] Could not get path for file:', file.name)
+        const parsed = JSON.parse(internalData)
+        filePaths.push(...parsed)
+      } catch {
+        console.error('[drop] Failed to parse internal drag paths')
+      }
+    } else {
+      // External drag or macOS internal drag: read from files
+      const files = e.dataTransfer?.files
+      if (!files || files.length === 0) {
+        console.log('[drop] No files dropped')
+        return
+      }
+      for (const file of Array.from(files)) {
+        try {
+          const filePath = window.electron?.getPathForFile?.(file)
+          if (filePath) {
+            filePaths.push(filePath)
+          }
+        } catch (error) {
+          console.error('[drop] Error getting path for file:', file.name, error)
         }
-      } catch (error) {
-        console.error('[drop] Error getting path for file:', file.name, error)
       }
     }
 
@@ -1197,6 +1189,15 @@ export class Commander extends LitElement {
       this.setStatus('Error: Could not get file paths', 'error')
       return
     }
+
+    console.log(
+      '[drop]',
+      filePaths.length,
+      'files into:',
+      destinationPath,
+      '| move:',
+      shouldMove,
+    )
 
     try {
       const { FileService } =
@@ -3752,35 +3753,47 @@ export class Commander extends LitElement {
                   this.isDraggingInternal = true
                   this.dragSourcePath = pane.currentPath
 
-                  console.log(
-                    '[dragstart] Setting source path:',
-                    pane.currentPath,
+                  // Find original index of the dragged item
+                  const originalIndex = pane.items.findIndex(
+                    (i) => i.path === item.path,
                   )
 
-                  // Use window.electron.startDrag to initiate native drag
-                  if (window.electron?.startDrag) {
-                    // Find original index of the dragged item
-                    const originalIndex = pane.items.findIndex(
-                      (i) => i.path === item.path,
+                  // Check if dragged item is in selection
+                  const isInSelection =
+                    originalIndex !== -1 &&
+                    pane.selectedIndices.has(originalIndex)
+
+                  let pathsToDrag: string[]
+                  if (isInSelection && pane.selectedIndices.size > 0) {
+                    pathsToDrag = Array.from(pane.selectedIndices)
+                      .map((idx) => pane.items[idx]?.path)
+                      .filter((p): p is string => !!p)
+                  } else {
+                    pathsToDrag = [item.path]
+                  }
+
+                  const isMac = (window as any).process?.platform === 'darwin'
+
+                  if (isMac && window.electron?.startDrag) {
+                    // macOS: use native startDrag (works for both internal and external drops)
+                    window.electron.startDrag(
+                      pathsToDrag.length === 1 ? pathsToDrag[0] : pathsToDrag,
                     )
-
-                    // Check if dragged item is in selection
-                    const isInSelection =
-                      originalIndex !== -1 &&
-                      pane.selectedIndices.has(originalIndex)
-
-                    if (isInSelection && pane.selectedIndices.size > 0) {
-                      // Drag all selected items
-                      const selectedPaths = Array.from(pane.selectedIndices)
-                        .map((idx) => pane.items[idx]?.path)
-                        .filter((path) => path !== undefined)
-                      window.electron.startDrag(selectedPaths)
-                    } else {
-                      // Drag only the current item
-                      window.electron.startDrag(item.path)
-                    }
-                    // Prevent browser's default drag after Electron takes over
                     e.preventDefault()
+                  } else {
+                    // Windows/Linux: use web DnD for internal pane-to-pane drops
+                    // (startDrag on Windows kills web DnD events)
+                    e.dataTransfer?.setData(
+                      'application/x-commander-paths',
+                      JSON.stringify(pathsToDrag),
+                    )
+                    e.dataTransfer?.setData(
+                      'text/plain',
+                      pathsToDrag.join('\n'),
+                    )
+                    if (e.dataTransfer) {
+                      e.dataTransfer.effectAllowed = 'move'
+                    }
                   }
                 }}
                 @dragend=${() => {
