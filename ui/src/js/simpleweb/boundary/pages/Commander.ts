@@ -1127,6 +1127,11 @@ export class Commander extends LitElement {
     e.preventDefault()
     e.stopPropagation()
 
+    // Switch active pane to the drop target so the UI reflects where files land
+    if (dropPane && dropPane !== this.activePane) {
+      this.activePane = dropPane
+    }
+
     // Check if this is an internal drag (within Commander) or external
     const isInternalDrag = this.isDraggingInternal
 
