@@ -2,7 +2,12 @@
  * Taskboard Types
  */
 
-export type TaskStatus = 'todo' | 'in-progress' | 'in-review' | 'waiting' | 'done'
+export type TaskStatus =
+  | 'todo'
+  | 'in-progress'
+  | 'in-review'
+  | 'waiting'
+  | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical'
 
 export interface Task {
@@ -12,6 +17,7 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   category: string // Category name (folder name)
+  person?: string // Assigned person
   created: string // ISO date
   updated: string // ISO date
   order: number // For ordering within a column
@@ -23,6 +29,7 @@ export interface Category {
 }
 
 export const DEFAULT_CATEGORY = 'General'
+export const DEFAULT_PERSON = 'Unassigned'
 
 export const CATEGORY_COLORS = [
   '#3b82f6', // blue

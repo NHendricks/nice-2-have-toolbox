@@ -14,6 +14,7 @@ import {
   CATEGORY_COLORS,
   COLUMNS,
   DEFAULT_CATEGORY,
+  DEFAULT_PERSON,
   PRIORITY_COLORS,
 } from './taskboard.types.js'
 
@@ -376,6 +377,18 @@ export class TaskBoard extends LitElement {
       align-items: center;
     }
 
+    .person-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
     .category-chip {
       padding: 0.375rem 0.75rem;
       border-radius: 16px;
@@ -388,7 +401,43 @@ export class TaskBoard extends LitElement {
       gap: 0.375rem;
     }
 
+    .person-chip {
+      padding: 0.375rem 0.75rem;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    .person-name {
+      cursor: text;
+      text-decoration: underline dotted;
+      text-underline-offset: 2px;
+    }
+
+    .person-rename-input {
+      background: #0f172a;
+      border: 1px solid #64748b;
+      border-radius: 4px;
+      padding: 0.125rem 0.375rem;
+      color: #e2e8f0;
+      font-size: 0.8rem;
+      width: 120px;
+      max-width: 160px;
+      box-sizing: border-box;
+    }
+
     .category-chip:hover {
+      filter: brightness(1.2);
+    }
+
+    .person-chip:hover {
       filter: brightness(1.2);
     }
 
@@ -396,7 +445,17 @@ export class TaskBoard extends LitElement {
       border-color: white;
     }
 
+    .person-chip.active {
+      border-color: white;
+      color: #f8fafc;
+    }
+
     .category-chip.all {
+      background: #475569;
+      color: white;
+    }
+
+    .person-chip.all {
       background: #475569;
       color: white;
     }
@@ -418,7 +477,23 @@ export class TaskBoard extends LitElement {
       transition: all 0.2s;
     }
 
+    .add-person-btn {
+      padding: 0.375rem 0.75rem;
+      background: transparent;
+      border: 1px dashed #475569;
+      border-radius: 16px;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
     .add-category-btn:hover {
+      border-color: #64748b;
+      color: #e2e8f0;
+    }
+
+    .add-person-btn:hover {
       border-color: #64748b;
       color: #e2e8f0;
     }
@@ -429,7 +504,23 @@ export class TaskBoard extends LitElement {
       align-items: center;
     }
 
+    .person-input-wrapper {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
     .category-input {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.375rem 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.8rem;
+      width: 120px;
+    }
+
+    .person-input {
       background: #0f172a;
       border: 1px solid #475569;
       border-radius: 4px;
@@ -449,6 +540,37 @@ export class TaskBoard extends LitElement {
       gap: 0.25rem;
     }
 
+    .task-person {
+      font-size: 0.7rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 8px;
+      margin-bottom: 0.375rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: #334155;
+      color: #cbd5e1;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .task-person:hover {
+      filter: brightness(1.1);
+    }
+
+    .task-person-picker {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.75rem;
+    }
+
     .category-select {
       background: #1e293b;
       border: 1px solid #475569;
@@ -458,6 +580,19 @@ export class TaskBoard extends LitElement {
       font-size: 0.75rem;
       cursor: pointer;
       margin-bottom: 0.5rem;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .person-select {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.75rem;
+      cursor: pointer;
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
@@ -544,6 +679,7 @@ export class TaskBoard extends LitElement {
     .task-modal .task-summary-input,
     .task-modal .task-description-input,
     .task-modal .category-select,
+    .task-modal .person-select,
     .task-modal .priority-select {
       font-size: 0.9rem;
     }
@@ -555,13 +691,21 @@ export class TaskBoard extends LitElement {
   @state() private editSummary: string = ''
   @state() private editDescription: string = ''
   @state() private editCategory: string = DEFAULT_CATEGORY
+  @state() private editPerson: string = DEFAULT_PERSON
   @state() private editPriority: TaskPriority = 'medium'
   @state() private draggedTaskId: string | null = null
   @state() private dragOverTaskId: string | null = null
   @state() private categories: Category[] = []
   @state() private selectedCategory: string | null = null // null = show all
+  @state() private persons: string[] = [DEFAULT_PERSON]
+  @state() private selectedPerson: string | null = null // null = show all
   @state() private addingCategory: boolean = false
   @state() private newCategoryName: string = ''
+  @state() private addingPerson: boolean = false
+  @state() private newPersonName: string = ''
+  @state() private editingPersonName: string | null = null
+  @state() private editPersonNameDraft: string = ''
+  @state() private personPickerTaskId: string | null = null
 
   connectedCallback() {
     super.connectedCallback()
@@ -576,7 +720,150 @@ export class TaskBoard extends LitElement {
       await this.loadCategories()
       await this.migrateOldTasks()
       await this.loadTasks()
+      this.loadPersons()
     }
+  }
+
+  private getPersonsStorageKey(): string {
+    return `taskboard-persons:${this.folderPath || 'default'}`
+  }
+
+  private loadPersons() {
+    const stored = localStorage.getItem(this.getPersonsStorageKey())
+    let storedPersons: string[] = []
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          storedPersons = parsed.filter(
+            (person): person is string =>
+              typeof person === 'string' && person.trim().length > 0,
+          )
+        }
+      } catch {
+        storedPersons = []
+      }
+    }
+
+    const taskPersons = this.tasks
+      .map((task) => task.person)
+      .filter(
+        (person): person is string => !!person && person.trim().length > 0,
+      )
+
+    this.persons = Array.from(
+      new Set([DEFAULT_PERSON, ...storedPersons, ...taskPersons]),
+    )
+
+    if (this.selectedPerson && !this.persons.includes(this.selectedPerson)) {
+      this.selectedPerson = null
+    }
+
+    this.persistPersons()
+  }
+
+  private persistPersons() {
+    localStorage.setItem(
+      this.getPersonsStorageKey(),
+      JSON.stringify(this.persons),
+    )
+  }
+
+  private async deletePerson(person: string) {
+    if (person === DEFAULT_PERSON) {
+      alert('Cannot delete the default person!')
+      return
+    }
+
+    const tasksWithPerson = this.tasks.filter(
+      (t) => (t.person || DEFAULT_PERSON) === person,
+    )
+    if (tasksWithPerson.length > 0) {
+      if (
+        !confirm(
+          `${tasksWithPerson.length} task(s) are assigned to ${person}. Reassign to ${DEFAULT_PERSON} and delete anyway?`,
+        )
+      ) {
+        return
+      }
+
+      for (const task of tasksWithPerson) {
+        const updatedTask: Task = {
+          ...task,
+          person: DEFAULT_PERSON,
+          updated: new Date().toISOString(),
+        }
+        this.tasks = this.tasks.map((t) => (t.id === task.id ? updatedTask : t))
+        await this.saveTask(updatedTask)
+      }
+    }
+
+    this.persons = this.persons.filter((p) => p !== person)
+    if (this.selectedPerson === person) {
+      this.selectedPerson = null
+    }
+    this.persistPersons()
+  }
+
+  private startRenamePerson(person: string) {
+    if (person === DEFAULT_PERSON) return
+    this.editingPersonName = person
+    this.editPersonNameDraft = person
+  }
+
+  private cancelRenamePerson() {
+    this.editingPersonName = null
+    this.editPersonNameDraft = ''
+  }
+
+  private async saveRenamePerson(oldName: string) {
+    const newName = this.editPersonNameDraft.trim()
+
+    if (!newName || newName === oldName) {
+      this.cancelRenamePerson()
+      return
+    }
+
+    if (this.persons.includes(newName)) {
+      alert('Person already exists!')
+      return
+    }
+
+    this.persons = this.persons.map((person) =>
+      person === oldName ? newName : person,
+    )
+
+    if (this.selectedPerson === oldName) {
+      this.selectedPerson = newName
+    }
+    if (this.editPerson === oldName) {
+      this.editPerson = newName
+    }
+
+    const tasksToUpdate = this.tasks.filter(
+      (task) => (task.person || DEFAULT_PERSON) === oldName,
+    )
+
+    if (tasksToUpdate.length > 0) {
+      const now = new Date().toISOString()
+      const updatedTaskMap = new Map<string, Task>()
+
+      for (const task of tasksToUpdate) {
+        const updatedTask: Task = {
+          ...task,
+          person: newName,
+          updated: now,
+        }
+        updatedTaskMap.set(task.id, updatedTask)
+        await this.saveTask(updatedTask)
+      }
+
+      this.tasks = this.tasks.map((task) => updatedTaskMap.get(task.id) || task)
+    }
+
+    this.persistPersons()
+    this.cancelRenamePerson()
   }
 
   private getCategoryColor(categoryName: string): string {
@@ -828,6 +1115,7 @@ export class TaskBoard extends LitElement {
                 if (readResponse.success && readResponse.data?.content) {
                   const task = JSON.parse(readResponse.data.content) as Task
                   task.category = task.category || category.name
+                  task.person = task.person || DEFAULT_PERSON
                   tasks.push(task)
                 }
               } catch (e) {
@@ -839,6 +1127,7 @@ export class TaskBoard extends LitElement {
       }
 
       this.tasks = tasks.sort((a, b) => a.order - b.order)
+      this.loadPersons()
       console.log('Loaded tasks:', this.tasks)
     } catch (error: any) {
       console.error('Failed to load tasks:', error)
@@ -885,6 +1174,7 @@ export class TaskBoard extends LitElement {
   private async addTask(status: TaskStatus) {
     const now = new Date().toISOString()
     const category = this.selectedCategory || DEFAULT_CATEGORY
+    const person = this.selectedPerson || DEFAULT_PERSON
     const tasksInColumn = this.tasks.filter((t) => t.status === status)
     const maxOrder =
       tasksInColumn.length > 0
@@ -898,6 +1188,7 @@ export class TaskBoard extends LitElement {
       status,
       priority: 'medium',
       category,
+      person,
       created: now,
       updated: now,
       order: maxOrder + 1,
@@ -910,7 +1201,13 @@ export class TaskBoard extends LitElement {
     this.editSummary = newTask.summary
     this.editDescription = newTask.description
     this.editCategory = newTask.category
+    this.editPerson = newTask.person || DEFAULT_PERSON
     this.editPriority = newTask.priority
+
+    if (!this.persons.includes(person)) {
+      this.persons = [...this.persons, person]
+      this.persistPersons()
+    }
   }
 
   private startEditing(task: Task) {
@@ -918,6 +1215,7 @@ export class TaskBoard extends LitElement {
     this.editSummary = task.summary
     this.editDescription = task.description
     this.editCategory = task.category || DEFAULT_CATEGORY
+    this.editPerson = task.person || DEFAULT_PERSON
     this.editPriority = task.priority
   }
 
@@ -935,6 +1233,7 @@ export class TaskBoard extends LitElement {
       summary: this.editSummary.trim() || 'Untitled',
       description: this.editDescription,
       category: this.editCategory,
+      person: this.editPerson || DEFAULT_PERSON,
       priority: this.editPriority,
       updated: new Date().toISOString(),
     }
@@ -947,11 +1246,41 @@ export class TaskBoard extends LitElement {
       updatedTask,
       categoryChanged ? oldTask.category : undefined,
     )
+
+    if (!this.persons.includes(updatedTask.person || DEFAULT_PERSON)) {
+      this.persons = [...this.persons, updatedTask.person || DEFAULT_PERSON]
+      this.persistPersons()
+    }
+
     this.editingTaskId = null
   }
 
   private cancelEditing() {
     this.editingTaskId = null
+  }
+
+  private async updateTaskPerson(task: Task, person: string) {
+    const normalizedPerson = person || DEFAULT_PERSON
+
+    if ((task.person || DEFAULT_PERSON) === normalizedPerson) {
+      this.personPickerTaskId = null
+      return
+    }
+
+    if (!this.persons.includes(normalizedPerson)) {
+      this.persons = [...this.persons, normalizedPerson]
+      this.persistPersons()
+    }
+
+    const updatedTask: Task = {
+      ...task,
+      person: normalizedPerson,
+      updated: new Date().toISOString(),
+    }
+
+    this.tasks = this.tasks.map((t) => (t.id === task.id ? updatedTask : t))
+    await this.saveTask(updatedTask)
+    this.personPickerTaskId = null
   }
 
   private async updateTaskCategory(task: Task, category: string) {
@@ -1216,6 +1545,8 @@ export class TaskBoard extends LitElement {
     const categoryColor = this.getCategoryColor(task.category)
     const descriptionText = task.description || ''
     const showDescriptionMore = descriptionText.length > 180
+    const personName = task.person?.trim() || DEFAULT_PERSON
+    const personOptions = Array.from(new Set([personName, ...this.persons]))
 
     return html`
       <div
@@ -1248,6 +1579,41 @@ export class TaskBoard extends LitElement {
         >
           ${task.priority}
         </div>
+
+        <div
+          class="task-person"
+          @click=${(e: Event) => {
+            e.stopPropagation()
+            this.personPickerTaskId =
+              this.personPickerTaskId === task.id ? null : task.id
+          }}
+          title="Click to change person"
+        >
+          👤 ${personName}
+        </div>
+
+        ${this.personPickerTaskId === task.id
+          ? html`
+              <select
+                class="task-person-picker"
+                .value=${personName}
+                @click=${(e: Event) => e.stopPropagation()}
+                @change=${async (e: Event) => {
+                  await this.updateTaskPerson(
+                    task,
+                    (e.target as HTMLSelectElement).value,
+                  )
+                }}
+                @blur=${() => {
+                  this.personPickerTaskId = null
+                }}
+              >
+                ${personOptions.map(
+                  (person) => html`<option value=${person}>${person}</option>`,
+                )}
+              </select>
+            `
+          : ''}
 
         <div class="task-summary" @dblclick=${() => this.startEditing(task)}>
           ${task.summary}
@@ -1325,6 +1691,18 @@ export class TaskBoard extends LitElement {
               )}
             </select>
 
+            <select
+              class="person-select"
+              .value=${this.editPerson}
+              @change=${(e: Event) => {
+                this.editPerson = (e.target as HTMLSelectElement).value
+              }}
+            >
+              ${this.persons.map(
+                (person) => html`<option value=${person}>${person}</option>`,
+              )}
+            </select>
+
             <input
               type="text"
               class="task-summary-input"
@@ -1386,7 +1764,10 @@ export class TaskBoard extends LitElement {
         const statusMatch = t.status === column.id
         const categoryMatch =
           !this.selectedCategory || t.category === this.selectedCategory
-        return statusMatch && categoryMatch
+        const personMatch =
+          !this.selectedPerson ||
+          (t.person || DEFAULT_PERSON) === this.selectedPerson
+        return statusMatch && categoryMatch && personMatch
       })
       .sort((a, b) => a.order - b.order)
 
@@ -1520,6 +1901,149 @@ export class TaskBoard extends LitElement {
     `
   }
 
+  private renderPersonBar() {
+    return html`
+      <div class="person-bar">
+        <div
+          class="person-chip all ${this.selectedPerson === null
+            ? 'active'
+            : ''}"
+          @click=${() => {
+            this.selectedPerson = null
+          }}
+        >
+          All Persons
+        </div>
+        ${this.persons.map(
+          (person) => html`
+            <div
+              class="person-chip ${this.selectedPerson === person
+                ? 'active'
+                : ''}"
+              @click=${() => {
+                this.selectedPerson = person
+              }}
+            >
+              👤
+              ${this.editingPersonName === person
+                ? html`
+                    <input
+                      class="person-rename-input"
+                      list="person-name-options"
+                      .value=${this.editPersonNameDraft}
+                      @click=${(e: Event) => e.stopPropagation()}
+                      @input=${(e: Event) => {
+                        this.editPersonNameDraft = (
+                          e.target as HTMLInputElement
+                        ).value
+                      }}
+                      @keydown=${async (e: KeyboardEvent) => {
+                        e.stopPropagation()
+                        if (e.key === 'Enter') {
+                          await this.saveRenamePerson(person)
+                        }
+                        if (e.key === 'Escape') {
+                          this.cancelRenamePerson()
+                        }
+                      }}
+                      @blur=${async () => {
+                        await this.saveRenamePerson(person)
+                      }}
+                    />
+                  `
+                : html`
+                    <span
+                      class="person-name"
+                      @click=${(e: Event) => {
+                        e.stopPropagation()
+                        this.startRenamePerson(person)
+                      }}
+                      title="Click to rename"
+                    >
+                      ${person}
+                    </span>
+                  `}
+              (${this.tasks.filter(
+                (t) => (t.person || DEFAULT_PERSON) === person,
+              ).length})
+              ${person !== DEFAULT_PERSON
+                ? html`
+                    <span
+                      class="delete-category-btn"
+                      @click=${(e: Event) => {
+                        e.stopPropagation()
+                        this.deletePerson(person)
+                      }}
+                      title="Delete person"
+                    >
+                      ×
+                    </span>
+                  `
+                : ''}
+            </div>
+          `,
+        )}
+        ${this.addingPerson
+          ? html`
+              <div class="person-input-wrapper">
+                <input
+                  type="text"
+                  class="person-input"
+                  placeholder="Person name"
+                  .value=${this.newPersonName}
+                  @input=${(e: Event) => {
+                    this.newPersonName = (e.target as HTMLInputElement).value
+                  }}
+                  @keydown=${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter' && this.newPersonName.trim()) {
+                      const name = this.newPersonName.trim()
+                      if (this.persons.includes(name)) {
+                        alert('Person already exists!')
+                        return
+                      }
+                      this.persons = [...this.persons, name]
+                      this.persistPersons()
+                      this.newPersonName = ''
+                      this.addingPerson = false
+                    }
+                    if (e.key === 'Escape') {
+                      this.addingPerson = false
+                      this.newPersonName = ''
+                    }
+                  }}
+                  @blur=${() => {
+                    setTimeout(() => {
+                      this.addingPerson = false
+                      this.newPersonName = ''
+                    }, 200)
+                  }}
+                />
+              </div>
+            `
+          : html`
+              <button
+                class="add-person-btn"
+                @click=${async () => {
+                  this.addingPerson = true
+                  await this.updateComplete
+                  const input = this.shadowRoot?.querySelector(
+                    '.person-input',
+                  ) as HTMLInputElement
+                  input?.focus()
+                }}
+              >
+                + Add Person
+              </button>
+            `}
+        <datalist id="person-name-options">
+          ${this.persons
+            .filter((person) => person !== this.editingPersonName)
+            .map((person) => html`<option value=${person}></option>`)}
+        </datalist>
+      </div>
+    `
+  }
+
   render() {
     return html`
       <div class="content">
@@ -1550,7 +2074,7 @@ export class TaskBoard extends LitElement {
 
         ${this.folderPath
           ? html`
-              ${this.renderCategoryBar()}
+              ${this.renderCategoryBar()} ${this.renderPersonBar()}
               <div class="board">
                 ${COLUMNS.map((column) => this.renderColumn(column))}
               </div>
