@@ -19,6 +19,8 @@ import {
 } from './taskboard.types.js'
 
 const DEFAULT_BOARD_TITLE = 'Taskboard'
+const README_FILE_NAME = 'readme.txt'
+const README_FILE_CONTENT = 'https://www.nice2havetoolbox.de\n'
 
 @customElement('nh-taskboard')
 export class TaskBoard extends LitElement {
@@ -968,6 +970,7 @@ export class TaskBoard extends LitElement {
     const savedPath = localStorage.getItem('taskboard-folder')
     if (savedPath) {
       this.folderPath = savedPath
+      await this.ensureReadmeFile()
       await this.loadBoardTitle()
       await this.ensureDefaultCategory()
       await this.loadCategories()
@@ -980,6 +983,40 @@ export class TaskBoard extends LitElement {
     if (!this.folderPath) return fileName
     const sep = this.folderPath.includes('\\') ? '\\' : '/'
     return `${this.folderPath}${sep}${fileName}`
+  }
+
+  private async ensureReadmeFile() {
+    if (!this.folderPath) return
+
+    try {
+      const listResponse = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        { operation: 'list', folderPath: this.folderPath },
+      )
+
+      if (!listResponse.success) return
+
+      const files = listResponse.data?.files || []
+      const hasReadme = files.some(
+        (file: { name?: string }) =>
+          (file.name || '').toLowerCase() === README_FILE_NAME,
+      )
+
+      if (hasReadme) return
+
+      await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'write-file',
+          filePath: this.getMetadataFilePath(README_FILE_NAME),
+          content: README_FILE_CONTENT,
+        },
+      )
+    } catch (error: any) {
+      console.error('Failed to ensure readme.txt:', error)
+    }
   }
 
   private async readMetadataFile<T>(fileName: string): Promise<T | null> {
@@ -1338,6 +1375,7 @@ export class TaskBoard extends LitElement {
       ) {
         this.folderPath = response.filePaths[0]
         localStorage.setItem('taskboard-folder', this.folderPath)
+        await this.ensureReadmeFile()
         await this.loadBoardTitle()
 
         console.log('Selected folder:', this.folderPath)
