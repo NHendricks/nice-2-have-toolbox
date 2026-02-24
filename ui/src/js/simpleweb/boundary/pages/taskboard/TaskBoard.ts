@@ -212,6 +212,8 @@ export class TaskBoard extends LitElement {
 
     .task-summary-input {
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       background: #1e293b;
       border: 1px solid #475569;
       border-radius: 4px;
@@ -231,6 +233,8 @@ export class TaskBoard extends LitElement {
 
     .task-description-input {
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       background: #1e293b;
       border: 1px solid #475569;
       border-radius: 4px;
@@ -301,6 +305,22 @@ export class TaskBoard extends LitElement {
       color: #e2e8f0;
       font-size: 0.75rem;
       cursor: pointer;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .task-edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .task-edit-form .task-summary-input,
+    .task-edit-form .task-description-input,
+    .task-edit-form .category-select,
+    .task-edit-form .priority-select {
+      margin-bottom: 0;
     }
 
     .empty-state {
@@ -322,7 +342,8 @@ export class TaskBoard extends LitElement {
     .edit-buttons {
       display: flex;
       gap: 0.25rem;
-      margin-top: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 0.25rem;
     }
 
     .btn-small {
@@ -426,6 +447,8 @@ export class TaskBoard extends LitElement {
       cursor: pointer;
       margin-bottom: 0.5rem;
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .delete-category-btn {
@@ -788,7 +811,7 @@ export class TaskBoard extends LitElement {
 
     const newTask: Task = {
       id: this.generateId(),
-      summary: 'New Task',
+      summary: '',
       description: '',
       status,
       priority: 'medium',
@@ -1152,63 +1175,68 @@ export class TaskBoard extends LitElement {
                 : ''}
             `
           : html`
-              <select
-                class="category-select"
-                .value=${this.editCategory}
-                @change=${(e: Event) => {
-                  this.editCategory = (e.target as HTMLSelectElement).value
-                }}
-              >
-                ${this.categories.map(
-                  (cat) => html`<option value=${cat.name}>${cat.name}</option>`,
-                )}
-              </select>
-              <select
-                class="priority-select"
-                .value=${this.editPriority}
-                @change=${(e: Event) => {
-                  this.editPriority = (e.target as HTMLSelectElement)
-                    .value as TaskPriority
-                }}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-              <input
-                type="text"
-                class="task-summary-input"
-                .value=${this.editSummary}
-                @input=${(e: Event) => {
-                  this.editSummary = (e.target as HTMLInputElement).value
-                }}
-                @keydown=${(e: KeyboardEvent) => {
-                  if (e.key === 'Enter' && !e.shiftKey) this.saveEditing()
-                  if (e.key === 'Escape') this.cancelEditing()
-                }}
-              />
-              <textarea
-                class="task-description-input"
-                .value=${this.editDescription}
-                @input=${(e: Event) => {
-                  this.editDescription = (e.target as HTMLTextAreaElement).value
-                }}
-                placeholder="Description..."
-              ></textarea>
-              <div class="edit-buttons">
-                <button
-                  class="btn btn-primary btn-small"
-                  @click=${this.saveEditing}
+              <div class="task-edit-form">
+                <select
+                  class="category-select"
+                  .value=${this.editCategory}
+                  @change=${(e: Event) => {
+                    this.editCategory = (e.target as HTMLSelectElement).value
+                  }}
                 >
-                  Save
-                </button>
-                <button
-                  class="btn btn-secondary btn-small"
-                  @click=${this.cancelEditing}
+                  ${this.categories.map(
+                    (cat) =>
+                      html`<option value=${cat.name}>${cat.name}</option>`,
+                  )}
+                </select>
+                <input
+                  type="text"
+                  class="task-summary-input"
+                  .value=${this.editSummary}
+                  @input=${(e: Event) => {
+                    this.editSummary = (e.target as HTMLInputElement).value
+                  }}
+                  @keydown=${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter' && !e.shiftKey) this.saveEditing()
+                    if (e.key === 'Escape') this.cancelEditing()
+                  }}
+                />
+                <textarea
+                  class="task-description-input"
+                  .value=${this.editDescription}
+                  @input=${(e: Event) => {
+                    this.editDescription = (
+                      e.target as HTMLTextAreaElement
+                    ).value
+                  }}
+                  placeholder="Description..."
+                ></textarea>
+                <select
+                  class="priority-select"
+                  .value=${this.editPriority}
+                  @change=${(e: Event) => {
+                    this.editPriority = (e.target as HTMLSelectElement)
+                      .value as TaskPriority
+                  }}
                 >
-                  Cancel
-                </button>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <div class="edit-buttons">
+                  <button
+                    class="btn btn-primary btn-small"
+                    @click=${this.saveEditing}
+                  >
+                    Save
+                  </button>
+                  <button
+                    class="btn btn-secondary btn-small"
+                    @click=${this.cancelEditing}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             `}
 
