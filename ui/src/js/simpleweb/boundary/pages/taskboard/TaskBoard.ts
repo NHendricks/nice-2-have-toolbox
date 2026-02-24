@@ -573,15 +573,12 @@ export class TaskBoard extends LitElement {
     .person-picker-modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(2, 6, 23, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: transparent;
       z-index: 1100;
-      padding: 1rem;
     }
 
     .person-picker-modal {
+      position: fixed;
       width: min(280px, 100%);
       background: #0f172a;
       border: 1px solid #334155;
@@ -725,6 +722,8 @@ export class TaskBoard extends LitElement {
   @state() private editingPersonName: string | null = null
   @state() private editPersonNameDraft: string = ''
   @state() private personPickerTaskId: string | null = null
+  @state() private personPickerAnchor: { left: number; top: number } | null =
+    null
   @state() private pendingNewTask: Task | null = null
 
   connectedCallback() {
@@ -1326,7 +1325,7 @@ export class TaskBoard extends LitElement {
     const normalizedPerson = person || DEFAULT_PERSON
 
     if ((task.person || DEFAULT_PERSON) === normalizedPerson) {
-      this.personPickerTaskId = null
+      this.closePersonPicker()
       return
     }
 
@@ -1343,7 +1342,40 @@ export class TaskBoard extends LitElement {
 
     this.tasks = this.tasks.map((t) => (t.id === task.id ? updatedTask : t))
     await this.saveTask(updatedTask)
+    this.closePersonPicker()
+  }
+
+  private closePersonPicker() {
     this.personPickerTaskId = null
+    this.personPickerAnchor = null
+  }
+
+  private async openPersonPicker(taskId: string, trigger: HTMLElement) {
+    const rect = trigger.getBoundingClientRect()
+    const popupWidth = 280
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - popupWidth - 8),
+    )
+    const top = Math.max(8, rect.bottom + 6)
+
+    this.personPickerTaskId = taskId
+    this.personPickerAnchor = { left, top }
+
+    await this.updateComplete
+
+    const picker = this.shadowRoot?.querySelector(
+      '.person-picker-modal .task-person-picker',
+    ) as HTMLSelectElement | null
+
+    if (!picker) return
+
+    picker.focus()
+    try {
+      ;(picker as any).showPicker?.()
+    } catch {
+      picker.click()
+    }
   }
 
   private async updateTaskCategory(task: Task, category: string) {
@@ -1644,10 +1676,15 @@ export class TaskBoard extends LitElement {
 
         <div
           class="task-person"
-          @click=${(e: Event) => {
+          @click=${async (e: Event) => {
             e.stopPropagation()
-            this.personPickerTaskId =
-              this.personPickerTaskId === task.id ? null : task.id
+            if (this.personPickerTaskId === task.id) {
+              this.closePersonPicker()
+              return
+            }
+
+            const trigger = e.currentTarget as HTMLElement
+            await this.openPersonPicker(task.id, trigger)
           }}
           title="Click to change person"
         >
@@ -1696,7 +1733,7 @@ export class TaskBoard extends LitElement {
   }
 
   private renderTaskPersonPickerModal() {
-    if (!this.personPickerTaskId) return ''
+    if (!this.personPickerTaskId || !this.personPickerAnchor) return ''
 
     const task = this.tasks.find((t) => t.id === this.personPickerTaskId)
     if (!task) return ''
@@ -1708,11 +1745,13 @@ export class TaskBoard extends LitElement {
       <div
         class="person-picker-modal-overlay"
         @click=${() => {
-          this.personPickerTaskId = null
+          this.closePersonPicker()
         }}
       >
         <div
           class="person-picker-modal"
+          style="left: ${this.personPickerAnchor.left}px; top: ${this
+            .personPickerAnchor.top}px;"
           @click=${(e: Event) => e.stopPropagation()}
         >
           <select
