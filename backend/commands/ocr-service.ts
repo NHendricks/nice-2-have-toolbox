@@ -568,11 +568,19 @@ export class OcrService {
         .organizations()
         .out('array')
         .filter((o: string) => o.length > 2);
+      const legalSuffixCompanies = this.extractCompaniesBeforeLegalSuffix(text);
+      const mergedOrganizations = Array.from(
+        new Set([...organizations, ...legalSuffixCompanies]),
+      );
       const places = doc
         .places()
         .out('array')
         .filter((p: string) => p.length > 2);
       timings.entityExtraction = Date.now() - entityStartTime;
+
+      if (sender === 'Unknown' && legalSuffixCompanies.length > 0) {
+        sender = legalSuffixCompanies[0];
+      }
 
       // Get word frequency - extract meaningful terms
       const wordStartTime = Date.now();
@@ -655,7 +663,8 @@ export class OcrService {
       return {
         sender: sender,
         people: people.length > 0 ? people : [],
-        organizations: organizations.length > 0 ? organizations : [],
+        organizations:
+          mergedOrganizations.length > 0 ? mergedOrganizations : [],
         places: places.length > 0 ? places : [],
         dates: dates.length > 0 ? dates : [],
         websites: webData.websites.length > 0 ? webData.websites : [],
@@ -683,6 +692,69 @@ export class OcrService {
         error: error.message,
       };
     }
+  }
+
+  private extractCompaniesBeforeLegalSuffix(text: string): string[] {
+    const candidates: string[] = [];
+    const seen = new Set<string>();
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    const companyPattern =
+      /\b([A-Za-zÄÖÜäöüß0-9][A-Za-zÄÖÜäöüß0-9&.,'’+\-/\s]{1,100}?)\s+(GmbH|AG)\b/g;
+
+    const pushCandidate = (prefix: string, suffix: string) => {
+      const cleanedPrefix = prefix
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^[^A-Za-zÄÖÜäöüß]+/, '')
+        .replace(/[^A-Za-zÄÖÜäöüß0-9&.+\-\s]+$/g, '');
+
+      if (!cleanedPrefix || cleanedPrefix.length < 2) return;
+
+      const company = `${cleanedPrefix} ${suffix}`.replace(/\s+/g, ' ').trim();
+      const key = company.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        candidates.push(company);
+      }
+    };
+
+    let match: RegExpExecArray | null;
+    while ((match = companyPattern.exec(normalized)) !== null) {
+      const rawPrefix = (match[1] || '').trim();
+      const suffix = match[2];
+
+      const segmentedPrefix = rawPrefix
+        .split(/[,:;()\[\]{}|]/)
+        .pop()
+        ?.trim();
+      if (!segmentedPrefix) continue;
+
+      const words = segmentedPrefix.split(/\s+/).filter(Boolean);
+      const scopedPrefix = words.slice(-6).join(' ').trim();
+      if (scopedPrefix.length < 2) continue;
+
+      // Highest priority: focused segment from the last token containing '&' (e.g. "F&B Schlagheck")
+      let ampersandIndex = -1;
+      for (let i = words.length - 1; i >= 0; i--) {
+        if ((words[i] as string).includes('&')) {
+          ampersandIndex = i;
+          break;
+        }
+      }
+      if (ampersandIndex >= 0 && ampersandIndex < words.length) {
+        pushCandidate(words.slice(ampersandIndex).join(' '), suffix);
+      }
+
+      // Fallback priority: last 2 words immediately before legal suffix
+      if (words.length >= 2) {
+        pushCandidate(words.slice(-2).join(' '), suffix);
+      }
+
+      // Broader fallback: scoped prefix (up to 6 trailing words)
+      pushCandidate(scopedPrefix, suffix);
+    }
+
+    return candidates;
   }
 
   /**

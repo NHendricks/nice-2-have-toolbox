@@ -128,6 +128,10 @@ export class DartsCounter extends LitElement {
       background: rgba(239, 68, 68, 0.65);
     }
 
+    .reset {
+      width: 10em;
+    }
+
     .status {
       font-size: 0.9rem;
       color: #cbd5e1;
@@ -877,7 +881,7 @@ export class DartsCounter extends LitElement {
             >
               Round the Clock
             </button>
-            <button class="action-btn warn" @click=${this.resetModeState}>
+            <button class="action-btn warn reset" @click=${this.resetModeState}>
               Reset
             </button>
           </div>

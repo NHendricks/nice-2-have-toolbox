@@ -10,6 +10,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+- docmanager
+  - fix ocr on windows
+
 ### v2.2.0 (24.02.2026)
 
 - redesign menu to look like mac launchpad
@@ -19,7 +22,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - scan documents (pdf, png, jpg)
   - remove images option in live preview, save as pdf
   - support multipage scanning (adf)
-  - add ocr option for page 1 (maybne useful for later autorename file)
+  - automatic file name detection using ocr
 - commander
   - add zoom functins to imageviewer
   - add help entry how to select files on mac
@@ -33,7 +36,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - taskboard
   - add persons
   - add backlog
-  - add several useful features (see commits for detqils)
+  - add several useful features (see commits for details)
 - new app calculator
 - new app dartscounter
 

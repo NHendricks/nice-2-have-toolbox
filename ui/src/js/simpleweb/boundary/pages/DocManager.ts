@@ -555,58 +555,58 @@ export class DocManager extends LitElement {
 
       // 1. POPULATE COMPANY/DOMAIN DROPDOWN
       this.companyOptions = []
+      const addCompanyOption = (value: string, label: string) => {
+        if (!value) return
+        if (!this.companyOptions.find((o) => o.value === value)) {
+          this.companyOptions.push({ value, label })
+        }
+      }
 
       // Get fixed senders from preferences and check if OCR text contains them
       const fixedSenders = userPreferencesService.getSenders()
       const ocrTextLower = JSON.stringify(analysis).toLowerCase()
 
-      for (const sender of fixedSenders) {
-        if (ocrTextLower.includes(sender.toLowerCase())) {
-          this.companyOptions.push({
-            value: this.sanitizeFilename(sender),
-            label: `${sender} (Fixed)`,
-          })
-        }
-      }
-
-      // Add domains as company options
+      // Priority 1: domains
       if (analysis.domains) {
         for (const domain of analysis.domains) {
           const cleanDomain = domain
             .replace(/^www\./, '')
             .replace(/\.[a-z]{2,}$/i, '')
 
-          this.companyOptions.push({
-            value: this.sanitizeFilename(cleanDomain),
-            label: `${cleanDomain} (Domain)`,
-          })
+          addCompanyOption(
+            this.sanitizeFilename(cleanDomain),
+            `${cleanDomain} (Domain)`,
+          )
         }
       }
 
-      // Add detected organizations as company options
+      // Priority 2: organizations ending with GmbH or AG
       if (analysis.organizations && analysis.organizations.length > 0) {
+        const gmbhAgOrganizations = analysis.organizations.filter(
+          (org: string) => /\b(gmbh|ag)\b/i.test(org),
+        )
+        for (const org of gmbhAgOrganizations) {
+          addCompanyOption(this.sanitizeFilename(org), `${org} (Organization)`)
+        }
+
+        // Priority 3: remaining organizations
         for (const org of analysis.organizations) {
-          const orgValue = this.sanitizeFilename(org)
-          if (
-            orgValue &&
-            !this.companyOptions.find((o) => o.value === orgValue)
-          ) {
-            this.companyOptions.push({
-              value: orgValue,
-              label: `${org} (Organization)`,
-            })
-          }
+          if (/\b(gmbh|ag)\b/i.test(org)) continue
+          addCompanyOption(this.sanitizeFilename(org), `${org} (Organization)`)
         }
       }
 
-      // Add sender if not already in options
+      // Remaining: sender and fixed sender matches
       if (analysis.sender && analysis.sender !== 'Unknown') {
-        const senderValue = this.sanitizeFilename(analysis.sender)
-        if (!this.companyOptions.find((o) => o.value === senderValue)) {
-          this.companyOptions.push({
-            value: senderValue,
-            label: `${analysis.sender} (Sender)`,
-          })
+        addCompanyOption(
+          this.sanitizeFilename(analysis.sender),
+          `${analysis.sender} (Sender)`,
+        )
+      }
+
+      for (const sender of fixedSenders) {
+        if (ocrTextLower.includes(sender.toLowerCase())) {
+          addCompanyOption(this.sanitizeFilename(sender), `${sender} (Fixed)`)
         }
       }
 
@@ -744,32 +744,40 @@ export class DocManager extends LitElement {
 
       // 4. POPULATE FULL NAME DROPDOWN
       this.fullNameOptions = []
+      const addFullNameOption = (value: string, label: string) => {
+        if (!value) return
+        if (!this.fullNameOptions.find((o) => o.value === value)) {
+          this.fullNameOptions.push({ value, label })
+        }
+      }
 
-      // Get fixed full names from preferences and check if OCR text contains them
+      // Priority 1: fixed names from preferences (if present in OCR text)
       const fixedFullNames = userPreferencesService.getFullNames()
       const ocrTextForNames = JSON.stringify(analysis).toLowerCase()
 
       for (const fullName of fixedFullNames) {
         if (ocrTextForNames.includes(fullName.toLowerCase())) {
-          this.fullNameOptions.push({
-            value: this.sanitizeFilename(fullName),
-            label: `${fullName} (Fixed)`,
-          })
+          addFullNameOption(
+            this.sanitizeFilename(fullName),
+            `${fullName} (Fixed)`,
+          )
         }
       }
 
-      // Add OCR-detected full names
-      if (analysis.fullNames && analysis.fullNames.length > 0) {
-        for (const fullName of analysis.fullNames) {
-          const fullNameValue = this.sanitizeFilename(fullName)
-          // Only add if not already in options
-          if (!this.fullNameOptions.find((o) => o.value === fullNameValue)) {
-            this.fullNameOptions.push({
-              value: fullNameValue,
-              label: fullName,
-            })
-          }
+      // Priority 2: OCR-detected people names
+      if (analysis.people && analysis.people.length > 0) {
+        for (const personName of analysis.people) {
+          addFullNameOption(this.sanitizeFilename(personName), personName)
         }
+      }
+
+      // Fallback: if no OCR-based match exists, still prioritize first fixed preference
+      if (this.fullNameOptions.length === 0 && fixedFullNames.length > 0) {
+        const preferredFullName = fixedFullNames[0]
+        addFullNameOption(
+          this.sanitizeFilename(preferredFullName),
+          `${preferredFullName} (Fixed)`,
+        )
       }
 
       // Set default selection (first match)
@@ -1890,7 +1898,7 @@ export class DocManager extends LitElement {
                       <div>
                         <label
                           style="display: block; margin-bottom: 6px; font-weight: 600; color: #555;"
-                          >Full Name</label
+                          >Name</label
                         >
                         <select
                           .value="${this.selectedFullName}"
