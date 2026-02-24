@@ -1,6 +1,7 @@
 import { Router } from '@vaadin/router'
 import './simpleweb/boundary/navigation/ResponsiveMenu'
 import './simpleweb/boundary/pages/Commander'
+import './simpleweb/boundary/pages/Calculator'
 import './simpleweb/boundary/pages/CommandParameter'
 import './simpleweb/boundary/pages/DocManager'
 import './simpleweb/boundary/pages/Faq'
@@ -23,6 +24,7 @@ const validPaths = [
   '/taskboard',
   '/docmanager',
   '/tools/jsonformatter',
+  '/tools/calculator',
 ]
 
 const outlet = document.querySelector('.view')
@@ -40,6 +42,7 @@ router.setRoutes([
   { path: '/taskboard', component: 'nh-taskboard' },
   { path: '/docmanager', component: 'nh-docmanager' },
   { path: '/tools/jsonformatter', component: 'nh-json-formatter' },
+  { path: '/tools/calculator', component: 'nh-calculator' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 

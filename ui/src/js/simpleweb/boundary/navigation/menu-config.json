@@ -44,6 +44,11 @@
           "label": "JSON Formatter",
           "path": "/tools/jsonformatter",
           "icon": "📝"
+        },
+        {
+          "label": "Calculator",
+          "path": "/tools/calculator",
+          "icon": "🧮"
         }
       ]
     }
@@ -84,6 +89,10 @@
       "addBodyClass": "force-portrait"
     },
     "/tools/jsonformatter": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/tools/calculator": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }
