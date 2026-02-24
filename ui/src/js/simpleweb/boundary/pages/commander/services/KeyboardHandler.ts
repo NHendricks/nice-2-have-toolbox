@@ -53,6 +53,11 @@ export class KeyboardHandler {
       }
     }
 
+    // Allow key handling from filter input
+    if (this.handleFilterInputKeys(event)) {
+      return
+    }
+
     // Ignore other keys if typing in an input field
     if (this.isInputField(event)) {
       // Block all other keys when in input fields
@@ -94,6 +99,46 @@ export class KeyboardHandler {
       (el) =>
         el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement,
     )
+  }
+
+  /**
+   * Handle ArrowUp/ArrowDown/Enter in filter input
+   */
+  private handleFilterInputKeys(event: KeyboardEvent): boolean {
+    const path = event.composedPath()
+    const isFilterInput = path.some(
+      (el) =>
+        el instanceof HTMLInputElement && el.classList.contains('filter-input'),
+    )
+
+    if (!isFilterInput) {
+      return false
+    }
+
+    const pane = this.commander.getActivePane()
+    if (!pane.filterActive) {
+      return false
+    }
+
+    switch (event.key) {
+      case 'ArrowUp':
+      case 'ArrowDown':
+        event.preventDefault()
+        this.commander.moveFocus(
+          event.key === 'ArrowUp' ? -1 : 1,
+          event.shiftKey,
+        )
+        return true
+
+      case 'Enter':
+        event.preventDefault()
+        this.commander.updateActivePane({ filter: '', filterActive: false })
+        this.commander.handleEnter()
+        return true
+
+      default:
+        return false
+    }
   }
 
   /**
