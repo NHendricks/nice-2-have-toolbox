@@ -1,0 +1,12 @@
+{
+  "id": "task-1771958058713-j6ikdz0dc",
+  "summary": "photo mover",
+  "description": "- move photos into subdirs using meta-timestamp (yyyy/mm as default pattern, configurable)",
+  "status": "backlog",
+  "priority": "medium",
+  "category": "minihelpers",
+  "person": "Nils",
+  "created": "2026-02-24T18:34:18.712Z",
+  "updated": "2026-02-24T18:35:42.249Z",
+  "order": 1
+}

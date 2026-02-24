@@ -428,6 +428,7 @@ export class TaskBoard extends LitElement {
     .task-backlog-actions {
       display: flex;
       justify-content: flex-end;
+      gap: 0.3rem;
       margin-bottom: 0.35rem;
     }
 
@@ -2193,6 +2194,44 @@ export class TaskBoard extends LitElement {
     }
   }
 
+  private async moveBacklogTaskToTop(task: Task) {
+    if (task.status !== 'backlog') return
+
+    const backlogTasks = this.tasks
+      .filter((t) => t.status === 'backlog')
+      .sort((a, b) => a.order - b.order)
+
+    if (backlogTasks.length <= 1) return
+
+    const reorderedBacklog = [
+      task,
+      ...backlogTasks.filter((backlogTask) => backlogTask.id !== task.id),
+    ]
+
+    const backlogById = new Map<string, Task>()
+    const now = new Date().toISOString()
+    reorderedBacklog.forEach((backlogTask, index) => {
+      backlogById.set(backlogTask.id, {
+        ...backlogTask,
+        order: index,
+        updated: backlogTask.id === task.id ? now : backlogTask.updated,
+      })
+    })
+
+    this.tasks = this.tasks.map((existingTask) =>
+      existingTask.status === 'backlog'
+        ? (backlogById.get(existingTask.id) ?? existingTask)
+        : existingTask,
+    )
+
+    for (const updatedTask of reorderedBacklog) {
+      const persistedTask = backlogById.get(updatedTask.id)
+      if (persistedTask) {
+        await this.saveTask(persistedTask)
+      }
+    }
+  }
+
   private renderTask(task: Task) {
     const isEditing = this.editingTaskId === task.id
     const isDragging = this.draggedTaskId === task.id
@@ -2225,6 +2264,15 @@ export class TaskBoard extends LitElement {
                   }}
                 >
                   move 2 sprint
+                </button>
+                <button
+                  class="task-backlog-sprint-btn"
+                  @click=${async (e: Event) => {
+                    e.stopPropagation()
+                    await this.moveBacklogTaskToTop(task)
+                  }}
+                >
+                  move to top
                 </button>
               </div>
             `
