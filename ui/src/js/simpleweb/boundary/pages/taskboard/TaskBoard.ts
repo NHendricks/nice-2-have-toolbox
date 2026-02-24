@@ -562,13 +562,32 @@ export class TaskBoard extends LitElement {
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
-      margin-bottom: 0.5rem;
       background: #1e293b;
       border: 1px solid #475569;
       border-radius: 4px;
       padding: 0.25rem 0.5rem;
       color: #e2e8f0;
       font-size: 0.75rem;
+    }
+
+    .person-picker-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+      padding: 1rem;
+    }
+
+    .person-picker-modal {
+      width: min(280px, 100%);
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 0.75rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
     }
 
     .category-select {
@@ -1546,7 +1565,6 @@ export class TaskBoard extends LitElement {
     const descriptionText = task.description || ''
     const showDescriptionMore = descriptionText.length > 180
     const personName = task.person?.trim() || DEFAULT_PERSON
-    const personOptions = Array.from(new Set([personName, ...this.persons]))
 
     return html`
       <div
@@ -1592,29 +1610,6 @@ export class TaskBoard extends LitElement {
           👤 ${personName}
         </div>
 
-        ${this.personPickerTaskId === task.id
-          ? html`
-              <select
-                class="task-person-picker"
-                .value=${personName}
-                @click=${(e: Event) => e.stopPropagation()}
-                @change=${async (e: Event) => {
-                  await this.updateTaskPerson(
-                    task,
-                    (e.target as HTMLSelectElement).value,
-                  )
-                }}
-                @blur=${() => {
-                  this.personPickerTaskId = null
-                }}
-              >
-                ${personOptions.map(
-                  (person) => html`<option value=${person}>${person}</option>`,
-                )}
-              </select>
-            `
-          : ''}
-
         <div class="task-summary" @dblclick=${() => this.startEditing(task)}>
           ${task.summary}
         </div>
@@ -1651,6 +1646,45 @@ export class TaskBoard extends LitElement {
                 </div>
               `
             : ''}
+        </div>
+      </div>
+    `
+  }
+
+  private renderTaskPersonPickerModal() {
+    if (!this.personPickerTaskId) return ''
+
+    const task = this.tasks.find((t) => t.id === this.personPickerTaskId)
+    if (!task) return ''
+
+    const currentPerson = task.person?.trim() || DEFAULT_PERSON
+    const personOptions = Array.from(new Set([currentPerson, ...this.persons]))
+
+    return html`
+      <div
+        class="person-picker-modal-overlay"
+        @click=${() => {
+          this.personPickerTaskId = null
+        }}
+      >
+        <div
+          class="person-picker-modal"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <select
+            class="task-person-picker"
+            .value=${currentPerson}
+            @change=${async (e: Event) => {
+              await this.updateTaskPerson(
+                task,
+                (e.target as HTMLSelectElement).value,
+              )
+            }}
+          >
+            ${personOptions.map(
+              (person) => html`<option value=${person}>${person}</option>`,
+            )}
+          </select>
         </div>
       </div>
     `
@@ -2078,7 +2112,7 @@ export class TaskBoard extends LitElement {
               <div class="board">
                 ${COLUMNS.map((column) => this.renderColumn(column))}
               </div>
-              ${this.renderTaskModal()}
+              ${this.renderTaskModal()} ${this.renderTaskPersonPickerModal()}
             `
           : html`
               <div class="empty-state">

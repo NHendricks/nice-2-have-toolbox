@@ -1,0 +1,12 @@
+{
+  "id": "task-1771954838140-c1k8dwzmp",
+  "summary": "ask user when existing file exists during copy, dont alwaýs create copies",
+  "description": "",
+  "status": "todo",
+  "priority": "medium",
+  "category": "nh-tools",
+  "person": "Nils",
+  "created": "2026-02-24T17:40:38.140Z",
+  "updated": "2026-02-24T17:41:56.400Z",
+  "order": 0
+}
