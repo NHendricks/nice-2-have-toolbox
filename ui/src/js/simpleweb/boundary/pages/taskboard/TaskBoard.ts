@@ -203,6 +203,12 @@ export class TaskBoard extends LitElement {
       font-weight: 600;
       text-transform: uppercase;
       margin-bottom: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .task-priority:hover {
+      filter: brightness(1.1);
     }
 
     .task-summary {
@@ -538,6 +544,12 @@ export class TaskBoard extends LitElement {
       display: inline-flex;
       align-items: center;
       gap: 0.25rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .task-category:hover {
+      filter: brightness(1.1);
     }
 
     .task-person {
@@ -585,6 +597,64 @@ export class TaskBoard extends LitElement {
       border-radius: 10px;
       padding: 0.75rem;
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .priority-picker-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: transparent;
+      z-index: 1100;
+    }
+
+    .priority-picker-modal {
+      position: fixed;
+      width: min(220px, 100%);
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 0.75rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .category-picker-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: transparent;
+      z-index: 1100;
+    }
+
+    .category-picker-modal {
+      position: fixed;
+      width: min(260px, 100%);
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 0.75rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .task-category-picker {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.75rem;
+    }
+
+    .task-priority-picker {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      color: #e2e8f0;
+      font-size: 0.75rem;
     }
 
     .category-select {
@@ -724,6 +794,12 @@ export class TaskBoard extends LitElement {
   @state() private personPickerTaskId: string | null = null
   @state() private personPickerAnchor: { left: number; top: number } | null =
     null
+  @state() private categoryPickerTaskId: string | null = null
+  @state() private categoryPickerAnchor: { left: number; top: number } | null =
+    null
+  @state() private priorityPickerTaskId: string | null = null
+  @state() private priorityPickerAnchor: { left: number; top: number } | null =
+    null
   @state() private pendingNewTask: Task | null = null
 
   connectedCallback() {
@@ -739,31 +815,69 @@ export class TaskBoard extends LitElement {
       await this.loadCategories()
       await this.migrateOldTasks()
       await this.loadTasks()
-      this.loadPersons()
     }
   }
 
-  private getPersonsStorageKey(): string {
-    return `taskboard-persons:${this.folderPath || 'default'}`
+  private getMetadataFilePath(fileName: string): string {
+    if (!this.folderPath) return fileName
+    const sep = this.folderPath.includes('\\') ? '\\' : '/'
+    return `${this.folderPath}${sep}${fileName}`
   }
 
-  private loadPersons() {
-    const stored = localStorage.getItem(this.getPersonsStorageKey())
-    let storedPersons: string[] = []
+  private async readMetadataFile<T>(fileName: string): Promise<T | null> {
+    if (!this.folderPath) return null
 
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed)) {
-          storedPersons = parsed.filter(
-            (person): person is string =>
-              typeof person === 'string' && person.trim().length > 0,
-          )
-        }
-      } catch {
-        storedPersons = []
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'read',
+          filePath: this.getMetadataFilePath(fileName),
+        },
+      )
+
+      if (!response.success || !response.data?.content) {
+        return null
       }
+
+      return JSON.parse(response.data.content) as T
+    } catch {
+      return null
     }
+  }
+
+  private async writeMetadataFile(
+    fileName: string,
+    data: unknown,
+  ): Promise<void> {
+    if (!this.folderPath) return
+
+    try {
+      await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        {
+          operation: 'write-file',
+          filePath: this.getMetadataFilePath(fileName),
+          content: JSON.stringify(data, null, 2),
+        },
+      )
+    } catch (error: any) {
+      console.error(`Failed to write ${fileName}:`, error)
+    }
+  }
+
+  private async loadPersons() {
+    const storedPersonsData = await this.readMetadataFile<unknown>(
+      'taskboard-persons.json',
+    )
+    const storedPersons = Array.isArray(storedPersonsData)
+      ? storedPersonsData.filter(
+          (person): person is string =>
+            typeof person === 'string' && person.trim().length > 0,
+        )
+      : []
 
     const taskPersons = this.tasks
       .map((task) => task.person)
@@ -779,14 +893,15 @@ export class TaskBoard extends LitElement {
       this.selectedPerson = null
     }
 
-    this.persistPersons()
+    await this.persistPersons()
   }
 
-  private persistPersons() {
-    localStorage.setItem(
-      this.getPersonsStorageKey(),
-      JSON.stringify(this.persons),
-    )
+  private async persistPersons() {
+    await this.writeMetadataFile('taskboard-persons.json', this.persons)
+  }
+
+  private async persistCategories() {
+    await this.writeMetadataFile('taskboard-categories.json', this.categories)
   }
 
   private getDefaultPersonForNewTask(): string {
@@ -840,7 +955,7 @@ export class TaskBoard extends LitElement {
     if (this.selectedPerson === person) {
       this.selectedPerson = null
     }
-    this.persistPersons()
+    await this.persistPersons()
   }
 
   private startRenamePerson(person: string) {
@@ -899,7 +1014,7 @@ export class TaskBoard extends LitElement {
       this.tasks = this.tasks.map((task) => updatedTaskMap.get(task.id) || task)
     }
 
-    this.persistPersons()
+    await this.persistPersons()
     this.cancelRenamePerson()
   }
 
@@ -912,6 +1027,19 @@ export class TaskBoard extends LitElement {
     if (!this.folderPath) return
 
     try {
+      const storedCategoriesData = await this.readMetadataFile<unknown>(
+        'taskboard-categories.json',
+      )
+      const storedCategories = Array.isArray(storedCategoriesData)
+        ? storedCategoriesData.filter(
+            (category): category is Category =>
+              typeof category === 'object' &&
+              !!category &&
+              typeof (category as Category).name === 'string' &&
+              typeof (category as Category).color === 'string',
+          )
+        : []
+
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'file-operations',
@@ -924,22 +1052,27 @@ export class TaskBoard extends LitElement {
         const dirs = response.data?.directories || []
         console.log('Found directories:', dirs)
 
-        const categories: Category[] = []
+        const colorByName = new Map<string, string>()
+        storedCategories.forEach((category) => {
+          colorByName.set(category.name, category.color)
+        })
 
-        for (let i = 0; i < dirs.length; i++) {
-          categories.push({
-            name: dirs[i].name,
-            color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
-          })
-        }
+        const mergedNames = Array.from(
+          new Set([
+            DEFAULT_CATEGORY,
+            ...storedCategories.map((category) => category.name),
+            ...dirs.map((dir: { name: string }) => dir.name),
+          ]),
+        )
 
-        // Keep existing categories and merge with new ones
-        const existingCategoryNames = this.categories.map((c) => c.name)
-        for (const cat of categories) {
-          if (!existingCategoryNames.includes(cat.name)) {
-            this.categories.push(cat)
-          }
-        }
+        this.categories = mergedNames.map((name, index) => ({
+          name,
+          color:
+            colorByName.get(name) ||
+            CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+        }))
+
+        await this.persistCategories()
       }
     } catch (error: any) {
       console.error('Failed to load categories:', error)
@@ -969,6 +1102,7 @@ export class TaskBoard extends LitElement {
               CATEGORY_COLORS[this.categories.length % CATEGORY_COLORS.length],
           },
         ]
+        await this.persistCategories()
       }
     } catch (error: any) {
       console.log('Category folder:', error.message || 'already exists')
@@ -1039,6 +1173,7 @@ export class TaskBoard extends LitElement {
           },
           ...this.categories,
         ]
+        await this.persistCategories()
       }
     } catch (error: any) {
       console.log('Default category folder:', error.message || 'error')
@@ -1164,7 +1299,7 @@ export class TaskBoard extends LitElement {
       }
 
       this.tasks = tasks.sort((a, b) => a.order - b.order)
-      this.loadPersons()
+      await this.loadPersons()
       console.log('Loaded tasks:', this.tasks)
     } catch (error: any) {
       console.error('Failed to load tasks:', error)
@@ -1273,7 +1408,7 @@ export class TaskBoard extends LitElement {
 
       if (!this.persons.includes(createdTask.person || DEFAULT_PERSON)) {
         this.persons = [...this.persons, createdTask.person || DEFAULT_PERSON]
-        this.persistPersons()
+        await this.persistPersons()
       }
 
       this.pendingNewTask = null
@@ -1308,7 +1443,7 @@ export class TaskBoard extends LitElement {
 
     if (!this.persons.includes(updatedTask.person || DEFAULT_PERSON)) {
       this.persons = [...this.persons, updatedTask.person || DEFAULT_PERSON]
-      this.persistPersons()
+      await this.persistPersons()
     }
 
     this.editingTaskId = null
@@ -1331,7 +1466,7 @@ export class TaskBoard extends LitElement {
 
     if (!this.persons.includes(normalizedPerson)) {
       this.persons = [...this.persons, normalizedPerson]
-      this.persistPersons()
+      await this.persistPersons()
     }
 
     const updatedTask: Task = {
@@ -1345,9 +1480,36 @@ export class TaskBoard extends LitElement {
     this.closePersonPicker()
   }
 
+  private async updateTaskPriority(task: Task, priority: TaskPriority) {
+    if (task.priority === priority) {
+      this.closePriorityPicker()
+      return
+    }
+
+    const updatedTask: Task = {
+      ...task,
+      priority,
+      updated: new Date().toISOString(),
+    }
+
+    this.tasks = this.tasks.map((t) => (t.id === task.id ? updatedTask : t))
+    await this.saveTask(updatedTask)
+    this.closePriorityPicker()
+  }
+
   private closePersonPicker() {
     this.personPickerTaskId = null
     this.personPickerAnchor = null
+  }
+
+  private closeCategoryPicker() {
+    this.categoryPickerTaskId = null
+    this.categoryPickerAnchor = null
+  }
+
+  private closePriorityPicker() {
+    this.priorityPickerTaskId = null
+    this.priorityPickerAnchor = null
   }
 
   private async openPersonPicker(taskId: string, trigger: HTMLElement) {
@@ -1366,6 +1528,62 @@ export class TaskBoard extends LitElement {
 
     const picker = this.shadowRoot?.querySelector(
       '.person-picker-modal .task-person-picker',
+    ) as HTMLSelectElement | null
+
+    if (!picker) return
+
+    picker.focus()
+    try {
+      ;(picker as any).showPicker?.()
+    } catch {
+      picker.click()
+    }
+  }
+
+  private async openPriorityPicker(taskId: string, trigger: HTMLElement) {
+    const rect = trigger.getBoundingClientRect()
+    const popupWidth = 220
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - popupWidth - 8),
+    )
+    const top = Math.max(8, rect.bottom + 6)
+
+    this.priorityPickerTaskId = taskId
+    this.priorityPickerAnchor = { left, top }
+
+    await this.updateComplete
+
+    const picker = this.shadowRoot?.querySelector(
+      '.priority-picker-modal .task-priority-picker',
+    ) as HTMLSelectElement | null
+
+    if (!picker) return
+
+    picker.focus()
+    try {
+      ;(picker as any).showPicker?.()
+    } catch {
+      picker.click()
+    }
+  }
+
+  private async openCategoryPicker(taskId: string, trigger: HTMLElement) {
+    const rect = trigger.getBoundingClientRect()
+    const popupWidth = 260
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - popupWidth - 8),
+    )
+    const top = Math.max(8, rect.bottom + 6)
+
+    this.categoryPickerTaskId = taskId
+    this.categoryPickerAnchor = { left, top }
+
+    await this.updateComplete
+
+    const picker = this.shadowRoot?.querySelector(
+      '.category-picker-modal .task-category-picker',
     ) as HTMLSelectElement | null
 
     if (!picker) return
@@ -1446,6 +1664,7 @@ export class TaskBoard extends LitElement {
       )
 
       this.categories = this.categories.filter((c) => c.name !== category.name)
+      await this.persistCategories()
 
       if (this.selectedCategory === category.name) {
         this.selectedCategory = null
@@ -1657,6 +1876,19 @@ export class TaskBoard extends LitElement {
         <div
           class="task-category"
           style="background: ${categoryColor}20; color: ${categoryColor}"
+          @click=${async (e: Event) => {
+            e.stopPropagation()
+            if (this.categoryPickerTaskId === task.id) {
+              this.closeCategoryPicker()
+              return
+            }
+
+            this.closePersonPicker()
+            this.closePriorityPicker()
+            const trigger = e.currentTarget as HTMLElement
+            await this.openCategoryPicker(task.id, trigger)
+          }}
+          title="Click to change category"
         >
           <span
             class="category-dot"
@@ -1670,6 +1902,19 @@ export class TaskBoard extends LitElement {
           style="background: ${PRIORITY_COLORS[
             task.priority
           ]}20; color: ${PRIORITY_COLORS[task.priority]}"
+          @click=${async (e: Event) => {
+            e.stopPropagation()
+            if (this.priorityPickerTaskId === task.id) {
+              this.closePriorityPicker()
+              return
+            }
+
+            this.closePersonPicker()
+            this.closeCategoryPicker()
+            const trigger = e.currentTarget as HTMLElement
+            await this.openPriorityPicker(task.id, trigger)
+          }}
+          title="Click to change priority"
         >
           ${task.priority}
         </div>
@@ -1683,6 +1928,8 @@ export class TaskBoard extends LitElement {
               return
             }
 
+            this.closeCategoryPicker()
+            this.closePriorityPicker()
             const trigger = e.currentTarget as HTMLElement
             await this.openPersonPicker(task.id, trigger)
           }}
@@ -1766,6 +2013,87 @@ export class TaskBoard extends LitElement {
           >
             ${personOptions.map(
               (person) => html`<option value=${person}>${person}</option>`,
+            )}
+          </select>
+        </div>
+      </div>
+    `
+  }
+
+  private renderTaskPriorityPickerModal() {
+    if (!this.priorityPickerTaskId || !this.priorityPickerAnchor) return ''
+
+    const task = this.tasks.find((t) => t.id === this.priorityPickerTaskId)
+    if (!task) return ''
+
+    return html`
+      <div
+        class="priority-picker-modal-overlay"
+        @click=${() => {
+          this.closePriorityPicker()
+        }}
+      >
+        <div
+          class="priority-picker-modal"
+          style="left: ${this.priorityPickerAnchor.left}px; top: ${this
+            .priorityPickerAnchor.top}px;"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <select
+            class="task-priority-picker"
+            .value=${task.priority}
+            @change=${async (e: Event) => {
+              await this.updateTaskPriority(
+                task,
+                (e.target as HTMLSelectElement).value as TaskPriority,
+              )
+            }}
+          >
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+        </div>
+      </div>
+    `
+  }
+
+  private renderTaskCategoryPickerModal() {
+    if (!this.categoryPickerTaskId || !this.categoryPickerAnchor) return ''
+
+    const task = this.tasks.find((t) => t.id === this.categoryPickerTaskId)
+    if (!task) return ''
+
+    return html`
+      <div
+        class="category-picker-modal-overlay"
+        @click=${() => {
+          this.closeCategoryPicker()
+        }}
+      >
+        <div
+          class="category-picker-modal"
+          style="left: ${this.categoryPickerAnchor.left}px; top: ${this
+            .categoryPickerAnchor.top}px;"
+          @click=${(e: Event) => e.stopPropagation()}
+        >
+          <select
+            class="task-category-picker"
+            .value=${task.category}
+            @change=${async (e: Event) => {
+              const selectedCategory = (e.target as HTMLSelectElement).value
+              if (selectedCategory === task.category) {
+                this.closeCategoryPicker()
+                return
+              }
+              await this.updateTaskCategory(task, selectedCategory)
+              this.closeCategoryPicker()
+            }}
+          >
+            ${this.categories.map(
+              (category) =>
+                html`<option value=${category.name}>${category.name}</option>`,
             )}
           </select>
         </div>
@@ -2114,7 +2442,7 @@ export class TaskBoard extends LitElement {
                   @input=${(e: Event) => {
                     this.newPersonName = (e.target as HTMLInputElement).value
                   }}
-                  @keydown=${(e: KeyboardEvent) => {
+                  @keydown=${async (e: KeyboardEvent) => {
                     if (e.key === 'Enter' && this.newPersonName.trim()) {
                       const name = this.newPersonName.trim()
                       if (this.persons.includes(name)) {
@@ -2122,7 +2450,7 @@ export class TaskBoard extends LitElement {
                         return
                       }
                       this.persons = [...this.persons, name]
-                      this.persistPersons()
+                      await this.persistPersons()
                       this.newPersonName = ''
                       this.addingPerson = false
                     }
@@ -2199,6 +2527,8 @@ export class TaskBoard extends LitElement {
                 ${COLUMNS.map((column) => this.renderColumn(column))}
               </div>
               ${this.renderTaskModal()} ${this.renderTaskPersonPickerModal()}
+              ${this.renderTaskPriorityPickerModal()}
+              ${this.renderTaskCategoryPickerModal()}
             `
           : html`
               <div class="empty-state">

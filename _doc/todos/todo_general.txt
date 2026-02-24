@@ -1,9 +1,2 @@
 now:
 
-new major features:
-- quick app launcher ctrl+Space (global shortcut)
-- quick text inserter (global shortcut)
-
-later:
-- cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions
-- generate tests for all backend features
