@@ -10,6 +10,8 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+### v2.2.0 (24.02.2026)
+
 - redesign menu to look like mac launchpad
 - add tools section for simple tools
   - add json formatter ui
@@ -22,9 +24,18 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - add zoom functins to imageviewer
   - add help entry how to select files on mac
   - delete dir: show progress and show error if it fails
+  - fix dragNdrop for mac
+  - improve file filter
+  - change shortcuts for better usablilty on all systems
 - garbagefinder
   - fix drive detection on mac
   - show progress dialog when deleting files
+- taskboard
+  - add persons
+  - add backlog
+  - add several useful features (see commits for detqils)
+- new app calculator
+- new app dartscounter
 
 ### v2.1.0 (14.02.2026)
 
