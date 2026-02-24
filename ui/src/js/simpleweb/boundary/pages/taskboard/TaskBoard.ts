@@ -21,6 +21,10 @@ import {
 const DEFAULT_BOARD_TITLE = 'Taskboard'
 const README_FILE_NAME = 'readme.txt'
 const README_FILE_CONTENT = 'https://www.nice2havetoolbox.de\n'
+const ORDERED_STATUSES: TaskStatus[] = [
+  'backlog',
+  ...COLUMNS.map((column) => column.id as TaskStatus),
+]
 
 @customElement('nh-taskboard')
 export class TaskBoard extends LitElement {
@@ -1160,6 +1164,73 @@ export class TaskBoard extends LitElement {
     await this.writeMetadataFile('taskboard-categories.json', this.categories)
   }
 
+  private getStatusOrderFileName(status: TaskStatus): string {
+    return `taskboard-order-${status}.json`
+  }
+
+  private async loadStatusOrder(status: TaskStatus): Promise<string[]> {
+    const data = await this.readMetadataFile<unknown>(
+      this.getStatusOrderFileName(status),
+    )
+
+    if (!Array.isArray(data)) return []
+
+    return data.filter(
+      (taskId): taskId is string =>
+        typeof taskId === 'string' && taskId.trim().length > 0,
+    )
+  }
+
+  private async applyPersistedStatusOrder(tasks: Task[]): Promise<Task[]> {
+    const orderedTasks = [...tasks]
+
+    for (const status of ORDERED_STATUSES) {
+      const savedOrder = await this.loadStatusOrder(status)
+      const orderIndex = new Map(
+        savedOrder.map((taskId, index) => [taskId, index]),
+      )
+
+      const tasksInStatus = orderedTasks
+        .filter((task) => task.status === status)
+        .sort((a, b) => {
+          const aIndex = orderIndex.get(a.id)
+          const bIndex = orderIndex.get(b.id)
+
+          if (aIndex !== undefined && bIndex !== undefined) {
+            return aIndex - bIndex
+          }
+          if (aIndex !== undefined) return -1
+          if (bIndex !== undefined) return 1
+          return a.order - b.order
+        })
+
+      tasksInStatus.forEach((task, index) => {
+        task.order = index
+      })
+    }
+
+    return orderedTasks
+  }
+
+  private async persistStatusOrder(status: TaskStatus) {
+    const orderedTaskIds = this.tasks
+      .filter((task) => task.status === status)
+      .sort((a, b) => a.order - b.order)
+      .map((task) => task.id)
+
+    await this.writeMetadataFile(
+      this.getStatusOrderFileName(status),
+      orderedTaskIds,
+    )
+  }
+
+  private async persistStatusOrders(statuses: Iterable<TaskStatus>) {
+    const uniqueStatuses = Array.from(new Set(statuses))
+    for (const status of uniqueStatuses) {
+      await this.persistStatusOrder(status)
+    }
+  }
+
   private async loadBoardTitle() {
     const titleData = await this.readMetadataFile<unknown>(
       'taskboard-title.json',
@@ -1527,6 +1598,8 @@ export class TaskBoard extends LitElement {
                   task.category = DEFAULT_CATEGORY
                 }
 
+                const { order: _legacyOrder, ...persistedTask } = task
+
                 // Save to category folder
                 const newFilePath = `${this.folderPath}${sep}${task.category}${sep}${task.id}.json`
                 await (window as any).electron.ipcRenderer.invoke(
@@ -1535,7 +1608,7 @@ export class TaskBoard extends LitElement {
                   {
                     operation: 'write-file',
                     filePath: newFilePath,
-                    content: JSON.stringify(task, null, 2),
+                    content: JSON.stringify(persistedTask, null, 2),
                   },
                 )
 
@@ -1600,6 +1673,8 @@ export class TaskBoard extends LitElement {
                   const task = JSON.parse(readResponse.data.content) as Task
                   task.category = task.category || category.name
                   task.person = task.person || DEFAULT_PERSON
+                  task.order =
+                    typeof task.order === 'number' ? task.order : tasks.length
                   tasks.push(task)
                 }
               } catch (e) {
@@ -1610,7 +1685,7 @@ export class TaskBoard extends LitElement {
         }
       }
 
-      this.tasks = tasks.sort((a, b) => a.order - b.order)
+      this.tasks = await this.applyPersistedStatusOrder(tasks)
       await this.loadPersons()
       console.log('Loaded tasks:', this.tasks)
     } catch (error: any) {
@@ -1636,13 +1711,15 @@ export class TaskBoard extends LitElement {
       const filePath = `${this.folderPath}${sep}${task.category}${sep}${task.id}.json`
       console.log('Saving task to:', filePath)
 
+      const { order: _order, ...persistedTask } = task
+
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'file-operations',
         {
           operation: 'write-file',
           filePath,
-          content: JSON.stringify(task, null, 2),
+          content: JSON.stringify(persistedTask, null, 2),
         },
       )
       console.log('Save task response:', response)
@@ -1717,6 +1794,7 @@ export class TaskBoard extends LitElement {
 
       this.tasks = [...this.tasks, createdTask]
       await this.saveTask(createdTask)
+      await this.persistStatusOrder(createdTask.status)
 
       if (!this.persons.includes(createdTask.person || DEFAULT_PERSON)) {
         this.persons = [...this.persons, createdTask.person || DEFAULT_PERSON]
@@ -1938,6 +2016,7 @@ export class TaskBoard extends LitElement {
         { operation: 'delete', sourcePath: filePath },
       )
       this.tasks = this.tasks.filter((t) => t.id !== task.id)
+      await this.persistStatusOrder(task.status)
     } catch (error: any) {
       console.error('Failed to delete task:', error)
     }
@@ -2050,10 +2129,11 @@ export class TaskBoard extends LitElement {
     }
 
     // Update status if moving to different column
+    const statusChanged = draggedTask.status !== dropOnTask.status
     const updatedTask: Task = {
       ...draggedTask,
       status: dropOnTask.status,
-      updated: new Date().toISOString(),
+      updated: statusChanged ? new Date().toISOString() : draggedTask.updated,
     }
 
     // Insert at the calculated position
@@ -2073,11 +2153,11 @@ export class TaskBoard extends LitElement {
     this.tasks = newTasks
     this.dragOverTaskId = null
 
-    // Save all affected tasks
-    const tasksToSave = newTasks.filter((t) => affectedStatuses.has(t.status))
-    for (const t of tasksToSave) {
-      await this.saveTask(t)
+    if (statusChanged) {
+      await this.saveTask(updatedTask)
     }
+
+    await this.persistStatusOrders(affectedStatuses)
 
     this.draggedTaskId = null
   }
@@ -2121,10 +2201,11 @@ export class TaskBoard extends LitElement {
     const task = this.tasks[taskIndex]
 
     // Update task status and place at end of column
+    const statusChanged = task.status !== newStatus
     const updatedTask: Task = {
       ...task,
       status: newStatus,
-      updated: new Date().toISOString(),
+      updated: statusChanged ? new Date().toISOString() : task.updated,
     }
 
     const newTasks = [...this.tasks]
@@ -2145,11 +2226,11 @@ export class TaskBoard extends LitElement {
 
     this.tasks = newTasks
 
-    // Save all affected tasks
-    const tasksToSave = newTasks.filter((t) => affectedStatuses.has(t.status))
-    for (const t of tasksToSave) {
-      await this.saveTask(t)
+    if (statusChanged) {
+      await this.saveTask(updatedTask)
     }
+
+    await this.persistStatusOrders(affectedStatuses)
 
     this.draggedTaskId = null
   }
@@ -2188,10 +2269,14 @@ export class TaskBoard extends LitElement {
 
     this.tasks = newTasks
 
-    const tasksToSave = newTasks.filter((t) => affectedStatuses.has(t.status))
-    for (const t of tasksToSave) {
-      await this.saveTask(t)
+    const movedTask = newTasks.find(
+      (existingTask) => existingTask.id === task.id,
+    )
+    if (movedTask) {
+      await this.saveTask(movedTask)
     }
+
+    await this.persistStatusOrders(affectedStatuses)
   }
 
   private async moveBacklogTaskToTop(task: Task) {
@@ -2209,12 +2294,10 @@ export class TaskBoard extends LitElement {
     ]
 
     const backlogById = new Map<string, Task>()
-    const now = new Date().toISOString()
     reorderedBacklog.forEach((backlogTask, index) => {
       backlogById.set(backlogTask.id, {
         ...backlogTask,
         order: index,
-        updated: backlogTask.id === task.id ? now : backlogTask.updated,
       })
     })
 
@@ -2224,12 +2307,7 @@ export class TaskBoard extends LitElement {
         : existingTask,
     )
 
-    for (const updatedTask of reorderedBacklog) {
-      const persistedTask = backlogById.get(updatedTask.id)
-      if (persistedTask) {
-        await this.saveTask(persistedTask)
-      }
-    }
+    await this.persistStatusOrder('backlog')
   }
 
   private renderTask(task: Task) {
