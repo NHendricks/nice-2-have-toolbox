@@ -158,26 +158,64 @@ export class TaskBoard extends LitElement {
       background: #64748b;
     }
 
+    .board-layout {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      box-sizing: border-box;
+      padding-bottom: 56px;
+    }
+
     .board {
       display: flex;
       gap: 1rem;
-      flex: 1;
+      height: 100%;
       overflow-x: auto;
-      padding-bottom: 1rem;
+      padding-bottom: 0.25rem;
+      box-sizing: border-box;
     }
 
     .backlog-section {
-      margin-top: 0.5rem;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 8px;
       display: flex;
       flex-direction: column;
       min-height: 52px;
+      max-height: 52px;
+    }
+
+    .backlog-section.drag-over {
+      border: 2px dashed #3b82f6;
+      background: rgba(30, 41, 59, 0.96);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
+    }
+
+    .backlog-section.drag-over .backlog-header {
+      color: #bfdbfe;
+    }
+
+    .backlog-drop-hint {
+      display: none;
+      margin-left: 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #93c5fd;
+    }
+
+    .backlog-section.drag-over .backlog-drop-hint {
+      display: inline-flex;
+      align-items: center;
     }
 
     .backlog-section.expanded {
-      min-height: 160px;
+      top: 0;
+      max-height: none;
     }
 
     .backlog-header {
@@ -192,8 +230,9 @@ export class TaskBoard extends LitElement {
 
     .backlog-content {
       padding: 0.5rem;
-      min-height: 110px;
-      max-height: 280px;
+      min-height: 0;
+      flex: 1;
+      max-height: none;
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
@@ -219,9 +258,9 @@ export class TaskBoard extends LitElement {
     }
 
     .column {
-      flex: 1;
-      min-width: 280px;
-      max-width: 350px;
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: none;
       background: #1e293b;
       border-radius: 8px;
       border: 1px solid #334155;
@@ -384,6 +423,27 @@ export class TaskBoard extends LitElement {
     .task-actions {
       display: flex;
       gap: 0.25rem;
+    }
+
+    .task-backlog-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 0.35rem;
+    }
+
+    .task-backlog-sprint-btn {
+      padding: 0.15rem 0.45rem;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      background: #334155;
+      color: #e2e8f0;
+      font-size: 0.7rem;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .task-backlog-sprint-btn:hover {
+      background: #475569;
     }
 
     .task-action-btn {
@@ -2103,6 +2163,36 @@ export class TaskBoard extends LitElement {
     return `${day}.${month}.${year} ${hours}:${minutes}`
   }
 
+  private async moveBacklogTaskToSprint(task: Task) {
+    if (task.status !== 'backlog') return
+
+    const updatedTask: Task = {
+      ...task,
+      status: 'todo',
+      updated: new Date().toISOString(),
+    }
+
+    const newTasks = this.tasks.map((t) => (t.id === task.id ? updatedTask : t))
+    const affectedStatuses = new Set<TaskStatus>(['backlog', 'todo'])
+
+    affectedStatuses.forEach((status) => {
+      const tasksInStatus = newTasks
+        .filter((t) => t.status === status)
+        .sort((a, b) => a.order - b.order)
+
+      tasksInStatus.forEach((t, index) => {
+        t.order = index
+      })
+    })
+
+    this.tasks = newTasks
+
+    const tasksToSave = newTasks.filter((t) => affectedStatuses.has(t.status))
+    for (const t of tasksToSave) {
+      await this.saveTask(t)
+    }
+  }
+
   private renderTask(task: Task) {
     const isEditing = this.editingTaskId === task.id
     const isDragging = this.draggedTaskId === task.id
@@ -2124,6 +2214,22 @@ export class TaskBoard extends LitElement {
         @dragleave=${(e: DragEvent) => this.onTaskDragLeave(e, task)}
         @drop=${(e: DragEvent) => this.onTaskDrop(e, task)}
       >
+        ${task.status === 'backlog'
+          ? html`
+              <div class="task-backlog-actions">
+                <button
+                  class="task-backlog-sprint-btn"
+                  @click=${async (e: Event) => {
+                    e.stopPropagation()
+                    await this.moveBacklogTaskToSprint(task)
+                  }}
+                >
+                  move 2 sprint
+                </button>
+              </div>
+            `
+          : ''}
+
         <div
           class="task-category"
           style="background: ${categoryColor}20; color: ${categoryColor}"
@@ -2520,7 +2626,9 @@ export class TaskBoard extends LitElement {
         @drop=${(e: DragEvent) => this.onDrop(e, 'backlog')}
       >
         <div class="backlog-header">
-          <span>🗂️ Backlog</span>
+          <span
+            >🗂️ Backlog <span class="backlog-drop-hint">Drop here</span></span
+          >
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span class="column-count">${backlogTasks.length}</span>
             <button
@@ -2895,11 +3003,13 @@ export class TaskBoard extends LitElement {
         ${this.folderPath
           ? html`
               ${this.renderTopFilters()}
-              <div class="board">
-                ${COLUMNS.map((column) => this.renderColumn(column))}
+              <div class="board-layout">
+                <div class="board">
+                  ${COLUMNS.map((column) => this.renderColumn(column))}
+                </div>
+                ${this.renderBacklog()}
               </div>
-              ${this.renderBacklog()} ${this.renderTaskModal()}
-              ${this.renderTaskPersonPickerModal()}
+              ${this.renderTaskModal()} ${this.renderTaskPersonPickerModal()}
               ${this.renderTaskPriorityPickerModal()}
               ${this.renderTaskCategoryPickerModal()}
             `
