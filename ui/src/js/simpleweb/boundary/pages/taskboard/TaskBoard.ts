@@ -226,9 +226,21 @@ export class TaskBoard extends LitElement {
     .task-description {
       font-size: 0.8rem;
       color: #94a3b8;
-      margin-bottom: 0.5rem;
-      white-space: pre-wrap;
+      margin-bottom: 0.125rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
       word-break: break-word;
+    }
+
+    .task-description-more {
+      font-size: 0.8rem;
+      line-height: 1;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
     }
 
     .task-description-input {
@@ -464,6 +476,76 @@ export class TaskBoard extends LitElement {
 
     .delete-category-btn:hover {
       opacity: 1;
+    }
+
+    .task-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      z-index: 1000;
+      backdrop-filter: blur(2px);
+    }
+
+    .task-modal {
+      width: min(760px, 100%);
+      max-height: min(90vh, 860px);
+      overflow: auto;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .task-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #334155;
+    }
+
+    .task-modal-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin: 0;
+    }
+
+    .task-modal-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0.25rem;
+      border-radius: 4px;
+    }
+
+    .task-modal-close:hover {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .task-modal .task-edit-form {
+      gap: 0.75rem;
+    }
+
+    .task-modal .task-description-input {
+      min-height: 180px;
+    }
+
+    .task-modal .task-summary-input,
+    .task-modal .task-description-input,
+    .task-modal .category-select,
+    .task-modal .priority-select {
+      font-size: 0.9rem;
     }
   `
 
@@ -974,7 +1056,7 @@ export class TaskBoard extends LitElement {
     }
   }
 
-  private onTaskDragLeave(e: DragEvent, task: Task) {
+  private onTaskDragLeave(_e: DragEvent, task: Task) {
     if (this.dragOverTaskId === task.id) {
       this.dragOverTaskId = null
     }
@@ -1121,7 +1203,10 @@ export class TaskBoard extends LitElement {
     const date = new Date(isoDate)
     const day = String(date.getDate()).padStart(2, '0')
     const month = String(date.getMonth() + 1).padStart(2, '0')
-    return `${day}.${month}`
+    const year = String(date.getFullYear())
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${day}.${month}.${year} ${hours}:${minutes}`
   }
 
   private renderTask(task: Task) {
@@ -1129,6 +1214,8 @@ export class TaskBoard extends LitElement {
     const isDragging = this.draggedTaskId === task.id
     const isDragOver = this.dragOverTaskId === task.id
     const categoryColor = this.getCategoryColor(task.category)
+    const descriptionText = task.description || ''
+    const showDescriptionMore = descriptionText.length > 180
 
     return html`
       <div
@@ -1142,106 +1229,42 @@ export class TaskBoard extends LitElement {
         @dragleave=${(e: DragEvent) => this.onTaskDragLeave(e, task)}
         @drop=${(e: DragEvent) => this.onTaskDrop(e, task)}
       >
-        ${!isEditing
+        <div
+          class="task-category"
+          style="background: ${categoryColor}20; color: ${categoryColor}"
+        >
+          <span
+            class="category-dot"
+            style="background: ${categoryColor}"
+          ></span>
+          ${task.category}
+        </div>
+
+        <div
+          class="task-priority"
+          style="background: ${PRIORITY_COLORS[
+            task.priority
+          ]}20; color: ${PRIORITY_COLORS[task.priority]}"
+        >
+          ${task.priority}
+        </div>
+
+        <div class="task-summary" @dblclick=${() => this.startEditing(task)}>
+          ${task.summary}
+        </div>
+        ${descriptionText
           ? html`
-              <div
-                class="task-category"
-                style="background: ${categoryColor}20; color: ${categoryColor}"
-              >
-                <span
-                  class="category-dot"
-                  style="background: ${categoryColor}"
-                ></span>
-                ${task.category}
+              <div class="task-description" title=${descriptionText}>
+                ${descriptionText}
               </div>
-
-              <div
-                class="task-priority"
-                style="background: ${PRIORITY_COLORS[
-                  task.priority
-                ]}20; color: ${PRIORITY_COLORS[task.priority]}"
-              >
-                ${task.priority}
-              </div>
-
-              <div
-                class="task-summary"
-                @dblclick=${() => this.startEditing(task)}
-              >
-                ${task.summary}
-              </div>
-              ${task.description
-                ? html`<div class="task-description">${task.description}</div>`
+              ${showDescriptionMore
+                ? html`<div class="task-description-more">...</div>`
                 : ''}
             `
-          : html`
-              <div class="task-edit-form">
-                <select
-                  class="category-select"
-                  .value=${this.editCategory}
-                  @change=${(e: Event) => {
-                    this.editCategory = (e.target as HTMLSelectElement).value
-                  }}
-                >
-                  ${this.categories.map(
-                    (cat) =>
-                      html`<option value=${cat.name}>${cat.name}</option>`,
-                  )}
-                </select>
-                <input
-                  type="text"
-                  class="task-summary-input"
-                  .value=${this.editSummary}
-                  @input=${(e: Event) => {
-                    this.editSummary = (e.target as HTMLInputElement).value
-                  }}
-                  @keydown=${(e: KeyboardEvent) => {
-                    if (e.key === 'Enter' && !e.shiftKey) this.saveEditing()
-                    if (e.key === 'Escape') this.cancelEditing()
-                  }}
-                />
-                <textarea
-                  class="task-description-input"
-                  .value=${this.editDescription}
-                  @input=${(e: Event) => {
-                    this.editDescription = (
-                      e.target as HTMLTextAreaElement
-                    ).value
-                  }}
-                  placeholder="Description..."
-                ></textarea>
-                <select
-                  class="priority-select"
-                  .value=${this.editPriority}
-                  @change=${(e: Event) => {
-                    this.editPriority = (e.target as HTMLSelectElement)
-                      .value as TaskPriority
-                  }}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-                <div class="edit-buttons">
-                  <button
-                    class="btn btn-primary btn-small"
-                    @click=${this.saveEditing}
-                  >
-                    Save
-                  </button>
-                  <button
-                    class="btn btn-secondary btn-small"
-                    @click=${this.cancelEditing}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            `}
+          : ''}
 
         <div class="task-meta">
-          <span>${this.formatDate(task.updated)}</span>
+          <span>Last edited: ${this.formatDate(task.updated)}</span>
           ${!isEditing
             ? html`
                 <div class="task-actions">
@@ -1262,6 +1285,92 @@ export class TaskBoard extends LitElement {
                 </div>
               `
             : ''}
+        </div>
+      </div>
+    `
+  }
+
+  private renderTaskModal() {
+    if (!this.editingTaskId) return ''
+
+    const editingTask = this.tasks.find((t) => t.id === this.editingTaskId)
+    const titleText = editingTask?.summary?.trim()
+      ? `Edit Task: ${editingTask.summary}`
+      : 'New Task'
+
+    return html`
+      <div class="task-modal-overlay" @click=${this.cancelEditing}>
+        <div class="task-modal" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="task-modal-header">
+            <h3 class="task-modal-title">${titleText}</h3>
+            <button
+              class="task-modal-close"
+              @click=${this.cancelEditing}
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="task-edit-form">
+            <select
+              class="category-select"
+              .value=${this.editCategory}
+              @change=${(e: Event) => {
+                this.editCategory = (e.target as HTMLSelectElement).value
+              }}
+            >
+              ${this.categories.map(
+                (cat) => html`<option value=${cat.name}>${cat.name}</option>`,
+              )}
+            </select>
+
+            <input
+              type="text"
+              class="task-summary-input"
+              .value=${this.editSummary}
+              @input=${(e: Event) => {
+                this.editSummary = (e.target as HTMLInputElement).value
+              }}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === 'Enter' && !e.shiftKey) this.saveEditing()
+                if (e.key === 'Escape') this.cancelEditing()
+              }}
+              placeholder="Task summary"
+            />
+
+            <textarea
+              class="task-description-input"
+              .value=${this.editDescription}
+              @input=${(e: Event) => {
+                this.editDescription = (e.target as HTMLTextAreaElement).value
+              }}
+              placeholder="Description..."
+            ></textarea>
+
+            <select
+              class="priority-select"
+              .value=${this.editPriority}
+              @change=${(e: Event) => {
+                this.editPriority = (e.target as HTMLSelectElement)
+                  .value as TaskPriority
+              }}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+
+            <div class="edit-buttons">
+              <button class="btn btn-primary" @click=${this.saveEditing}>
+                Save
+              </button>
+              <button class="btn btn-secondary" @click=${this.cancelEditing}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `
@@ -1445,6 +1554,7 @@ export class TaskBoard extends LitElement {
               <div class="board">
                 ${COLUMNS.map((column) => this.renderColumn(column))}
               </div>
+              ${this.renderTaskModal()}
             `
           : html`
               <div class="empty-state">
