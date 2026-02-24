@@ -1709,6 +1709,7 @@ export class TaskBoard extends LitElement {
       }
 
       this.tasks = await this.applyPersistedStatusOrder(tasks)
+      await this.persistStatusOrders(ORDERED_STATUSES)
       await this.loadPersons()
       console.log('Loaded tasks:', this.tasks)
     } catch (error: any) {
@@ -2303,7 +2304,10 @@ export class TaskBoard extends LitElement {
   }
 
   private async moveBacklogTaskToTop(task: Task) {
-    if (task.status !== 'backlog') return
+    const activeTask = this.tasks.find(
+      (existingTask) => existingTask.id === task.id,
+    )
+    if (!activeTask || activeTask.status !== 'backlog') return
 
     const backlogTasks = this.tasks
       .filter((t) => t.status === 'backlog')
@@ -2311,9 +2315,17 @@ export class TaskBoard extends LitElement {
 
     if (backlogTasks.length <= 1) return
 
+    const currentIndex = backlogTasks.findIndex(
+      (backlogTask) => backlogTask.id === activeTask.id,
+    )
+    if (currentIndex <= 0) {
+      await this.persistStatusOrder('backlog')
+      return
+    }
+
     const reorderedBacklog = [
-      task,
-      ...backlogTasks.filter((backlogTask) => backlogTask.id !== task.id),
+      activeTask,
+      ...backlogTasks.filter((backlogTask) => backlogTask.id !== activeTask.id),
     ]
 
     const backlogById = new Map<string, Task>()
