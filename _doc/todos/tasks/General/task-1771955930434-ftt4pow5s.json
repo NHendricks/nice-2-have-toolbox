@@ -1,0 +1,12 @@
+{
+  "id": "task-1771955930434-ftt4pow5s",
+  "summary": "other ideas",
+  "description": "- ocr scan for all pdfs in a specified directory\n- split pdf incl. preview\n- find text in pdfs \n  - write textfile for each pdf\n  - find text within text files\n- file rename batch utility\n\n- simple db show and edit tool for sql databases\n- check gnu-tools\n- check licence\n- create own www.nice2have.de (ask owner) or http://www.nicetohave.de/ ",
+  "status": "todo",
+  "priority": "medium",
+  "category": "General",
+  "person": "Nils",
+  "created": "2026-02-24T17:58:50.434Z",
+  "updated": "2026-02-24T17:59:00.685Z",
+  "order": 3
+}

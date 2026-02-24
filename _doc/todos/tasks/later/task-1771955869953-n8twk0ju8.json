@@ -1,0 +1,12 @@
+{
+  "id": "task-1771955869953-n8twk0ju8",
+  "summary": "...",
+  "description": "new major features:\n- quick app launcher ctrl+Space (global shortcut)\n- quick text inserter (global shortcut)\n\nlater:\n- cleanup ipc side to really use only functions from help output in command line, enhance commandline and its help to use all backend functions\n- generate tests for all backend features",
+  "status": "todo",
+  "priority": "medium",
+  "category": "later",
+  "person": "Nils",
+  "created": "2026-02-24T17:57:49.953Z",
+  "updated": "2026-02-24T17:57:58.535Z",
+  "order": 1
+}
