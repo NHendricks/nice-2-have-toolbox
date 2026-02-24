@@ -1114,13 +1114,36 @@ export class TaskBoard extends LitElement {
     if (!this.folderPath) return
 
     try {
+      const filePath = this.getMetadataFilePath(fileName)
+      const nextContent = JSON.stringify(data, null, 2).replace(/\s+$/u, '')
+
+      const existingResponse = await (
+        window as any
+      ).electron.ipcRenderer.invoke('cli-execute', 'file-operations', {
+        operation: 'read',
+        filePath,
+      })
+
+      if (
+        existingResponse.success &&
+        typeof existingResponse.data?.content === 'string'
+      ) {
+        const existingContent = String(existingResponse.data.content)
+          .replace(/\r\n/g, '\n')
+          .replace(/\s+$/u, '')
+
+        if (existingContent === nextContent) {
+          return
+        }
+      }
+
       await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'file-operations',
         {
           operation: 'write-file',
-          filePath: this.getMetadataFilePath(fileName),
-          content: JSON.stringify(data, null, 2),
+          filePath,
+          content: nextContent,
         },
       )
     } catch (error: any) {
