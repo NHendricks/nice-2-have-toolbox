@@ -1,0 +1,11 @@
+{
+  "id": "task-1771966249233-c931vm99t",
+  "summary": "bottleneck finder app (cpu and fs)",
+  "description": "cpu or file system bottleneck finder",
+  "status": "in-progress",
+  "priority": "medium",
+  "category": "General",
+  "person": "Nils",
+  "created": "2026-02-24T20:50:49.232Z",
+  "updated": "2026-02-24T20:51:38.551Z"
+}
