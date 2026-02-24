@@ -342,6 +342,9 @@ export class KeyboardHandler {
    * Handle Alt/Meta + key combinations
    */
   private handleAltMetaKeys(event: KeyboardEvent): boolean {
+    const isFilterShortcut =
+      event.code === 'KeyF' || event.key === 'f' || event.key === 'F'
+
     switch (event.key) {
       case '1':
         event.preventDefault()
@@ -353,10 +356,9 @@ export class KeyboardHandler {
         this.commander.handlePathClick('right')
         return true
 
-      case 'f':
-      case 'F':
+      default:
         // Only Alt+F for filter (not Cmd+F which is browser search)
-        if (event.altKey) {
+        if (isFilterShortcut && event.altKey) {
           event.preventDefault()
           const pane = this.commander.getActivePane()
           this.commander.updateActivePane({
@@ -375,9 +377,6 @@ export class KeyboardHandler {
           }
           return true
         }
-        return false
-
-      default:
         return false
     }
   }
