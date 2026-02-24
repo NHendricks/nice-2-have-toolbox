@@ -245,7 +245,7 @@ async function build() {
         icon: iconPath,
         'version-string': {
           ProductName: 'nh-toolbox',
-          FileDescription: 'Utility app',
+          FileDescription: 'N2H Toolbox',
           CompanyName: 'Nils Hendricks',
           LegalCopyright: 'Copyright © Nils Hendricks',
           OriginalFilename: 'nh-toolbox.exe',
