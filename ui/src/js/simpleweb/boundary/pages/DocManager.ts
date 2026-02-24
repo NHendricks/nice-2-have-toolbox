@@ -583,6 +583,22 @@ export class DocManager extends LitElement {
         }
       }
 
+      // Add detected organizations as company options
+      if (analysis.organizations && analysis.organizations.length > 0) {
+        for (const org of analysis.organizations) {
+          const orgValue = this.sanitizeFilename(org)
+          if (
+            orgValue &&
+            !this.companyOptions.find((o) => o.value === orgValue)
+          ) {
+            this.companyOptions.push({
+              value: orgValue,
+              label: `${org} (Organization)`,
+            })
+          }
+        }
+      }
+
       // Add sender if not already in options
       if (analysis.sender && analysis.sender !== 'Unknown') {
         const senderValue = this.sanitizeFilename(analysis.sender)
@@ -592,6 +608,11 @@ export class DocManager extends LitElement {
             label: `${analysis.sender} (Sender)`,
           })
         }
+      }
+
+      // Add fallback so filename fields always appear after OCR
+      if (this.companyOptions.length === 0) {
+        this.companyOptions.push({ value: 'document', label: 'Document' })
       }
 
       // Set default selection

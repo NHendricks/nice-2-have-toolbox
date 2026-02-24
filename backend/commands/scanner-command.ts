@@ -587,6 +587,7 @@ try {
         let fsWatcher: fs.FSWatcher | null = null;
         let pageCounter = 0;
         let firstImageProcessed = false;
+        const seenFiles = new Set<string>(); // Deduplicate fs.watch events (Windows fires duplicates)
         // Store callback reference to use even after fsWatcher is closed
         const progressCallbackRef = this.progressCallback;
         if (multiPage) {
@@ -594,9 +595,13 @@ try {
             if (filename && filename.endsWith(`.${actualFormat}`)) {
               const filePath = path.join(tempDir, filename);
               if (eventType === 'rename' && fs.existsSync(filePath)) {
+                // Skip duplicate events for the same file (common on Windows)
+                if (seenFiles.has(filename)) return;
+                seenFiles.add(filename);
                 const stats = fs.statSync(filePath);
                 pageCounter++;
                 if (progressCallbackRef) {
+                  const capturedPage = pageCounter;
                   setTimeout(async () => {
                     // Don't check fsWatcher here - we have a stored reference
                     try {
@@ -604,7 +609,7 @@ try {
                         const fileData = fs.readFileSync(filePath);
                         const base64Preview = `data:${mimeType};base64,${fileData.toString('base64')}`;
                         (progressCallbackRef as any)(
-                          pageCounter,
+                          capturedPage,
                           filename,
                           stats.size,
                           filePath,
@@ -613,13 +618,13 @@ try {
 
                         // Perform OCR on the first image only if enabled
                         if (
-                          pageCounter === 1 &&
+                          capturedPage === 1 &&
                           !firstImageProcessed &&
                           (this as any).performOCR
                         ) {
                           firstImageProcessed = true;
                           try {
-                            // Send UI feedback: OCR scan starting (only if callback exists)
+                            // Send UI feedback: OCR scan starting
                             if (progressCallbackRef) {
                               (progressCallbackRef as any)(
                                 0,
@@ -638,14 +643,13 @@ try {
                             const ocrService = getOcrService();
                             await ocrService.initialize();
 
-                            // OCR and analyze the first image (PNG/JPG)
                             const { text, analysis } =
                               await ocrService.recognizeAndAnalyze(filePath);
                             console.log(
                               `[OCR] Extracted ${text.length} characters from first page`,
                             );
 
-                            // Send UI feedback: OCR scan completed (only if callback exists)
+                            // Send UI feedback: OCR scan completed
                             if (progressCallbackRef) {
                               (progressCallbackRef as any)(
                                 0,
@@ -662,7 +666,6 @@ try {
                             console.warn(
                               `[OCR] OCR processing failed: ${ocrError.message}`,
                             );
-                            // Send UI feedback: OCR scan failed (only if callback exists)
                             if (progressCallbackRef) {
                               (progressCallbackRef as any)(
                                 0,
@@ -1037,6 +1040,7 @@ try {
       let fsWatcher: fs.FSWatcher | null = null;
       let pageCounter = 0;
       let firstImageProcessed = false;
+      const seenFiles = new Set<string>(); // Deduplicate fs.watch events (Windows fires duplicates)
       // Store callback reference to use even after fsWatcher is closed
       const progressCallbackRef = this.progressCallback;
       if (multiPage) {
@@ -1044,9 +1048,13 @@ try {
           if (filename && filename.endsWith(`.${actualFormat}`)) {
             const filePath = path.join(tempDir, filename);
             if (eventType === 'rename' && fs.existsSync(filePath)) {
+              // Skip duplicate events for the same file (common on Windows)
+              if (seenFiles.has(filename)) return;
+              seenFiles.add(filename);
               const stats = fs.statSync(filePath);
               pageCounter++;
               if (progressCallbackRef) {
+                const capturedPage = pageCounter;
                 setTimeout(async () => {
                   // Don't check fsWatcher here - we have a stored reference
                   try {
@@ -1054,7 +1062,7 @@ try {
                       const fileData = fs.readFileSync(filePath);
                       const base64Preview = `data:${mimeType};base64,${fileData.toString('base64')}`;
                       (progressCallbackRef as any)(
-                        pageCounter,
+                        capturedPage,
                         filename,
                         stats.size,
                         filePath,
@@ -1063,7 +1071,7 @@ try {
 
                       // Perform OCR on the first image only if enabled
                       if (
-                        pageCounter === 1 &&
+                        capturedPage === 1 &&
                         !firstImageProcessed &&
                         (this as any).performOCR
                       ) {
