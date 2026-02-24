@@ -725,6 +725,7 @@ export class TaskBoard extends LitElement {
   @state() private editingPersonName: string | null = null
   @state() private editPersonNameDraft: string = ''
   @state() private personPickerTaskId: string | null = null
+  @state() private pendingNewTask: Task | null = null
 
   connectedCallback() {
     super.connectedCallback()
@@ -787,6 +788,24 @@ export class TaskBoard extends LitElement {
       this.getPersonsStorageKey(),
       JSON.stringify(this.persons),
     )
+  }
+
+  private getDefaultPersonForNewTask(): string {
+    if (this.selectedPerson) {
+      return this.selectedPerson
+    }
+
+    const normalizedPersons = Array.from(
+      new Set(
+        this.persons
+          .map((person) => person.trim())
+          .filter((person) => person.length > 0 && person !== DEFAULT_PERSON),
+      ),
+    )
+
+    return normalizedPersons.length === 1
+      ? normalizedPersons[0]
+      : DEFAULT_PERSON
   }
 
   private async deletePerson(person: string) {
@@ -1193,7 +1212,7 @@ export class TaskBoard extends LitElement {
   private async addTask(status: TaskStatus) {
     const now = new Date().toISOString()
     const category = this.selectedCategory || DEFAULT_CATEGORY
-    const person = this.selectedPerson || DEFAULT_PERSON
+    const person = this.getDefaultPersonForNewTask()
     const tasksInColumn = this.tasks.filter((t) => t.status === status)
     const maxOrder =
       tasksInColumn.length > 0
@@ -1213,14 +1232,12 @@ export class TaskBoard extends LitElement {
       order: maxOrder + 1,
     }
 
-    this.tasks = [...this.tasks, newTask]
-    await this.saveTask(newTask)
-
+    this.pendingNewTask = newTask
     this.editingTaskId = newTask.id
     this.editSummary = newTask.summary
     this.editDescription = newTask.description
     this.editCategory = newTask.category
-    this.editPerson = newTask.person || DEFAULT_PERSON
+    this.editPerson = person
     this.editPriority = newTask.priority
 
     if (!this.persons.includes(person)) {
@@ -1240,6 +1257,30 @@ export class TaskBoard extends LitElement {
 
   private async saveEditing() {
     if (!this.editingTaskId) return
+
+    if (this.pendingNewTask && this.pendingNewTask.id === this.editingTaskId) {
+      const createdTask: Task = {
+        ...this.pendingNewTask,
+        summary: this.editSummary.trim() || 'Untitled',
+        description: this.editDescription,
+        category: this.editCategory,
+        person: this.editPerson || DEFAULT_PERSON,
+        priority: this.editPriority,
+        updated: new Date().toISOString(),
+      }
+
+      this.tasks = [...this.tasks, createdTask]
+      await this.saveTask(createdTask)
+
+      if (!this.persons.includes(createdTask.person || DEFAULT_PERSON)) {
+        this.persons = [...this.persons, createdTask.person || DEFAULT_PERSON]
+        this.persistPersons()
+      }
+
+      this.pendingNewTask = null
+      this.editingTaskId = null
+      return
+    }
 
     const taskIndex = this.tasks.findIndex((t) => t.id === this.editingTaskId)
     if (taskIndex === -1) return
@@ -1275,6 +1316,9 @@ export class TaskBoard extends LitElement {
   }
 
   private cancelEditing() {
+    if (this.pendingNewTask && this.pendingNewTask.id === this.editingTaskId) {
+      this.pendingNewTask = null
+    }
     this.editingTaskId = null
   }
 
@@ -1697,6 +1741,9 @@ export class TaskBoard extends LitElement {
     const titleText = editingTask?.summary?.trim()
       ? `Edit Task: ${editingTask.summary}`
       : 'New Task'
+    const modalPersonOptions = Array.from(
+      new Set([this.editPerson || DEFAULT_PERSON, ...this.persons]),
+    )
 
     return html`
       <div class="task-modal-overlay" @click=${this.cancelEditing}>
@@ -1732,7 +1779,7 @@ export class TaskBoard extends LitElement {
                 this.editPerson = (e.target as HTMLSelectElement).value
               }}
             >
-              ${this.persons.map(
+              ${modalPersonOptions.map(
                 (person) => html`<option value=${person}>${person}</option>`,
               )}
             </select>
