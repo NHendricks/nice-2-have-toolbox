@@ -42,6 +42,22 @@ export class HelpDialog extends LitElement {
 
   @property({ type: Boolean }) open = false
 
+  private isMac(): boolean {
+    return /mac/i.test(navigator.platform || navigator.userAgent)
+  }
+
+  private altKeyLabel(): string {
+    return this.isMac() ? '⌥' : 'Alt'
+  }
+
+  private driveSelectLabel(): string {
+    return this.isMac() ? '⌘+1 / ⌘+2 or ⌥+1 / ⌥+2' : 'Alt+1 / Alt+2'
+  }
+
+  private fKeyLabel(key: string): string {
+    return this.isMac() ? `${key} (or Fn+${key})` : key
+  }
+
   private close() {
     this.dispatchEvent(new CustomEvent('close'))
   }
@@ -60,6 +76,13 @@ export class HelpDialog extends LitElement {
           <a target="_blank" href="https://www.nice2havetoolbox.de/"
             >https://www.nice2havetoolbox.de/</a
           >
+        </div>
+        <div
+          style="padding: 0 1rem 0.5rem; color: #94a3b8; font-size: 0.85rem;"
+        >
+          ${this.isMac()
+            ? 'macOS: function keys may require Fn, and Alt = ⌥ (Option).'
+            : 'Windows/Linux: shortcuts use standard function and Alt keys.'}
         </div>
         <div class="help-content">
           <div class="help-section">
@@ -85,11 +108,13 @@ export class HelpDialog extends LitElement {
               <div class="help-description">first / last item</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Alt+← / Alt+→</div>
+              <div class="help-key">
+                ${this.altKeyLabel()}+← / ${this.altKeyLabel()}+→
+              </div>
               <div class="help-description">history back/forward</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Alt+1 / Alt+2</div>
+              <div class="help-key">${this.driveSelectLabel()}</div>
               <div class="help-description">select drive</div>
             </div>
             <div class="help-item">
@@ -100,35 +125,35 @@ export class HelpDialog extends LitElement {
           <div class="help-section">
             <h3>file operations</h3>
             <div class="help-item">
-              <div class="help-key">F2</div>
+              <div class="help-key">${this.fKeyLabel('F2')}</div>
               <div class="help-description">rename</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F3</div>
+              <div class="help-key">${this.fKeyLabel('F3')}</div>
               <div class="help-description">view file/image</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F4</div>
+              <div class="help-key">${this.fKeyLabel('F4')}</div>
               <div class="help-description">edit file</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F5</div>
+              <div class="help-key">${this.fKeyLabel('F5')}</div>
               <div class="help-description">copy</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F6</div>
+              <div class="help-key">${this.fKeyLabel('F6')}</div>
               <div class="help-description">move</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F8 / Del</div>
+              <div class="help-key">${this.fKeyLabel('F8')} / Del</div>
               <div class="help-description">delete</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F10</div>
-              <div class="help-description">open with...</div>
+              <div class="help-key">${this.fKeyLabel('F10')}</div>
+              <div class="help-description">copy selected path</div>
             </div>
             <div class="help-item">
-              <div class="help-key">F12</div>
+              <div class="help-key">${this.fKeyLabel('F12')}</div>
               <div class="help-description">create zip</div>
             </div>
             <div class="help-item">
@@ -139,30 +164,26 @@ export class HelpDialog extends LitElement {
           <div class="help-section">
             <h3>selection</h3>
             <div class="help-item">
-              <div class="help-key">Ctrl+Click</div>
+              <div class="help-key">Shift+Click</div>
               <div class="help-description">toggle select</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Shift+Ctrl</div>
-              <div class="help-description">select multiple</div>
-            </div>
-            <div class="help-item">
-              <div class="help-key">Ctrl+↑ / ↓</div>
+              <div class="help-key">Shift+↑ / ↓</div>
               <div class="help-description">extend selection</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Ctrl+Space</div>
+              <div class="help-key">Shift+Space</div>
               <div class="help-description">toggle select</div>
             </div>
           </div>
           <div class="help-section">
             <h3>panels</h3>
             <div class="help-item">
-              <div class="help-key">Ctrl+←</div>
+              <div class="help-key">Shift+←</div>
               <div class="help-description">sync left to right</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Ctrl+→</div>
+              <div class="help-key">Shift+→</div>
               <div class="help-description">sync right to left</div>
             </div>
           </div>
@@ -177,15 +198,15 @@ export class HelpDialog extends LitElement {
               <div class="help-description">command dialog</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Shift+F9</div>
+              <div class="help-key">Shift+${this.fKeyLabel('F9')}</div>
               <div class="help-description">open terminal</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Shift+F10</div>
+              <div class="help-key">Shift+${this.fKeyLabel('F10')}</div>
               <div class="help-description">context menu</div>
             </div>
             <div class="help-item">
-              <div class="help-key">Alt+F</div>
+              <div class="help-key">${this.altKeyLabel()}+F</div>
               <div class="help-description">filter files</div>
             </div>
           </div>

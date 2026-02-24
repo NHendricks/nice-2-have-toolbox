@@ -2,20 +2,35 @@
 
 ## Function Keys on macOS
 
-On macOS, the function keys (F1-F12) have special system functions by default (brightness, volume, Mission Control, etc.). To use them in the Commander application, you need to press the **Fn (Function)** key along with the F-key.
+On macOS, function keys (F1-F12) often trigger system actions (brightness, volume, Mission Control, etc.). In Commander, you may need to press **Fn** with the function key unless your macOS setting uses F-keys as standard keys.
 
 ### How to use shortcuts:
 
-- **F1** (Help): Press `Fn + F1`
-- **F2** (Rename): Press `Fn + F2`
-- **F3** (View): Press `Fn + F3`
-- **F5** (Copy): Press `Fn + F5`
-- **F6** (Move): Press `Fn + F6`
-- **F8** (Delete): Press `Fn + F8` or just `Delete` key
-- **F9** (Create ZIP): Press `Fn + F9`
-- **F10** (Settings): Press `Fn + F10`
-- **Shift+F10** (Context Menu): Press `Fn + Shift + F10`
-- **F12** (Compare): Press `Fn + F12`
+- **F1** (Help): `Fn + F1`
+- **F2** (Rename): `Fn + F2`
+- **F3** (View): `Fn + F3`
+- **F4** (Edit): `Fn + F4`
+- **F5** (Copy): `Fn + F5`
+- **F6** (Move): `Fn + F6`
+- **F7** (Create folder): `Fn + F7`
+- **F8** (Delete): `Fn + F8` or `Delete`
+- **F9** (Command dialog): `Fn + F9`
+- **Shift+F9** (Open terminal): `Fn + Shift + F9`
+- **F10** (Copy selected path): `Fn + F10`
+- **Shift+F10** (Context menu): `Fn + Shift + F10`
+- **F11** (Compare files): `Fn + F11`
+- **Shift+F11** (Compare directories): `Fn + Shift + F11`
+- **F12** (Create ZIP): `Fn + F12`
+
+### Selection and modifiers on macOS
+
+- **Shift+Click**: Toggle file selection
+- **Shift+↑ / ↓ / PageUp / PageDown / Home / End**: Extend selection with keyboard navigation
+- **Shift+Space**: Toggle selection on focused item
+- **⌥+← / ⌥+→**: Navigate history back/forward
+- **⌘+1 / ⌘+2** or **⌥+1 / ⌥+2**: Open drive selector for left/right pane
+- **Ctrl+S**: Show directory size
+- **Ctrl+F**: Open search
 
 ### Alternative: Change macOS Settings
 
@@ -30,7 +45,7 @@ If you want to use F-keys without pressing Fn every time:
 After this change:
 
 - F-keys work directly (without Fn)
-- Special functions require Fn (Fn+F1 for brightness, etc.)
+- Special functions require Fn (for example `Fn + F1` for brightness)
 
 ## Implementation Details
 

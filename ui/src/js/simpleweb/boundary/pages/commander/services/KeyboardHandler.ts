@@ -586,9 +586,9 @@ export class KeyboardHandler {
       event.preventDefault()
       // Alt+Left: Navigate back in history
       this.commander.navigateHistoryBack()
-    } else if (event.ctrlKey) {
+    } else if (event.shiftKey) {
       event.preventDefault()
-      // Ctrl+Left: Switch left panel to right panel's directory
+      // Shift+Left: Switch left panel to right panel's directory
       const targetPath = this.commander.rightPane.currentPath
       const previousActive = this.commander.activePane
       this.commander.activePane = 'left'
@@ -606,9 +606,9 @@ export class KeyboardHandler {
       event.preventDefault()
       // Alt+Right: Navigate forward in history
       this.commander.navigateHistoryForward()
-    } else if (event.ctrlKey) {
+    } else if (event.shiftKey) {
       event.preventDefault()
-      // Ctrl+Right: Switch right panel to left panel's directory
+      // Shift+Right: Switch right panel to left panel's directory
       const targetPath = this.commander.leftPane.currentPath
       const previousActive = this.commander.activePane
       this.commander.activePane = 'right'
