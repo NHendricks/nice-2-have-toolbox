@@ -3,6 +3,7 @@
  */
 
 export type TaskStatus =
+  | 'backlog'
   | 'todo'
   | 'in-progress'
   | 'in-review'

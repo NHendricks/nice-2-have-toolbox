@@ -2,11 +2,11 @@
   "id": "task-1771955892868-v19undbz8",
   "summary": "media - ideas",
   "description": "- create app\n- extract mp3 from video\n- split mp3\n- convert to ipad1 compatible mp4-format for use in car\n  ffmpeg.exe -i <in> -vf scale=-2:480 -c:v libx264 -preset slow -crf 28 -c:a aac -b:a 96k <out>\n- move photos into subdirs using meta-timestamp (yyyy/mm as default pattern, configurable)\n- view photos and change timestamps in jpeg metadata\n- music player (IPOD-like see www.nilshendricks.de>widgets)\n- imdb finder\n  - find imdb rating quickly by typing film name \n\n\n",
-  "status": "todo",
+  "status": "backlog",
   "priority": "medium",
   "category": "General",
   "person": "Nils",
   "created": "2026-02-24T17:58:12.868Z",
-  "updated": "2026-02-24T17:58:41.202Z",
-  "order": 2
+  "updated": "2026-02-24T18:08:37.310Z",
+  "order": 1
 }

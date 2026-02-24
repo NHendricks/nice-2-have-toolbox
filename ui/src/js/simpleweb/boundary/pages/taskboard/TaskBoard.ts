@@ -110,6 +110,58 @@ export class TaskBoard extends LitElement {
       padding-bottom: 1rem;
     }
 
+    .backlog-section {
+      margin-top: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      min-height: 52px;
+    }
+
+    .backlog-section.expanded {
+      min-height: 160px;
+    }
+
+    .backlog-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .backlog-content {
+      padding: 0.5rem;
+      min-height: 110px;
+      max-height: 280px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    .backlog-content.hidden {
+      display: none;
+    }
+
+    .backlog-toggle-btn {
+      background: #334155;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0.2rem 0.55rem;
+    }
+
+    .backlog-toggle-btn:hover {
+      background: #475569;
+    }
+
     .column {
       flex: 1;
       min-width: 280px;
@@ -371,6 +423,39 @@ export class TaskBoard extends LitElement {
     }
 
     /* Category styles */
+    .filter-section {
+      margin-bottom: 0.75rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+
+    .filter-header {
+      padding: 0.6rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .filter-content {
+      padding: 0 0.75rem 0.75rem;
+    }
+
+    .filter-content.hidden {
+      display: none;
+    }
+
+    .filter-content .category-bar,
+    .filter-content .person-bar {
+      margin-bottom: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+    }
+
     .category-bar {
       display: flex;
       gap: 0.5rem;
@@ -801,6 +886,9 @@ export class TaskBoard extends LitElement {
   @state() private priorityPickerAnchor: { left: number; top: number } | null =
     null
   @state() private pendingNewTask: Task | null = null
+  @state() private categoryFiltersExpanded: boolean = false
+  @state() private personFiltersExpanded: boolean = false
+  @state() private backlogExpanded: boolean = false
 
   connectedCallback() {
     super.connectedCallback()
@@ -2247,247 +2335,342 @@ export class TaskBoard extends LitElement {
     `
   }
 
-  private renderCategoryBar() {
+  private renderBacklog() {
+    const backlogTasks = this.tasks
+      .filter((t) => {
+        const statusMatch = t.status === 'backlog'
+        const categoryMatch =
+          !this.selectedCategory || t.category === this.selectedCategory
+        const personMatch =
+          !this.selectedPerson ||
+          (t.person || DEFAULT_PERSON) === this.selectedPerson
+        return statusMatch && categoryMatch && personMatch
+      })
+      .sort((a, b) => a.order - b.order)
+
     return html`
-      <div class="category-bar">
-        <div
-          class="category-chip all ${this.selectedCategory === null
-            ? 'active'
-            : ''}"
-          @click=${() => {
-            this.selectedCategory = null
-          }}
-        >
-          All Tasks (${this.tasks.length})
-        </div>
-        ${this.categories.map(
-          (category) => html`
-            <div
-              class="category-chip ${this.selectedCategory === category.name
-                ? 'active'
-                : ''}"
-              style="background: ${category.color}30; color: ${category.color}"
-              @click=${() => {
-                this.selectedCategory = category.name
+      <div
+        class="backlog-section ${this.backlogExpanded ? 'expanded' : ''}"
+        @dragover=${this.onDragOver}
+        @dragenter=${this.onDragEnter}
+        @dragleave=${this.onDragLeave}
+        @drop=${(e: DragEvent) => this.onDrop(e, 'backlog')}
+      >
+        <div class="backlog-header">
+          <span>🗂️ Backlog</span>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="column-count">${backlogTasks.length}</span>
+            <button
+              class="backlog-toggle-btn"
+              @click=${(e: Event) => {
+                e.stopPropagation()
+                this.backlogExpanded = !this.backlogExpanded
               }}
             >
-              <span
-                class="category-dot"
-                style="background: ${category.color}"
-              ></span>
-              ${category.name}
-              (${this.tasks.filter((t) => t.category === category.name).length})
-              ${category.name !== DEFAULT_CATEGORY
-                ? html`
-                    <span
-                      class="delete-category-btn"
-                      @click=${(e: Event) => {
-                        e.stopPropagation()
-                        this.deleteCategory(category)
-                      }}
-                      title="Delete category"
-                    >
-                      ×
-                    </span>
-                  `
-                : ''}
+              ${this.backlogExpanded ? 'Hide' : 'Show'}
+            </button>
+          </div>
+        </div>
+        <div
+          class="column-content backlog-content ${this.backlogExpanded
+            ? ''
+            : 'hidden'}"
+          @dragover=${this.onDragOver}
+          @dragenter=${this.onDragEnter}
+          @dragleave=${this.onDragLeave}
+          @drop=${(e: DragEvent) => this.onDrop(e, 'backlog')}
+        >
+          ${backlogTasks.map((task) => this.renderTask(task))}
+          <button class="add-task-btn" @click=${() => this.addTask('backlog')}>
+            + Add Backlog Task
+          </button>
+        </div>
+      </div>
+    `
+  }
+
+  private renderCategoryBar() {
+    return html`
+      <div class="filter-section">
+        <div class="filter-header">
+          <span>🏷️ Categories</span>
+          <button
+            class="backlog-toggle-btn"
+            @click=${() => {
+              this.categoryFiltersExpanded = !this.categoryFiltersExpanded
+            }}
+          >
+            ${this.categoryFiltersExpanded ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        <div
+          class="filter-content ${this.categoryFiltersExpanded ? '' : 'hidden'}"
+        >
+          <div class="category-bar">
+            <div
+              class="category-chip all ${this.selectedCategory === null
+                ? 'active'
+                : ''}"
+              @click=${() => {
+                this.selectedCategory = null
+              }}
+            >
+              All Tasks (${this.tasks.length})
             </div>
-          `,
-        )}
-        ${this.addingCategory
-          ? html`
-              <div class="category-input-wrapper">
-                <input
-                  type="text"
-                  class="category-input"
-                  placeholder="Category name"
-                  .value=${this.newCategoryName}
-                  @input=${(e: Event) => {
-                    this.newCategoryName = (e.target as HTMLInputElement).value
+            ${this.categories.map(
+              (category) => html`
+                <div
+                  class="category-chip ${this.selectedCategory === category.name
+                    ? 'active'
+                    : ''}"
+                  style="background: ${category.color}30; color: ${category.color}"
+                  @click=${() => {
+                    this.selectedCategory = category.name
                   }}
-                  @keydown=${async (e: KeyboardEvent) => {
-                    if (e.key === 'Enter' && this.newCategoryName.trim()) {
-                      const name = this.newCategoryName.trim()
-                      if (this.categories.find((c) => c.name === name)) {
-                        alert('Category already exists!')
-                        return
-                      }
-                      await this.createCategoryFolder(name)
-                      this.newCategoryName = ''
-                      this.addingCategory = false
-                    }
-                    if (e.key === 'Escape') {
-                      this.addingCategory = false
-                      this.newCategoryName = ''
-                    }
-                  }}
-                  @blur=${() => {
-                    setTimeout(() => {
-                      this.addingCategory = false
-                      this.newCategoryName = ''
-                    }, 200)
-                  }}
-                />
-              </div>
-            `
-          : html`
-              <button
-                class="add-category-btn"
-                @click=${async () => {
-                  this.addingCategory = true
-                  await this.updateComplete
-                  const input = this.shadowRoot?.querySelector(
-                    '.category-input',
-                  ) as HTMLInputElement
-                  input?.focus()
-                }}
-              >
-                + Add Category
-              </button>
-            `}
+                >
+                  <span
+                    class="category-dot"
+                    style="background: ${category.color}"
+                  ></span>
+                  ${category.name}
+                  (${this.tasks.filter((t) => t.category === category.name)
+                    .length})
+                  ${category.name !== DEFAULT_CATEGORY
+                    ? html`
+                        <span
+                          class="delete-category-btn"
+                          @click=${(e: Event) => {
+                            e.stopPropagation()
+                            this.deleteCategory(category)
+                          }}
+                          title="Delete category"
+                        >
+                          ×
+                        </span>
+                      `
+                    : ''}
+                </div>
+              `,
+            )}
+            ${this.addingCategory
+              ? html`
+                  <div class="category-input-wrapper">
+                    <input
+                      type="text"
+                      class="category-input"
+                      placeholder="Category name"
+                      .value=${this.newCategoryName}
+                      @input=${(e: Event) => {
+                        this.newCategoryName = (
+                          e.target as HTMLInputElement
+                        ).value
+                      }}
+                      @keydown=${async (e: KeyboardEvent) => {
+                        if (e.key === 'Enter' && this.newCategoryName.trim()) {
+                          const name = this.newCategoryName.trim()
+                          if (this.categories.find((c) => c.name === name)) {
+                            alert('Category already exists!')
+                            return
+                          }
+                          await this.createCategoryFolder(name)
+                          this.newCategoryName = ''
+                          this.addingCategory = false
+                        }
+                        if (e.key === 'Escape') {
+                          this.addingCategory = false
+                          this.newCategoryName = ''
+                        }
+                      }}
+                      @blur=${() => {
+                        setTimeout(() => {
+                          this.addingCategory = false
+                          this.newCategoryName = ''
+                        }, 200)
+                      }}
+                    />
+                  </div>
+                `
+              : html`
+                  <button
+                    class="add-category-btn"
+                    @click=${async () => {
+                      this.addingCategory = true
+                      await this.updateComplete
+                      const input = this.shadowRoot?.querySelector(
+                        '.category-input',
+                      ) as HTMLInputElement
+                      input?.focus()
+                    }}
+                  >
+                    + Add Category
+                  </button>
+                `}
+          </div>
+        </div>
       </div>
     `
   }
 
   private renderPersonBar() {
     return html`
-      <div class="person-bar">
-        <div
-          class="person-chip all ${this.selectedPerson === null
-            ? 'active'
-            : ''}"
-          @click=${() => {
-            this.selectedPerson = null
-          }}
-        >
-          All Persons
+      <div class="filter-section">
+        <div class="filter-header">
+          <span>👤 Persons</span>
+          <button
+            class="backlog-toggle-btn"
+            @click=${() => {
+              this.personFiltersExpanded = !this.personFiltersExpanded
+            }}
+          >
+            ${this.personFiltersExpanded ? 'Hide' : 'Show'}
+          </button>
         </div>
-        ${this.persons.map(
-          (person) => html`
+
+        <div
+          class="filter-content ${this.personFiltersExpanded ? '' : 'hidden'}"
+        >
+          <div class="person-bar">
             <div
-              class="person-chip ${this.selectedPerson === person
+              class="person-chip all ${this.selectedPerson === null
                 ? 'active'
                 : ''}"
               @click=${() => {
-                this.selectedPerson = person
+                this.selectedPerson = null
               }}
             >
-              👤
-              ${this.editingPersonName === person
-                ? html`
+              All Persons
+            </div>
+            ${this.persons.map(
+              (person) => html`
+                <div
+                  class="person-chip ${this.selectedPerson === person
+                    ? 'active'
+                    : ''}"
+                  @click=${() => {
+                    this.selectedPerson = person
+                  }}
+                >
+                  👤
+                  ${this.editingPersonName === person
+                    ? html`
+                        <input
+                          class="person-rename-input"
+                          list="person-name-options"
+                          .value=${this.editPersonNameDraft}
+                          @click=${(e: Event) => e.stopPropagation()}
+                          @input=${(e: Event) => {
+                            this.editPersonNameDraft = (
+                              e.target as HTMLInputElement
+                            ).value
+                          }}
+                          @keydown=${async (e: KeyboardEvent) => {
+                            e.stopPropagation()
+                            if (e.key === 'Enter') {
+                              await this.saveRenamePerson(person)
+                            }
+                            if (e.key === 'Escape') {
+                              this.cancelRenamePerson()
+                            }
+                          }}
+                          @blur=${async () => {
+                            await this.saveRenamePerson(person)
+                          }}
+                        />
+                      `
+                    : html`
+                        <span
+                          class="person-name"
+                          @click=${(e: Event) => {
+                            e.stopPropagation()
+                            this.startRenamePerson(person)
+                          }}
+                          title="Click to rename"
+                        >
+                          ${person}
+                        </span>
+                      `}
+                  (${this.tasks.filter(
+                    (t) => (t.person || DEFAULT_PERSON) === person,
+                  ).length})
+                  ${person !== DEFAULT_PERSON
+                    ? html`
+                        <span
+                          class="delete-category-btn"
+                          @click=${(e: Event) => {
+                            e.stopPropagation()
+                            this.deletePerson(person)
+                          }}
+                          title="Delete person"
+                        >
+                          ×
+                        </span>
+                      `
+                    : ''}
+                </div>
+              `,
+            )}
+            ${this.addingPerson
+              ? html`
+                  <div class="person-input-wrapper">
                     <input
-                      class="person-rename-input"
-                      list="person-name-options"
-                      .value=${this.editPersonNameDraft}
-                      @click=${(e: Event) => e.stopPropagation()}
+                      type="text"
+                      class="person-input"
+                      placeholder="Person name"
+                      .value=${this.newPersonName}
                       @input=${(e: Event) => {
-                        this.editPersonNameDraft = (
+                        this.newPersonName = (
                           e.target as HTMLInputElement
                         ).value
                       }}
                       @keydown=${async (e: KeyboardEvent) => {
-                        e.stopPropagation()
-                        if (e.key === 'Enter') {
-                          await this.saveRenamePerson(person)
+                        if (e.key === 'Enter' && this.newPersonName.trim()) {
+                          const name = this.newPersonName.trim()
+                          if (this.persons.includes(name)) {
+                            alert('Person already exists!')
+                            return
+                          }
+                          this.persons = [...this.persons, name]
+                          await this.persistPersons()
+                          this.newPersonName = ''
+                          this.addingPerson = false
                         }
                         if (e.key === 'Escape') {
-                          this.cancelRenamePerson()
+                          this.addingPerson = false
+                          this.newPersonName = ''
                         }
                       }}
-                      @blur=${async () => {
-                        await this.saveRenamePerson(person)
+                      @blur=${() => {
+                        setTimeout(() => {
+                          this.addingPerson = false
+                          this.newPersonName = ''
+                        }, 200)
                       }}
                     />
-                  `
-                : html`
-                    <span
-                      class="person-name"
-                      @click=${(e: Event) => {
-                        e.stopPropagation()
-                        this.startRenamePerson(person)
-                      }}
-                      title="Click to rename"
-                    >
-                      ${person}
-                    </span>
-                  `}
-              (${this.tasks.filter(
-                (t) => (t.person || DEFAULT_PERSON) === person,
-              ).length})
-              ${person !== DEFAULT_PERSON
-                ? html`
-                    <span
-                      class="delete-category-btn"
-                      @click=${(e: Event) => {
-                        e.stopPropagation()
-                        this.deletePerson(person)
-                      }}
-                      title="Delete person"
-                    >
-                      ×
-                    </span>
-                  `
-                : ''}
-            </div>
-          `,
-        )}
-        ${this.addingPerson
-          ? html`
-              <div class="person-input-wrapper">
-                <input
-                  type="text"
-                  class="person-input"
-                  placeholder="Person name"
-                  .value=${this.newPersonName}
-                  @input=${(e: Event) => {
-                    this.newPersonName = (e.target as HTMLInputElement).value
-                  }}
-                  @keydown=${async (e: KeyboardEvent) => {
-                    if (e.key === 'Enter' && this.newPersonName.trim()) {
-                      const name = this.newPersonName.trim()
-                      if (this.persons.includes(name)) {
-                        alert('Person already exists!')
-                        return
-                      }
-                      this.persons = [...this.persons, name]
-                      await this.persistPersons()
-                      this.newPersonName = ''
-                      this.addingPerson = false
-                    }
-                    if (e.key === 'Escape') {
-                      this.addingPerson = false
-                      this.newPersonName = ''
-                    }
-                  }}
-                  @blur=${() => {
-                    setTimeout(() => {
-                      this.addingPerson = false
-                      this.newPersonName = ''
-                    }, 200)
-                  }}
-                />
-              </div>
-            `
-          : html`
-              <button
-                class="add-person-btn"
-                @click=${async () => {
-                  this.addingPerson = true
-                  await this.updateComplete
-                  const input = this.shadowRoot?.querySelector(
-                    '.person-input',
-                  ) as HTMLInputElement
-                  input?.focus()
-                }}
-              >
-                + Add Person
-              </button>
-            `}
-        <datalist id="person-name-options">
-          ${this.persons
-            .filter((person) => person !== this.editingPersonName)
-            .map((person) => html`<option value=${person}></option>`)}
-        </datalist>
+                  </div>
+                `
+              : html`
+                  <button
+                    class="add-person-btn"
+                    @click=${async () => {
+                      this.addingPerson = true
+                      await this.updateComplete
+                      const input = this.shadowRoot?.querySelector(
+                        '.person-input',
+                      ) as HTMLInputElement
+                      input?.focus()
+                    }}
+                  >
+                    + Add Person
+                  </button>
+                `}
+            <datalist id="person-name-options">
+              ${this.persons
+                .filter((person) => person !== this.editingPersonName)
+                .map((person) => html`<option value=${person}></option>`)}
+            </datalist>
+          </div>
+        </div>
       </div>
     `
   }
@@ -2526,7 +2709,8 @@ export class TaskBoard extends LitElement {
               <div class="board">
                 ${COLUMNS.map((column) => this.renderColumn(column))}
               </div>
-              ${this.renderTaskModal()} ${this.renderTaskPersonPickerModal()}
+              ${this.renderBacklog()} ${this.renderTaskModal()}
+              ${this.renderTaskPersonPickerModal()}
               ${this.renderTaskPriorityPickerModal()}
               ${this.renderTaskCategoryPickerModal()}
             `
