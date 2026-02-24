@@ -3,6 +3,7 @@ import './simpleweb/boundary/navigation/ResponsiveMenu'
 import './simpleweb/boundary/pages/Calculator'
 import './simpleweb/boundary/pages/Commander'
 import './simpleweb/boundary/pages/CommandParameter'
+import './simpleweb/boundary/pages/DartsCounter'
 import './simpleweb/boundary/pages/DocManager'
 import './simpleweb/boundary/pages/Faq'
 import './simpleweb/boundary/pages/GarbageFinder'
@@ -25,6 +26,7 @@ const validPaths = [
   '/docmanager',
   '/tools/jsonformatter',
   '/tools/calculator',
+  '/tools/darts-counter',
 ]
 
 const outlet = document.querySelector('.view')
@@ -43,6 +45,7 @@ router.setRoutes([
   { path: '/docmanager', component: 'nh-docmanager' },
   { path: '/tools/jsonformatter', component: 'nh-json-formatter' },
   { path: '/tools/calculator', component: 'nh-calculator' },
+  { path: '/tools/darts-counter', component: 'nh-darts-counter' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 

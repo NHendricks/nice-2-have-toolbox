@@ -49,6 +49,11 @@
           "label": "Calculator",
           "path": "/tools/calculator",
           "icon": "🧮"
+        },
+        {
+          "label": "Darts Counter",
+          "path": "/tools/darts-counter",
+          "icon": "🎯"
         }
       ]
     }
@@ -93,6 +98,10 @@
       "addBodyClass": "force-portrait"
     },
     "/tools/calculator": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/tools/darts-counter": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }
