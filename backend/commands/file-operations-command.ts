@@ -2135,7 +2135,7 @@ export class FileOperationsCommand implements ICommand {
           }
 
           // Small delay to allow UI to update
-          await new Promise((resolve) => setTimeout(resolve, 5));
+          await new Promise((resolve) => setTimeout(resolve, 50));
         }
       } catch (error: any) {
         // Re-throw cancellation errors
@@ -3207,7 +3207,7 @@ export class FileOperationsCommand implements ICommand {
         }
 
         // Small delay to allow UI updates
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       if (addedCount === 0) {

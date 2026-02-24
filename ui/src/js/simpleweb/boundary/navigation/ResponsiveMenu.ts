@@ -46,6 +46,7 @@ export class ResponsiveMenu extends LitElement {
   public forcePortrait = ResponsiveMenu.initialSettings?.forcePortrait ?? false
 
   private scrollHandler?: () => void
+  private scrollTicking = false
   private resizeHandler?: () => void
   private config: MenuConfig = menuConfig as MenuConfig
 
@@ -157,7 +158,7 @@ export class ResponsiveMenu extends LitElement {
 
     :host([force-portrait]) .burger-btn {
       opacity: 0.5;
-      animation: subtlePulse 4s ease-in-out infinite;
+      animation: subtlePulse 4s ease-in-out 3;
     }
 
     :host([force-portrait]) .burger-btn:hover {
@@ -778,15 +779,19 @@ export class ResponsiveMenu extends LitElement {
       this.isActionsOverlayOpen = false
     })
 
-    // Monitor scroll in landscape mode
+    // Monitor scroll in landscape mode (throttled via rAF)
     this.scrollHandler = () => {
-      // Consider forcePortrait when determining scroll behavior
-      const effectivePortrait = this.forcePortrait || this.isPortrait
-      if (!effectivePortrait) {
-        this.isScrolled = window.scrollY > 50
-      }
+      if (this.scrollTicking) return
+      this.scrollTicking = true
+      requestAnimationFrame(() => {
+        const effectivePortrait = this.forcePortrait || this.isPortrait
+        if (!effectivePortrait) {
+          this.isScrolled = window.scrollY > 50
+        }
+        this.scrollTicking = false
+      })
     }
-    window.addEventListener('scroll', this.scrollHandler)
+    window.addEventListener('scroll', this.scrollHandler, { passive: true })
 
     // Listen for route changes
     window.addEventListener('vaadin-router-location-changed', (e: Event) => {

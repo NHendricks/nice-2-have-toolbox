@@ -16,7 +16,9 @@
       "WebFetch(domain:www.access-programmers.co.uk)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:ithoughthecamewithyou.com)",
-      "Bash(scanimage:*)"
+      "Bash(scanimage:*)",
+      "Bash(grep -n \"animation:.*infinite\\\\|animation:.*4s\\\\|animation:.*1.5s\" /d/dev/nh-toolbox/ui/src/js/simpleweb/boundary/**/*.ts)",
+      "Bash(grep -n \"@keyframes spin\\\\|@keyframes pulse\" /d/dev/nh-toolbox/ui/src/js/simpleweb/boundary/**/*.ts)"
     ]
   }
 }
