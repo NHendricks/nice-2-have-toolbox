@@ -1,10 +1,10 @@
 {
   "id": "task-1771966249233-c931vm99t",
   "summary": "bottleneck finder app (cpu and fs)",
-  "description": "cpu or file system bottleneck finder",
+  "description": "cpu or file system bottleneck finder\n\nuse d3 for images\n\nkill processes\n\nfind handles \n\nfind process for ports",
   "priority": "medium",
   "category": "General",
   "person": "Nils",
   "created": "2026-02-24T20:50:49.232Z",
-  "updated": "2026-02-25T07:01:27.009Z"
+  "updated": "2026-02-25T07:11:55.162Z"
 }

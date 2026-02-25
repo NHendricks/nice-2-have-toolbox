@@ -1028,10 +1028,24 @@ export class TaskBoard extends LitElement {
   @state() private editingBoardTitle: boolean = false
   @state() private topFiltersExpanded: boolean = false
   @state() private backlogExpanded: boolean = false
+  private readonly onWindowKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return
+    if (!this.editingTaskId) return
+
+    e.preventDefault()
+    e.stopPropagation()
+    this.cancelEditing()
+  }
 
   connectedCallback() {
     super.connectedCallback()
+    window.addEventListener('keydown', this.onWindowKeyDown, true)
     this.loadFolderPath()
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('keydown', this.onWindowKeyDown, true)
+    super.disconnectedCallback()
   }
 
   private async loadFolderPath() {
@@ -1935,6 +1949,13 @@ export class TaskBoard extends LitElement {
     this.editingTaskId = null
   }
 
+  private handleTaskModalKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return
+    e.preventDefault()
+    e.stopPropagation()
+    this.cancelEditing()
+  }
+
   private async updateTaskPerson(task: Task, person: string) {
     const normalizedPerson = person || DEFAULT_PERSON
 
@@ -2682,7 +2703,11 @@ export class TaskBoard extends LitElement {
 
     return html`
       <div class="task-modal-overlay" @click=${this.cancelEditing}>
-        <div class="task-modal" @click=${(e: Event) => e.stopPropagation()}>
+        <div
+          class="task-modal"
+          @click=${(e: Event) => e.stopPropagation()}
+          @keydown=${this.handleTaskModalKeydown}
+        >
           <div class="task-modal-header">
             <h3 class="task-modal-title">${titleText}</h3>
             <button
