@@ -1048,6 +1048,34 @@ export class TaskBoard extends LitElement {
     super.disconnectedCallback()
   }
 
+  protected updated(changedProps: Map<string, unknown>) {
+    if (!changedProps.has('editingTaskId') || !this.editingTaskId) return
+
+    requestAnimationFrame(() => {
+      const isNewTask = this.pendingNewTask?.id === this.editingTaskId
+
+      if (isNewTask) {
+        const titleInput = this.shadowRoot?.querySelector(
+          '.task-modal .task-summary-input',
+        ) as HTMLInputElement | null
+
+        if (!titleInput) return
+        titleInput.focus()
+        titleInput.select()
+        return
+      }
+
+      const descriptionInput = this.shadowRoot?.querySelector(
+        '.task-modal .task-description-input',
+      ) as HTMLTextAreaElement | null
+
+      if (!descriptionInput) return
+      descriptionInput.focus()
+      const cursorPosition = descriptionInput.value.length
+      descriptionInput.setSelectionRange(cursorPosition, cursorPosition)
+    })
+  }
+
   private async loadFolderPath() {
     const savedPath = localStorage.getItem('taskboard-folder')
     if (savedPath) {
