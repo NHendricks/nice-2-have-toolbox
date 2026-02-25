@@ -2,10 +2,9 @@
   "id": "task-1771954838140-c1k8dwzmp",
   "summary": "ask user when existing file exists during copy, dont alwaýs create copies",
   "description": "",
-  "status": "todo",
   "priority": "medium",
   "category": "commander",
   "person": "Nils",
   "created": "2026-02-24T17:40:38.140Z",
-  "updated": "2026-02-24T18:28:25.160Z"
+  "updated": "2026-02-25T07:02:33.293Z"
 }

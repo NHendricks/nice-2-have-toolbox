@@ -2,7 +2,6 @@
   "id": "task-1771958145651-sw166t1n5",
   "summary": "ocr batach scan",
   "description": "- ocr scan for all pdfs in a specified directory",
-  "status": "backlog",
   "priority": "medium",
   "category": "minihelpers",
   "person": "Nils",

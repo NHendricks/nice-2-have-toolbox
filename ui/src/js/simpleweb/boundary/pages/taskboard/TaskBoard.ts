@@ -26,6 +26,9 @@ const ORDERED_STATUSES: TaskStatus[] = [
   ...COLUMNS.map((column) => column.id as TaskStatus),
 ]
 
+const isTaskStatus = (value: unknown): value is TaskStatus =>
+  typeof value === 'string' && ORDERED_STATUSES.includes(value as TaskStatus)
+
 @customElement('nh-taskboard')
 export class TaskBoard extends LitElement {
   static styles = css`
@@ -1628,7 +1631,11 @@ export class TaskBoard extends LitElement {
                   task.category = DEFAULT_CATEGORY
                 }
 
-                const { order: _legacyOrder, ...persistedTask } = task
+                const {
+                  order: _legacyOrder,
+                  status: _legacyStatus,
+                  ...persistedTask
+                } = task
 
                 // Save to category folder
                 const newFilePath = `${this.folderPath}${sep}${task.category}${sep}${task.id}.json`
@@ -1665,7 +1672,17 @@ export class TaskBoard extends LitElement {
 
     try {
       const tasks: Task[] = []
+      const statusByTaskId = new Map<string, TaskStatus>()
       const sep = this.folderPath.includes('\\') ? '\\' : '/'
+
+      for (const status of ORDERED_STATUSES) {
+        const orderedIds = await this.loadStatusOrder(status)
+        for (const taskId of orderedIds) {
+          if (!statusByTaskId.has(taskId)) {
+            statusByTaskId.set(taskId, status)
+          }
+        }
+      }
 
       console.log('Loading tasks from categories:', this.categories)
 
@@ -1700,11 +1717,52 @@ export class TaskBoard extends LitElement {
                   readResponse.data?.content,
                 )
                 if (readResponse.success && readResponse.data?.content) {
-                  const task = JSON.parse(readResponse.data.content) as Task
-                  task.category = task.category || category.name
-                  task.person = task.person || DEFAULT_PERSON
-                  task.order =
-                    typeof task.order === 'number' ? task.order : tasks.length
+                  const parsedTask = JSON.parse(
+                    readResponse.data.content,
+                  ) as Partial<Task> | null
+
+                  if (!parsedTask || typeof parsedTask.id !== 'string') {
+                    continue
+                  }
+
+                  const resolvedStatusFromOrder = statusByTaskId.get(
+                    parsedTask.id,
+                  )
+                  const resolvedStatusFromTask = isTaskStatus(parsedTask.status)
+                    ? parsedTask.status
+                    : null
+
+                  const task: Task = {
+                    id: parsedTask.id,
+                    summary: parsedTask.summary || 'Untitled',
+                    description: parsedTask.description || '',
+                    status:
+                      resolvedStatusFromOrder ||
+                      resolvedStatusFromTask ||
+                      'todo',
+                    priority:
+                      parsedTask.priority === 'low' ||
+                      parsedTask.priority === 'medium' ||
+                      parsedTask.priority === 'high' ||
+                      parsedTask.priority === 'critical'
+                        ? parsedTask.priority
+                        : 'medium',
+                    category: parsedTask.category || category.name,
+                    person: parsedTask.person || DEFAULT_PERSON,
+                    created:
+                      typeof parsedTask.created === 'string'
+                        ? parsedTask.created
+                        : new Date().toISOString(),
+                    updated:
+                      typeof parsedTask.updated === 'string'
+                        ? parsedTask.updated
+                        : new Date().toISOString(),
+                    order:
+                      typeof parsedTask.order === 'number'
+                        ? parsedTask.order
+                        : tasks.length,
+                  }
+
                   tasks.push(task)
                 }
               } catch (e) {
@@ -1742,7 +1800,7 @@ export class TaskBoard extends LitElement {
       const filePath = `${this.folderPath}${sep}${task.category}${sep}${task.id}.json`
       console.log('Saving task to:', filePath)
 
-      const { order: _order, ...persistedTask } = task
+      const { order: _order, status: _status, ...persistedTask } = task
 
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
@@ -2164,7 +2222,7 @@ export class TaskBoard extends LitElement {
     const updatedTask: Task = {
       ...draggedTask,
       status: dropOnTask.status,
-      updated: statusChanged ? new Date().toISOString() : draggedTask.updated,
+      updated: draggedTask.updated,
     }
 
     // Insert at the calculated position
@@ -2183,10 +2241,6 @@ export class TaskBoard extends LitElement {
 
     this.tasks = newTasks
     this.dragOverTaskId = null
-
-    if (statusChanged) {
-      await this.saveTask(updatedTask)
-    }
 
     await this.persistStatusOrders(affectedStatuses)
 
@@ -2236,7 +2290,7 @@ export class TaskBoard extends LitElement {
     const updatedTask: Task = {
       ...task,
       status: newStatus,
-      updated: statusChanged ? new Date().toISOString() : task.updated,
+      updated: task.updated,
     }
 
     const newTasks = [...this.tasks]
@@ -2256,10 +2310,6 @@ export class TaskBoard extends LitElement {
     })
 
     this.tasks = newTasks
-
-    if (statusChanged) {
-      await this.saveTask(updatedTask)
-    }
 
     await this.persistStatusOrders(affectedStatuses)
 
@@ -2282,7 +2332,7 @@ export class TaskBoard extends LitElement {
     const updatedTask: Task = {
       ...task,
       status: 'todo',
-      updated: new Date().toISOString(),
+      updated: task.updated,
     }
 
     const newTasks = this.tasks.map((t) => (t.id === task.id ? updatedTask : t))
@@ -2299,13 +2349,6 @@ export class TaskBoard extends LitElement {
     })
 
     this.tasks = newTasks
-
-    const movedTask = newTasks.find(
-      (existingTask) => existingTask.id === task.id,
-    )
-    if (movedTask) {
-      await this.saveTask(movedTask)
-    }
 
     await this.persistStatusOrders(affectedStatuses)
   }
