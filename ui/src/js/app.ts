@@ -9,6 +9,7 @@ import './simpleweb/boundary/pages/Faq'
 import './simpleweb/boundary/pages/GarbageFinder'
 import './simpleweb/boundary/pages/JSONFormatter'
 import './simpleweb/boundary/pages/MoneyFinder'
+import './simpleweb/boundary/pages/SystemMonitor'
 import './simpleweb/boundary/pages/restic/ResticUI'
 import './simpleweb/boundary/pages/taskboard/TaskBoard'
 
@@ -27,6 +28,7 @@ const validPaths = [
   '/tools/jsonformatter',
   '/tools/calculator',
   '/tools/darts-counter',
+  '/tools/system-monitor',
 ]
 
 const outlet = document.querySelector('.view')
@@ -46,6 +48,7 @@ router.setRoutes([
   { path: '/tools/jsonformatter', component: 'nh-json-formatter' },
   { path: '/tools/calculator', component: 'nh-calculator' },
   { path: '/tools/darts-counter', component: 'nh-darts-counter' },
+  { path: '/tools/system-monitor', component: 'nh-system-monitor' },
   { path: '(.*)', component: 'simple-commander' }, // fallback
 ])
 

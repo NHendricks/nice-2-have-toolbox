@@ -49,6 +49,11 @@
           "label": "Darts Counter",
           "path": "/tools/darts-counter",
           "icon": "🎯"
+        },
+        {
+          "label": "System Monitor",
+          "path": "/tools/system-monitor",
+          "icon": "📊"
         }
       ]
     },
@@ -106,6 +111,10 @@
       "addBodyClass": "force-portrait"
     },
     "/tools/darts-counter": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
+    "/tools/system-monitor": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     }

@@ -14,6 +14,7 @@ import { PingCommand } from './ping-command.js';
 import { ProficashCommand } from './proficash-command.js';
 import { ResticCommand } from './restic-command.js';
 import { ScannerCommand } from './scanner-command.js';
+import { SystemMonitorCommand } from './system-monitor-command.js';
 
 export class CommandRegistry {
   private commands: Map<string, ICommand>;
@@ -36,6 +37,7 @@ export class CommandRegistry {
     this.register('garbage-finder', new GarbageFinderCommand());
     this.register('restic', new ResticCommand());
     this.register('scanner', new ScannerCommand());
+    this.register('system-monitor', new SystemMonitorCommand());
     this.register('config', new ConfigCommand());
   }
 
