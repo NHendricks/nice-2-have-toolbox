@@ -2,7 +2,7 @@ import * as d3 from 'd3'
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 
-type Metric = 'cpu' | 'memory'
+type Metric = 'cpu' | 'memory' | 'io'
 
 interface UsageEntry {
   pid: number
@@ -10,6 +10,13 @@ interface UsageEntry {
   command?: string
   cpu: number
   memoryMB: number
+  ioMB?: number
+}
+
+interface ResourceAvailability {
+  cpuFreePercent?: number | null
+  memoryFreeMB?: number | null
+  diskFreeGB?: number | null
 }
 
 @customElement('nh-system-monitor')
@@ -19,6 +26,8 @@ export class SystemMonitor extends LitElement {
   @state() private loading = false
   @state() private error = ''
   @state() private updatedAt = ''
+  @state() private diskIoMBps: number | null = null
+  @state() private resources: ResourceAvailability | null = null
   @state() private liveMode = false
   private refreshTimer: number | null = null
 
@@ -236,16 +245,35 @@ export class SystemMonitor extends LitElement {
       if (!result?.success) {
         this.error = result?.error || 'Failed to load system usage'
         this.entries = []
+        this.diskIoMBps = null
+        this.resources = null
       } else {
+        this.error = result?.warning || ''
         this.entries = Array.isArray(result.entries) ? result.entries : []
         this.updatedAt = result.updatedAt || new Date().toISOString()
+        this.diskIoMBps =
+          typeof result.diskIoMBps === 'number' &&
+          Number.isFinite(result.diskIoMBps)
+            ? result.diskIoMBps
+            : null
+        this.resources = result.resources || null
       }
     } catch (error: any) {
       this.error = error?.message || 'Failed to load system usage'
       this.entries = []
+      this.diskIoMBps = null
+      this.resources = null
     } finally {
       this.loading = false
     }
+  }
+
+  private formatFreeMemory(): string {
+    const freeMB = this.resources?.memoryFreeMB
+    if (typeof freeMB !== 'number' || !Number.isFinite(freeMB)) {
+      return 'n/a'
+    }
+    return `${(freeMB / 1024).toFixed(1)} GB`
   }
 
   private startLiveUpdates() {
@@ -272,16 +300,23 @@ export class SystemMonitor extends LitElement {
   }
 
   private getValue(entry: UsageEntry): number {
-    return this.metric === 'cpu'
-      ? Math.max(0.0001, entry.cpu || 0)
-      : Math.max(0.0001, entry.memoryMB || 0)
+    if (this.metric === 'cpu') {
+      return Math.max(0.0001, entry.cpu || 0)
+    }
+    if (this.metric === 'memory') {
+      return Math.max(0.0001, entry.memoryMB || 0)
+    }
+    return Math.max(0.0001, entry.ioMB || 0)
   }
 
   private formatValue(entry: UsageEntry): string {
     if (this.metric === 'cpu') {
       return `${(entry.cpu || 0).toFixed(1)} %`
     }
-    return `${(entry.memoryMB || 0).toFixed(1)} MB`
+    if (this.metric === 'memory') {
+      return `${(entry.memoryMB || 0).toFixed(1)} MB`
+    }
+    return `${(entry.ioMB || 0).toFixed(1)} MB I/O`
   }
 
   private getDisplayProcessName(nameOrCommand: string): string {
@@ -381,7 +416,7 @@ export class SystemMonitor extends LitElement {
     slices
       .on('mousemove', (event, d) => {
         const fullCommand = d.data.command || d.data.name || 'unknown'
-        tooltipEl.innerHTML = `<strong>${this.getDisplayProcessName(fullCommand)}</strong><br/>PID: ${d.data.pid}<br/>CPU: ${(d.data.cpu || 0).toFixed(1)} %<br/>Memory: ${(d.data.memoryMB || 0).toFixed(1)} MB<br/>Command: ${fullCommand}`
+        tooltipEl.innerHTML = `<strong>${this.getDisplayProcessName(fullCommand)}</strong><br/>PID: ${d.data.pid}<br/>CPU: ${(d.data.cpu || 0).toFixed(1)} %<br/>Memory: ${(d.data.memoryMB || 0).toFixed(1)} MB<br/>File I/O: ${(d.data.ioMB || 0).toFixed(1)} MB<br/>Command: ${fullCommand}`
         tooltipEl.classList.add('visible')
 
         const margin = 12
@@ -455,7 +490,13 @@ export class SystemMonitor extends LitElement {
       .attr('text-anchor', 'middle')
       .attr('fill', '#cbd5e1')
       .attr('font-size', 12)
-      .text(this.metric === 'cpu' ? 'CPU' : 'Memory')
+      .text(
+        this.metric === 'cpu'
+          ? 'CPU'
+          : this.metric === 'memory'
+            ? 'Memory'
+            : 'File I/O',
+      )
 
     g.append('text')
       .attr('text-anchor', 'middle')
@@ -491,6 +532,12 @@ export class SystemMonitor extends LitElement {
               Memory
             </button>
             <button
+              class=${this.metric === 'io' ? 'active' : ''}
+              @click=${() => this.switchMetric('io')}
+            >
+              File I/O
+            </button>
+            <button
               class=${this.liveMode ? 'active' : ''}
               @click=${() => this.toggleLiveMode()}
             >
@@ -501,6 +548,18 @@ export class SystemMonitor extends LitElement {
           <div class="meta">
             ${this.updatedAt
               ? `Updated: ${new Date(this.updatedAt).toLocaleTimeString()}`
+              : ''}
+            ${typeof this.resources?.cpuFreePercent === 'number'
+              ? ` • CPU frei: ${this.resources.cpuFreePercent.toFixed(1)} %`
+              : ''}
+            ${this.resources?.memoryFreeMB != null
+              ? ` • MEM frei: ${this.formatFreeMemory()}`
+              : ''}
+            ${typeof this.resources?.diskFreeGB === 'number'
+              ? ` • Disk frei: ${this.resources.diskFreeGB.toFixed(1)} GB`
+              : ''}
+            ${typeof this.diskIoMBps === 'number'
+              ? ` • Disk I/O: ${this.diskIoMBps.toFixed(2)} MB/s`
               : ''}
           </div>
         </div>
