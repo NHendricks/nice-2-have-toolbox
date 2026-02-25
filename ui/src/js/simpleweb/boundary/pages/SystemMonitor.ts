@@ -168,13 +168,31 @@ export class SystemMonitor extends LitElement {
 
     .row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto auto;
       gap: 0.65rem;
       align-items: center;
       background: rgba(15, 23, 42, 0.45);
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 8px;
       padding: 0.5rem 0.6rem;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #94a3b8;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      background: rgba(148, 163, 184, 0.15);
+      color: #e2e8f0;
+      transform: none;
     }
 
     .name {
@@ -336,6 +354,19 @@ export class SystemMonitor extends LitElement {
   private truncateFromStart(value: string, maxLength: number): string {
     if (!value || value.length <= maxLength) return value
     return `…${value.slice(-(maxLength - 1))}`
+  }
+
+  private async copyCommand(entry: UsageEntry, event: Event) {
+    const text = this.getCommandText(entry)
+    const btn = event.currentTarget as HTMLButtonElement
+    try {
+      await navigator.clipboard.writeText(text)
+      btn.textContent = 'Copied!'
+      setTimeout(() => (btn.textContent = 'Copy'), 1200)
+    } catch {
+      btn.textContent = 'Failed'
+      setTimeout(() => (btn.textContent = 'Copy'), 1200)
+    }
   }
 
   private renderChart() {
@@ -581,9 +612,15 @@ export class SystemMonitor extends LitElement {
               (entry) => html`
                 <div class="row">
                   <div class="name" title=${this.getCommandText(entry)}>
-                    ${this.truncateFromStart(this.getCommandText(entry), 110)}
+                    ${this.getDisplayProcessName(this.getCommandText(entry))}
                   </div>
                   <div class="value">${this.formatValue(entry)}</div>
+                  <button
+                    class="copy-btn"
+                    @click=${(e: Event) => this.copyCommand(entry, e)}
+                  >
+                    Copy
+                  </button>
                 </div>
               `,
             )}
