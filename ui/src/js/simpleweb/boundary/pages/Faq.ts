@@ -5,57 +5,107 @@ export class Faq extends LitElement {
   static styles = css`
     :host {
       display: block;
-      font-family: Arial, sans-serif;
-      color: #777;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
     }
 
-    /* Inhalt */
     .content {
-      padding: 2rem;
-      max-width: 1000px;
+      padding: 2rem 1.25rem 3rem;
+      max-width: 960px;
       margin: 0 auto;
     }
 
     h1 {
-      margin-bottom: 0.5rem;
+      margin: 0;
+      font-size: clamp(1.8rem, 2.8vw, 2.4rem);
+      color: #f8fafc;
     }
 
-    h2 {
-      margin-top: 2rem;
-      color: #475569;
+    .subtitle {
+      margin-top: 0.5rem;
+      color: #cbd5e1;
+      max-width: 680px;
     }
 
-    .columns {
+    .cards {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      margin-top: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
     }
 
-    @media (max-width: 768px) {
-      .columns {
-        grid-template-columns: 1fr;
-      }
+    .card {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 12px;
+      padding: 1rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .card h2 {
+      margin: 0 0 0.45rem 0;
+      font-size: 1.1rem;
+      color: #f8fafc;
+    }
+
+    .card p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    a {
+      display: inline-block;
+      margin-top: 0.8rem;
+      color: #93c5fd;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    a:hover {
+      text-decoration: underline;
     }
   `
 
   render() {
     return html`
       <div class="content">
-        <h1>FAQ</h1>
-        <h2>Simplify all of your utility tasks in 1 app</h2>
+        <h1>Help</h1>
+        <p class="subtitle">
+          Quick links only — full details are on the website and in project
+          docs.
+        </p>
 
-        Get help at
-        <a target="_blank" href="https://www.nice2havetoolbox.de/"
-          >https://www.nice2havetoolbox.de/</a
-        >
+        <div class="cards">
+          <section class="card">
+            <h2>Website</h2>
+            <p>Guides, updates and general information.</p>
+            <a target="_blank" href="https://www.nice2havetoolbox.de/"
+              >Open website</a
+            >
+          </section>
 
-        Contribute at
-        <a target="_blank" href="https://github.com/NHendricks/nh-toolbox"
-          >https://github.com/NHendricks/nh-toolbox</a
-        >. If you are new to programming just use Claude Code or Cline in Visual
-        Studio Code. Ask your AI for help how to set this up (clone, oinstall
-        node and VSCode, install Claude ... lets go).
+          <section class="card">
+            <h2>Releases</h2>
+            <p>Latest versions, changelogs and downloadable builds.</p>
+            <a
+              target="_blank"
+              href="https://github.com/NHendricks/nice-2-have-toolbox/releases"
+              >Open releases</a
+            >
+          </section>
+
+          <section class="card">
+            <h2>Contribute</h2>
+            <p>Ideas, fixes and pull requests are welcome.</p>
+            <a target="_blank" href="https://github.com/NHendricks/nh-toolbox"
+              >Contribute on GitHub</a
+            >
+          </section>
+        </div>
       </div>
     `
   }

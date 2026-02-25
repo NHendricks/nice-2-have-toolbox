@@ -93,6 +93,10 @@
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
     },
+    "/faq": {
+      "forcePortrait": true,
+      "addBodyClass": "force-portrait"
+    },
     "/tools/jsonformatter": {
       "forcePortrait": true,
       "addBodyClass": "force-portrait"
