@@ -14,6 +14,7 @@ import { PingCommand } from './ping-command.js';
 import { ProficashCommand } from './proficash-command.js';
 import { ResticCommand } from './restic-command.js';
 import { ScannerCommand } from './scanner-command.js';
+import { PdfSplitCommand } from './pdf-split-command.js';
 import { SystemMonitorCommand } from './system-monitor-command.js';
 
 export class CommandRegistry {
@@ -38,6 +39,7 @@ export class CommandRegistry {
     this.register('restic', new ResticCommand());
     this.register('scanner', new ScannerCommand());
     this.register('system-monitor', new SystemMonitorCommand());
+    this.register('pdf-split', new PdfSplitCommand());
     this.register('config', new ConfigCommand());
   }
 
