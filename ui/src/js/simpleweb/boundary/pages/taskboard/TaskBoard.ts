@@ -1132,11 +1132,14 @@ export class TaskBoard extends LitElement {
         existingResponse.success &&
         typeof existingResponse.data?.content === 'string'
       ) {
-        const existingContent = String(existingResponse.data.content)
-          .replace(/\r\n/g, '\n')
-          .replace(/\s+$/u, '')
+        const existingRawContent = String(
+          existingResponse.data.content,
+        ).replace(/\r\n/g, '\n')
+        const existingContent = existingRawContent.replace(/\s+$/u, '')
 
-        if (existingContent === normalizedContent) {
+        const hasCanonicalFormatting = existingRawContent === nextContent
+
+        if (existingContent === normalizedContent && hasCanonicalFormatting) {
           return
         }
       }
