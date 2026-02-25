@@ -31,12 +31,7 @@
       "icon": "📄"
     },
     {
-      "label": "Help",
-      "path": "/faq",
-      "icon": "❓"
-    },
-    {
-      "label": "Tools",
+      "label": "Utils",
       "icon": "📂",
       "hasSubmenu": true,
       "submenu": [
@@ -56,6 +51,11 @@
           "icon": "🎯"
         }
       ]
+    },
+    {
+      "label": "Help",
+      "path": "/faq",
+      "icon": "❓"
     }
   ],
   "bonusActions": [
