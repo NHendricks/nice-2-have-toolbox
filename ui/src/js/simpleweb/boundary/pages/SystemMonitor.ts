@@ -1,6 +1,6 @@
+import * as d3 from 'd3'
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import * as d3 from 'd3'
 
 type Metric = 'cpu' | 'memory'
 
