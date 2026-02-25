@@ -555,6 +555,12 @@ export class DocManager extends LitElement {
 
       // 1. POPULATE COMPANY/DOMAIN DROPDOWN
       this.companyOptions = []
+      let preferredGmbhAgCompanyValue = ''
+      const gmbhAgCandidates: Array<{
+        raw: string
+        value: string
+        source: 'organization' | 'sender'
+      }> = []
       const addCompanyOption = (value: string, label: string) => {
         if (!value) return
         if (!this.companyOptions.find((o) => o.value === value)) {
@@ -586,7 +592,15 @@ export class DocManager extends LitElement {
           (org: string) => /\b(gmbh|ag)\b/i.test(org),
         )
         for (const org of gmbhAgOrganizations) {
-          addCompanyOption(this.sanitizeFilename(org), `${org} (Organization)`)
+          const orgValue = this.sanitizeFilename(org)
+          addCompanyOption(orgValue, `${org} (Organization)`)
+          if (orgValue) {
+            gmbhAgCandidates.push({
+              raw: org,
+              value: orgValue,
+              source: 'organization',
+            })
+          }
         }
 
         // Priority 3: remaining organizations
@@ -598,10 +612,15 @@ export class DocManager extends LitElement {
 
       // Remaining: sender and fixed sender matches
       if (analysis.sender && analysis.sender !== 'Unknown') {
-        addCompanyOption(
-          this.sanitizeFilename(analysis.sender),
-          `${analysis.sender} (Sender)`,
-        )
+        const senderValue = this.sanitizeFilename(analysis.sender)
+        addCompanyOption(senderValue, `${analysis.sender} (Sender)`)
+        if (/\b(gmbh|ag)\b/i.test(analysis.sender) && senderValue) {
+          gmbhAgCandidates.push({
+            raw: analysis.sender,
+            value: senderValue,
+            source: 'sender',
+          })
+        }
       }
 
       for (const sender of fixedSenders) {
@@ -615,9 +634,60 @@ export class DocManager extends LitElement {
         this.companyOptions.push({ value: 'document', label: 'Document' })
       }
 
+      if (gmbhAgCandidates.length > 0) {
+        const isGenericLegalForm = (name: string): boolean => {
+          const normalized = name.toLowerCase().replace(/[^a-z0-9äöüß]/g, '')
+
+          return (
+            normalized === 'gmbhcokg' ||
+            normalized === 'gmbhundcokg' ||
+            normalized === 'agcokg' ||
+            normalized === 'agundcokg' ||
+            normalized === 'gmbh' ||
+            normalized === 'ag'
+          )
+        }
+
+        const scoreCandidate = (candidate: {
+          raw: string
+          source: 'organization' | 'sender'
+        }): number => {
+          const cleaned = candidate.raw.trim()
+          let score = 0
+
+          if (candidate.source === 'sender') score += 100
+          if (cleaned.includes('&')) score += 25
+          if (/\b(gmbh|ag)\b/i.test(cleaned)) score += 20
+          if (/\b(cokg|co\.kg|co\s*kg)\b/i.test(cleaned)) score -= 10
+          if (isGenericLegalForm(cleaned)) score -= 200
+
+          const wordCount = cleaned
+            .replace(/\b(gmbh|ag)\b/gi, '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean).length
+          if (wordCount >= 2) score += 15
+
+          return score
+        }
+
+        const bestCandidate = [...gmbhAgCandidates].sort(
+          (a, b) => scoreCandidate(b) - scoreCandidate(a),
+        )[0]
+
+        preferredGmbhAgCompanyValue = bestCandidate?.value || ''
+      }
+
       // Set default selection
       this.selectedCompany =
-        this.companyOptions.length > 0 ? this.companyOptions[0].value : ''
+        preferredGmbhAgCompanyValue &&
+        this.companyOptions.some(
+          (option) => option.value === preferredGmbhAgCompanyValue,
+        )
+          ? preferredGmbhAgCompanyValue
+          : this.companyOptions.length > 0
+            ? this.companyOptions[0].value
+            : ''
 
       // 2. POPULATE ACCOUNT/BILLING NUMBER DROPDOWN
       this.accountOptions = []
@@ -855,6 +925,35 @@ export class DocManager extends LitElement {
 
     // Navigate to Commander
     Router.go('/commander')
+  }
+
+  private async openFolderInSystemExplorer(): Promise<void> {
+    if (!this.scanDirectory) {
+      console.warn('[DocManager] No scan directory set')
+      this.showMessage('No scan directory set', 'error')
+      return
+    }
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'scanner',
+        {
+          action: 'open-folder',
+          outputPath: this.scanDirectory,
+        },
+      )
+      const result = response.data || response
+
+      if (!result.success) {
+        this.showMessage(
+          'Failed to open folder: ' + (result.error || 'Unknown error'),
+          'error',
+        )
+      }
+    } catch (error: any) {
+      this.showMessage('Error opening folder: ' + error.message, 'error')
+    }
   }
 
   /**
@@ -1663,7 +1762,16 @@ export class DocManager extends LitElement {
                 ? `Open ${this.scanDirectory} in Commander`
                 : 'No scan directory set'}"
             >
-              📁 Open Folder in Commander
+              📁
+            </button>
+            <button
+              @click="${this.openFolderInSystemExplorer}"
+              ?disabled="${!this.scanDirectory}"
+              title="${this.scanDirectory
+                ? `Open ${this.scanDirectory} in system explorer`
+                : 'No scan directory set'}"
+            >
+              🗂️
             </button>
           </div>
 

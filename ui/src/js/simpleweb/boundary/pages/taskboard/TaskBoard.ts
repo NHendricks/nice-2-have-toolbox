@@ -1115,7 +1115,11 @@ export class TaskBoard extends LitElement {
 
     try {
       const filePath = this.getMetadataFilePath(fileName)
-      const nextContent = JSON.stringify(data, null, 2).replace(/\s+$/u, '')
+      const normalizedContent = JSON.stringify(data, null, 2).replace(
+        /\s+$/u,
+        '',
+      )
+      const nextContent = `${normalizedContent}\n`
 
       const existingResponse = await (
         window as any
@@ -1132,7 +1136,7 @@ export class TaskBoard extends LitElement {
           .replace(/\r\n/g, '\n')
           .replace(/\s+$/u, '')
 
-        if (existingContent === nextContent) {
+        if (existingContent === normalizedContent) {
           return
         }
       }

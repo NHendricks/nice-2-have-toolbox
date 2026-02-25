@@ -97,6 +97,7 @@ export class ScannerCommand implements ICommand {
           'cleanup-scan',
           'list-documents',
           'open-document',
+          'open-folder',
           'delete-document',
         ],
       },
@@ -205,6 +206,8 @@ export class ScannerCommand implements ICommand {
           return await this.listDocuments(outputPath);
         case 'open-document':
           return await this.openDocument(outputPath, fileName);
+        case 'open-folder':
+          return await this.openFolder(outputPath);
         case 'delete-document':
           return await this.deleteDocument(outputPath, fileName);
         default:
@@ -1726,6 +1729,47 @@ try {
         documents,
         directory: baseDir,
         count: documents.length,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Open a folder in system file explorer (Finder/Explorer/default Linux file manager)
+   */
+  private async openFolder(outputPath: string): Promise<any> {
+    try {
+      const baseDir =
+        outputPath ||
+        path.join(
+          process.env.USERPROFILE || process.env.HOME || '',
+          'Documents',
+          'Scans',
+        );
+
+      if (!fs.existsSync(baseDir)) {
+        return {
+          success: false,
+          error: `Folder not found: ${baseDir}`,
+        };
+      }
+
+      const openCmd =
+        process.platform === 'win32'
+          ? 'explorer'
+          : process.platform === 'darwin'
+            ? 'open'
+            : 'xdg-open';
+
+      await execAsync(`${openCmd} "${baseDir}"`);
+
+      return {
+        success: true,
+        message: `Opened folder: ${baseDir}`,
       };
     } catch (error: any) {
       return {
