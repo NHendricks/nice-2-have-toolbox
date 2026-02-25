@@ -43,7 +43,7 @@ export class DocManager extends LitElement {
   @state() private scanDirectory = ''
   @state() private fileName = ''
   @state() private selectedScannerId = ''
-  @state() private resolution = '300'
+  @state() private resolution = '200'
   @state() private format = 'pdf'
   @state() private multiPage = true
   @state() private duplex = false
@@ -1567,8 +1567,8 @@ export class DocManager extends LitElement {
             <div class="form-group">
               <label>Resolution (DPI)</label>
               <select @change="${this.handleResolutionChange}">
-                <option value="150" ?selected="${this.resolution === '150'}">
-                  150 DPI
+                <option value="200" ?selected="${this.resolution === '200'}">
+                  200 DPI
                 </option>
                 <option value="300" ?selected="${this.resolution === '300'}">
                   300 DPI

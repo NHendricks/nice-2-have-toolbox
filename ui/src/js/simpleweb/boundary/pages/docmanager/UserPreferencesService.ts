@@ -177,9 +177,14 @@ export class UserPreferencesService {
    * Get scan resolution preference
    */
   getResolution(): string {
-    return (
-      this.preferences.resolution || this.preferences.defaultResolution || '300'
-    )
+    const configuredResolution =
+      this.preferences.resolution || this.preferences.defaultResolution || '200'
+
+    if (configuredResolution === '150') {
+      return '200'
+    }
+
+    return configuredResolution
   }
 
   /**
