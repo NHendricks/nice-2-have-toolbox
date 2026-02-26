@@ -168,7 +168,7 @@ export class SystemMonitor extends LitElement {
 
     .row {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto auto auto;
       gap: 0.65rem;
       align-items: center;
       background: rgba(15, 23, 42, 0.45);
@@ -192,6 +192,24 @@ export class SystemMonitor extends LitElement {
     .copy-btn:hover {
       background: rgba(148, 163, 184, 0.15);
       color: #e2e8f0;
+      transform: none;
+    }
+
+    .kill-btn {
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #f87171;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .kill-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
       transform: none;
     }
 
@@ -354,6 +372,38 @@ export class SystemMonitor extends LitElement {
   private truncateFromStart(value: string, maxLength: number): string {
     if (!value || value.length <= maxLength) return value
     return `…${value.slice(-(maxLength - 1))}`
+  }
+
+  private async killProcess(entry: UsageEntry, event: Event) {
+    const btn = event.currentTarget as HTMLButtonElement
+    if (
+      !confirm(
+        `Kill process "${this.getDisplayProcessName(this.getCommandText(entry))}" (PID ${entry.pid})?`,
+      )
+    )
+      return
+    btn.disabled = true
+    btn.textContent = '...'
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'system-monitor',
+        { action: 'kill-process', pid: entry.pid },
+      )
+      const result = response.data || response
+      if (result?.success) {
+        btn.textContent = 'Killed'
+        setTimeout(() => this.refreshData(), 800)
+      } else {
+        btn.textContent = 'Error'
+        btn.disabled = false
+        setTimeout(() => (btn.textContent = 'Kill'), 1500)
+      }
+    } catch {
+      btn.textContent = 'Error'
+      btn.disabled = false
+      setTimeout(() => (btn.textContent = 'Kill'), 1500)
+    }
   }
 
   private async copyCommand(entry: UsageEntry, event: Event) {
@@ -620,6 +670,12 @@ export class SystemMonitor extends LitElement {
                     @click=${(e: Event) => this.copyCommand(entry, e)}
                   >
                     Copy
+                  </button>
+                  <button
+                    class="kill-btn"
+                    @click=${(e: Event) => this.killProcess(entry, e)}
+                  >
+                    Kill
                   </button>
                 </div>
               `,

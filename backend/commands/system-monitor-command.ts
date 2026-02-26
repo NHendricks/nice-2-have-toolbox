@@ -56,7 +56,7 @@ export class SystemMonitorCommand implements ICommand {
         type: 'select',
         description: 'Action to perform',
         required: true,
-        options: ['top-processes'],
+        options: ['top-processes', 'kill-process'],
         default: 'top-processes',
       },
       {
@@ -73,6 +73,12 @@ export class SystemMonitorCommand implements ICommand {
         description: 'Maximum process count',
         required: false,
         default: 8,
+      },
+      {
+        name: 'pid',
+        type: 'number',
+        description: 'Process ID to kill (for kill-process action)',
+        required: false,
       },
     ];
   }
@@ -91,6 +97,10 @@ export class SystemMonitorCommand implements ICommand {
       : 8;
 
     try {
+      if (action === 'kill-process') {
+        return await this.killProcess(params?.pid);
+      }
+
       if (action !== 'top-processes') {
         throw new Error(`Unknown action: ${action}`);
       }
@@ -124,6 +134,30 @@ export class SystemMonitorCommand implements ICommand {
       return {
         success: false,
         error: error.message,
+      };
+    }
+  }
+
+  private async killProcess(pid: any): Promise<MonitorResponse> {
+    const numPid = Number(pid);
+    if (
+      !Number.isFinite(numPid) ||
+      numPid <= 0 ||
+      Math.floor(numPid) !== numPid
+    ) {
+      return { success: false, error: 'Invalid PID' };
+    }
+    try {
+      if (process.platform === 'win32') {
+        await execAsync(`taskkill /PID ${numPid} /F`, { timeout: 5000 });
+      } else {
+        process.kill(numPid, 'SIGTERM');
+      }
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to kill process',
       };
     }
   }
