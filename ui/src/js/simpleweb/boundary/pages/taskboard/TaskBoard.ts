@@ -2204,6 +2204,25 @@ export class TaskBoard extends LitElement {
   }
 
   // Drag and Drop handlers
+  private autoScrollColumn(e: DragEvent) {
+    const target = e.currentTarget as HTMLElement
+    const scrollable = target.closest('.column-content') || target
+    if (!scrollable || scrollable.scrollHeight <= scrollable.clientHeight)
+      return
+
+    const rect = scrollable.getBoundingClientRect()
+    const edgeZone = 50
+    const y = e.clientY
+
+    if (y - rect.top < edgeZone) {
+      const intensity = 1 - (y - rect.top) / edgeZone
+      scrollable.scrollTop -= 8 * intensity
+    } else if (rect.bottom - y < edgeZone) {
+      const intensity = 1 - (rect.bottom - y) / edgeZone
+      scrollable.scrollTop += 8 * intensity
+    }
+  }
+
   private onDragStart(e: DragEvent, task: Task) {
     this.draggedTaskId = task.id
     if (e.dataTransfer) {
@@ -2220,6 +2239,7 @@ export class TaskBoard extends LitElement {
   private onTaskDragOver(e: DragEvent, task: Task) {
     e.preventDefault()
     e.stopPropagation()
+    this.autoScrollColumn(e)
     if (this.draggedTaskId && this.draggedTaskId !== task.id) {
       this.dragOverTaskId = task.id
       if (e.dataTransfer) {
@@ -2298,6 +2318,7 @@ export class TaskBoard extends LitElement {
 
   private onDragOver(e: DragEvent) {
     e.preventDefault()
+    this.autoScrollColumn(e)
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'move'
     }
