@@ -606,7 +606,7 @@ export class SystemMonitorCommand implements ICommand {
     timeout: number,
   ): Promise<any> {
     const escapedScript = script.replace(/"/g, '\\"');
-    const shells = ['powershell', 'pwsh'];
+    const shells = ['powershell', 'pwsh']; // Try classic Windows PowerShell first, then pwsh
     let lastError: any = null;
 
     for (const shell of shells) {
@@ -625,6 +625,9 @@ export class SystemMonitorCommand implements ICommand {
       }
     }
 
-    throw lastError || new Error('Failed to execute PowerShell command');
+    throw new Error(
+      'Weder "powershell" noch "pwsh" wurden gefunden. Bitte stelle sicher, dass mindestens eine PowerShell-Version installiert und im PATH ist. Ursprünglicher Fehler: ' +
+        (lastError?.message || lastError || 'Unbekannt'),
+    );
   }
 }

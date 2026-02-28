@@ -25,6 +25,10 @@ export class SystemMonitor extends LitElement {
   @state() private entries: UsageEntry[] = []
   @state() private loading = false
   @state() private error = ''
+  @state() private loadingFeedback = ''
+  @state() private loadingCommand = ''
+  @state() private loadingWait = ''
+  @state() private loadingCommandFull = ''
   @state() private updatedAt = ''
   @state() private diskIoMBps: number | null = null
   @state() private resources: ResourceAvailability | null = null
@@ -265,8 +269,41 @@ export class SystemMonitor extends LitElement {
   private async refreshData() {
     this.loading = true
     this.error = ''
+    this.loadingFeedback = 'Starte Systemabfrage...'
+    this.loadingCommand = ''
+    this.loadingWait = ''
+    this.loadingCommandFull = ''
+
+    // Plattform erkennen
+    let platform = ''
+    try {
+      platform =
+        (window as any).process?.platform ||
+        (navigator.userAgent.includes('Win')
+          ? 'win32'
+          : navigator.userAgent.includes('Mac')
+            ? 'darwin'
+            : 'linux')
+    } catch {
+      platform = ''
+    }
 
     try {
+      this.loadingFeedback = 'Hole Systemdaten vom Backend...'
+      this.loadingCommand =
+        'system-monitor (action: top-processes, metric: ' +
+        this.metric +
+        ', limit: 8)'
+      // Exakter Backend-Command je nach Plattform:
+      if (platform === 'win32') {
+        this.loadingCommandFull =
+          'powershell -NoProfile -Command "Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne \"_Total\" -and $_.Name -ne \"Idle\" } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate | ConvertTo-Json -Depth 3"'
+      } else {
+        // Unix/Mac: ps -axo pid=,%cpu=,rss=,comm=,args= | sort -nrk2 | head -n 8 (CPU) oder -nrk3 (MEM)
+        const sortCol = this.metric === 'cpu' ? '2' : '3'
+        this.loadingCommandFull = `ps -axo pid=,%cpu=,rss=,comm=,args= | sort -nrk${sortCol} | head -n 8`
+      }
+      this.loadingWait = 'Warte auf Backend-Antwort...'
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'system-monitor',
@@ -277,9 +314,17 @@ export class SystemMonitor extends LitElement {
         },
       )
 
+      this.loadingFeedback = 'Verarbeite Antwort...'
+      this.loadingWait = 'Backend-Antwort wird verarbeitet...'
       const result = response.data || response
       if (!result?.success) {
-        this.error = result?.error || 'Failed to load system usage'
+        this.error =
+          (result?.error
+            ? `Fehler: ${result.error}`
+            : 'Failed to load system usage') +
+          (this.loadingCommandFull
+            ? `\nBackend-Command: ${this.loadingCommandFull}`
+            : '')
         this.entries = []
         this.diskIoMBps = null
         this.resources = null
@@ -295,12 +340,22 @@ export class SystemMonitor extends LitElement {
         this.resources = result.resources || null
       }
     } catch (error: any) {
-      this.error = error?.message || 'Failed to load system usage'
+      this.error =
+        (error?.message
+          ? `Fehler: ${error.message}`
+          : 'Failed to load system usage') +
+        (this.loadingCommandFull
+          ? `\nBackend-Command: ${this.loadingCommandFull}`
+          : '')
       this.entries = []
       this.diskIoMBps = null
       this.resources = null
     } finally {
       this.loading = false
+      this.loadingFeedback = ''
+      this.loadingCommand = ''
+      this.loadingWait = ''
+      this.loadingCommandFull = ''
     }
   }
 
@@ -648,7 +703,34 @@ export class SystemMonitor extends LitElement {
         <div class="content">
           <div class="panel chart-wrap">
             ${this.loading && !this.entries.length
-              ? html`<div class="state">Loading…</div>`
+              ? html`<div class="state">
+                  <div>${this.loadingFeedback || 'Lade Systemdaten...'}</div>
+                  <div style="font-size:0.92em;color:#60a5fa;margin-top:0.5em">
+                    ${this.loadingCommand
+                      ? html`<div>
+                          Befehl:
+                          <span style="font-family:monospace"
+                            >${this.loadingCommand}</span
+                          >
+                        </div>`
+                      : ''}
+                    ${this.loadingCommandFull
+                      ? html`<div
+                          style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
+                        >
+                          Backend-Command:<br /><span
+                            style="font-family:monospace;word-break:break-all"
+                            >${this.loadingCommandFull}</span
+                          >
+                        </div>`
+                      : ''}
+                    ${this.loadingWait
+                      ? html`<div style="margin-top:0.2em">
+                          Status: ${this.loadingWait}
+                        </div>`
+                      : ''}
+                  </div>
+                </div>`
               : this.error
                 ? html`<div class="state">${this.error}</div>`
                 : html`
