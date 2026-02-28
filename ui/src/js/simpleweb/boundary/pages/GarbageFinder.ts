@@ -612,11 +612,6 @@ export class GarbageFinder extends LitElement {
         }))
 
         this.drives = response.data.drives
-
-        // Fetch drive info for each drive
-        for (const drive of response.data.drives) {
-          this.fetchDriveInfo(drive)
-        }
       }
     } catch (error) {
       console.error('Failed to load drives:', error)
@@ -923,6 +918,11 @@ export class GarbageFinder extends LitElement {
             nodePath,
             deletedSize,
           )
+        }
+        // Refresh drive free/total space after deletion
+        const drive = this.drives.find((d) => nodePath.startsWith(d.path))
+        if (drive) {
+          this.fetchDriveInfo(drive)
         }
       } else {
         console.error('Delete failed:', response.error)

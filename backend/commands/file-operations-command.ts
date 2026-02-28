@@ -239,103 +239,108 @@ export class FileOperationsCommand implements ICommand {
 
     if (process.platform === 'win32') {
       // Windows: Check drive letters from C to Z
-      // Start from C (67) to skip A: and B: floppy drives which are slow to check
-      const driveCheckPromises: Promise<{
-        letter: string;
-        path: string;
-      } | null>[] = [];
-
+      const driveLetters: string[] = [];
       for (let i = 67; i <= 90; i++) {
-        const letter = String.fromCharCode(i);
-        const drivePath = `${letter}:\\`;
-
-        // Check all drives in parallel using async access check
-        driveCheckPromises.push(
-          fs.promises
-            .access(drivePath)
-            .then(() => ({ letter, path: drivePath }))
-            .catch(() => null),
-        );
+        driveLetters.push(String.fromCharCode(i));
       }
-
-      // Wait for all drive checks to complete in parallel
-      const results = await Promise.all(driveCheckPromises);
-
-      // Filter out null results (non-existent drives) and build the drives array
-      for (const result of results) {
+      // Check all drives in parallel and get space info via fs.statfs (no shell spawn)
+      const driveResults = await Promise.all(
+        driveLetters.map(async (letter) => {
+          const drivePath = `${letter}:\\`;
+          try {
+            await fs.promises.access(drivePath);
+            const fsStats = await fs.promises.statfs(drivePath);
+            const totalSpace = fsStats.blocks * fsStats.bsize;
+            const freeSpace = fsStats.bavail * fsStats.bsize;
+            return { letter, path: drivePath, freeSpace, totalSpace };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      for (const result of driveResults) {
         if (result) {
           drives.push({
             letter: result.letter,
             path: result.path,
             label: `${result.letter}:`,
+            freeSpace: result.freeSpace,
+            totalSpace: result.totalSpace,
           });
         }
       }
     } else {
-      // macOS and Linux: Use root and mounted volumes
+      // macOS and Linux: Use root and mounted volumes with fs.statfs
+      const getSpaceInfo = async (
+        p: string,
+      ): Promise<{ freeSpace: number | null; totalSpace: number | null }> => {
+        try {
+          const fsStats = await fs.promises.statfs(p);
+          return {
+            freeSpace: fsStats.bavail * fsStats.bsize,
+            totalSpace: fsStats.blocks * fsStats.bsize,
+          };
+        } catch {
+          return { freeSpace: null, totalSpace: null };
+        }
+      };
+
       // Always add root
+      const rootSpace = await getSpaceInfo('/');
       drives.push({
         letter: '/',
         path: '/',
         label: 'Root (/)',
+        freeSpace: rootSpace.freeSpace,
+        totalSpace: rootSpace.totalSpace,
       });
 
-      // On macOS, check for volumes
+      // macOS: /Volumes/*, Linux: common mount points from df
       if (process.platform === 'darwin') {
         const volumesPath = '/Volumes';
         try {
-          console.log('[GarbageFinder] Scanning macOS volumes...');
           const volumeEntries = await fs.promises.readdir(volumesPath, {
             withFileTypes: true,
           });
-          console.log(
-            `[GarbageFinder] Found ${volumeEntries.length} volume entries`,
-          );
-
           for (const entry of volumeEntries) {
             if (entry.isDirectory()) {
               const volumePath = `${volumesPath}/${entry.name}`;
-              console.log(`[GarbageFinder] Adding volume: ${volumePath}`);
+              const space = await getSpaceInfo(volumePath);
               drives.push({
                 letter: entry.name,
                 path: volumePath,
                 label: entry.name,
+                freeSpace: space.freeSpace,
+                totalSpace: space.totalSpace,
               });
             }
           }
-        } catch (error) {
-          // /Volumes might not be accessible or doesn't exist
-          console.warn('[GarbageFinder] Could not read /Volumes:', error);
-
-          // Fallback: Try to use 'df' command to find mounted filesystems on macOS
-          try {
-            const { stdout } = await execPromise(
-              'df -h | grep -v "^Filesystem" | awk \'{print $NF}\'',
-            );
-            const mountPoints = stdout
-              .trim()
-              .split('\n')
-              .filter((p: string) => p && p !== '/');
-
-            console.log(
-              `[GarbageFinder] Found ${mountPoints.length} mount points via df`,
-            );
-            for (const mountPoint of mountPoints) {
-              if (mountPoint && !mountPoint.startsWith('/private')) {
-                console.log(
-                  `[GarbageFinder] Adding mount point: ${mountPoint}`,
-                );
+        } catch {}
+      } else {
+        // Linux: use df to discover mount points, then statfs for sizes
+        try {
+          const { stdout } = await execPromise('df -kP', {
+            encoding: 'utf8',
+            timeout: 8000,
+          });
+          const lines = stdout.trim().split('\n').slice(1);
+          for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 6) {
+              const mount = parts[5];
+              if (mount !== '/') {
+                const space = await getSpaceInfo(mount);
                 drives.push({
-                  letter: mountPoint.split('/').pop() || mountPoint,
-                  path: mountPoint,
-                  label: mountPoint.split('/').pop() || mountPoint,
+                  letter: mount.split('/').pop() || mount,
+                  path: mount,
+                  label: mount,
+                  freeSpace: space.freeSpace,
+                  totalSpace: space.totalSpace,
                 });
               }
             }
-          } catch (dfError) {
-            console.warn('[GarbageFinder] df command also failed:', dfError);
           }
-        }
+        } catch {}
       }
     }
 
@@ -356,93 +361,25 @@ export class FileOperationsCommand implements ICommand {
     }
 
     try {
-      if (process.platform === 'win32') {
-        // Windows: Extract drive letter and use PowerShell
-        const driveMatch = drivePath.match(/^([A-Za-z]:)/);
-        if (!driveMatch) {
-          // UNC path - no drive info available
-          return {
-            success: true,
-            operation: 'drive-info',
-            drivePath,
-            freeSpace: null,
-            totalSpace: null,
-          };
-        }
+      // Use fs.statfs for fast, cross-platform drive info (no shell spawn)
+      const fsStats = await fs.promises.statfs(drivePath);
+      const totalSpace = fsStats.blocks * fsStats.bsize;
+      const freeSpace = fsStats.bavail * fsStats.bsize;
 
-        const driveLetter = driveMatch[1].toUpperCase();
-        const psCommand = `(Get-PSDrive -Name '${driveLetter.charAt(0)}' -ErrorAction SilentlyContinue | Select-Object @{N='Free';E={$_.Free}},@{N='Used';E={$_.Used}} | ConvertTo-Json)`;
-        const { stdout } = await execPromise(
-          `powershell -NoProfile -Command "${psCommand}"`,
-          { encoding: 'utf8', timeout: 5000 },
-        );
-
-        const trimmed = stdout.trim();
-        if (trimmed) {
-          const data = JSON.parse(trimmed);
-          const freeSpace = data.Free || 0;
-          const usedSpace = data.Used || 0;
-          const totalSpace = freeSpace + usedSpace;
-
-          return {
-            success: true,
-            operation: 'drive-info',
-            drivePath,
-            driveLetter,
-            freeSpace,
-            totalSpace,
-          };
-        }
-      } else {
-        // Linux/Mac: Use df command
-        // Escape single quotes in path for shell
-        const escapedPath = drivePath.replace(/'/g, "'\\''");
-
-        // macOS doesn't support -B1, use -k (1KB blocks) instead
-        // Linux supports -B1 (1-byte blocks)
-        const isMac = process.platform === 'darwin';
-        const dfCommand = isMac
-          ? `df -k '${escapedPath}' 2>/dev/null | tail -1`
-          : `df -B1 '${escapedPath}' 2>/dev/null | tail -1`;
-
-        const { stdout } = await execPromise(dfCommand, {
-          encoding: 'utf8',
-          timeout: 5000,
-        });
-
-        const trimmed = stdout.trim();
-        if (trimmed) {
-          // df output: Filesystem blocks Used Available Use% Mounted
-          const parts = trimmed.split(/\s+/);
-          if (parts.length >= 4) {
-            // On macOS with -k, values are in KB, multiply by 1024
-            // On Linux with -B1, values are in bytes
-            const multiplier = isMac ? 1024 : 1;
-            const totalSpace = (parseInt(parts[1], 10) || 0) * multiplier;
-            const freeSpace = (parseInt(parts[3], 10) || 0) * multiplier;
-
-            return {
-              success: true,
-              operation: 'drive-info',
-              drivePath,
-              freeSpace,
-              totalSpace,
-            };
-          }
-        }
-      }
-
+      return {
+        success: true,
+        operation: 'drive-info',
+        drivePath,
+        freeSpace,
+        totalSpace,
+      };
+    } catch (error: any) {
       return {
         success: true,
         operation: 'drive-info',
         drivePath,
         freeSpace: null,
         totalSpace: null,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to get drive info',
       };
     }
   }

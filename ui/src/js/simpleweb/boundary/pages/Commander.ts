@@ -3593,7 +3593,11 @@ export class Commander extends LitElement {
     const driveInfo = side === 'left' ? this.leftDriveInfo : this.rightDriveInfo
     const freeSpaceText =
       driveInfo.freeSpace !== null
-        ? this.formatFileSize(driveInfo.freeSpace) + ' free'
+        ? this.formatFileSize(driveInfo.freeSpace) +
+          ' free' +
+          (driveInfo.totalSpace !== null
+            ? ' / ' + this.formatFileSize(driveInfo.totalSpace)
+            : '')
         : ''
 
     return html`
