@@ -2,42 +2,38 @@ import { css } from 'lit'
 
 export const commanderStyles = css`
   :host {
-    --bg-app: #0d0d0f;
-    --bg-panel: #151517;
-    --bg-panel-active: #1c1c1f;
-    --bg-header: #1f1f23;
-    --bg-toolbar: #1a1a1d;
-    --bg-hover: #242429;
+    --bg-app: #1e1e1e;
+    --bg-panel: #252526;
+    --bg-panel-active: #1e1e1e;
+    --bg-header: #333333;
+    --bg-toolbar: #333333;
+    --bg-hover: #2a2d2e;
 
-    --text-primary: #f5f5f7;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
+    --text-primary: #cccccc;
+    --text-secondary: #858585;
+    --text-muted: #6a6a6a;
 
-    --accent: #0a84ff;
-    --accent-strong: #409cff;
-    --warning: #ff9f0a;
-    --success: #30d158;
-    --danger: #ff453a;
+    --accent: #007acc;
+    --accent-strong: #1e90ff;
+    --warning: #d7ba7d;
+    --success: #6a9955;
+    --danger: #f48771;
 
-    --border: #2a2a2e;
+    --border: #3c3c3c;
     /* ========= BASE ========= */
 
     display: block;
-    font-family: 'JetBrains Mono', monospace;
+    font-family:
+      'Segoe UI',
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
     color: var(--text-primary);
     background: var(--bg-app);
     width: 100%;
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
-  }
-
-  * {
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      color 0.15s ease,
-      transform 0.1s ease;
   }
 
   .commander-container {
@@ -137,8 +133,9 @@ export const commanderStyles = css`
     gap: 0.8rem;
     align-items: center;
     padding: 0.2rem 0.4rem;
-    border-radius: 6px;
+    border-radius: 3px;
     font-size: 0.85rem;
+    font-family: 'Consolas', 'Courier New', monospace;
     cursor: pointer;
   }
 
@@ -152,8 +149,8 @@ export const commanderStyles = css`
   }
 
   .file-item.selected {
-    background: rgba(255, 159, 10, 0.15);
-    color: var(--warning);
+    background: #094771;
+    color: #ffffff;
   }
 
   .file-name {
@@ -201,7 +198,7 @@ export const commanderStyles = css`
     padding: 0.5rem;
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 3px;
     color: var(--text-primary);
     font-family: inherit;
   }
@@ -209,7 +206,7 @@ export const commanderStyles = css`
   .filter-input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+    box-shadow: none;
   }
 
   /* ========= FUNCTION BAR ========= */
@@ -217,36 +214,40 @@ export const commanderStyles = css`
   .function-bar {
     background: var(--bg-toolbar);
     border-top: 1px solid var(--border);
-    padding: 0.6rem;
+    padding: 0.3rem 0.5rem;
     display: flex;
-    gap: 0.5rem;
+    gap: 0.3rem;
     justify-content: space-between;
   }
 
   .function-key {
     flex: 1;
-    max-width: 7em;
-    padding: 0.4rem 0.3rem;
+    max-width: 6em;
+    padding: 0.15rem 0.25rem;
     border-radius: 8px;
     background: var(--bg-panel);
     border: 1px solid var(--border);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    text-align: center;
   }
 
   .function-key:hover {
     background: var(--accent);
     color: white;
-    transform: translateY(-2px);
   }
 
   .function-key-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
   }
 
   .function-key-action {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
 
   /* ========= STATUS ========= */
@@ -281,7 +282,7 @@ export const commanderStyles = css`
 
   .dialog {
     background: var(--bg-panel);
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     width: 90%;
     height: 80%;

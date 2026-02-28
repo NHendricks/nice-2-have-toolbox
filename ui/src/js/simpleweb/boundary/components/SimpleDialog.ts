@@ -17,56 +17,62 @@ export class SimpleDialog extends LitElement {
     }
 
     .dialog {
-      background: #1e293b;
-      border: 2px solid #0ea5e9;
-      border-radius: 8px;
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 6px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     }
 
     .dialog-header {
-      background: #0ea5e9;
-      padding: 1rem;
-      font-weight: bold;
-      color: #fff;
+      background: #333333;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      color: #cccccc;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid #3c3c3c;
     }
 
     .dialog-title {
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
 
     .dialog-close {
-      background: #dc2626;
-      border: none;
-      color: #fff;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
+      background: transparent;
+      border: 1px solid #3c3c3c;
+      color: #cccccc;
+      padding: 0.3rem 0.6rem;
+      border-radius: 3px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 600;
+      font-size: 0.8rem;
     }
 
     .dialog-close:hover {
-      background: #b91c1c;
+      background: #f48771;
+      color: #1e1e1e;
+      border-color: #f48771;
     }
 
     .dialog-content {
       flex: 1;
       overflow: auto;
       padding: 1rem;
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: 'JetBrains Mono', monospace;
+      background: #1e1e1e;
+      color: #cccccc;
+      font-family: 'Consolas', 'Courier New', monospace;
     }
 
     .dialog-footer {
-      background: #334155;
+      background: #333333;
       padding: 0.5rem 1rem;
       font-size: 0.85rem;
-      color: #94a3b8;
+      color: #858585;
+      border-top: 1px solid #3c3c3c;
     }
   `
 

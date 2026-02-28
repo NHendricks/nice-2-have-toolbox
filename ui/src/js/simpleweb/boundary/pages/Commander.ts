@@ -3618,7 +3618,7 @@ export class Commander extends LitElement {
           >
           <span class="item-count">
             ${freeSpaceText
-              ? html`<span style="color: #3dff8b; margin-right: 0.5rem;"
+              ? html`<span style="color: #73c991; margin-right: 0.5rem;"
                   >${freeSpaceText}</span
                 >`
               : ''}
@@ -3631,7 +3631,7 @@ export class Commander extends LitElement {
 
         <!-- Sort Controls -->
         <div
-          style="padding: 0.25rem 0.5rem; background: #334155; border-bottom: 1px solid #475569; display: flex; gap: 0.25rem; font-size: 0.75rem;"
+          style="padding: 0.25rem 0.5rem; background: #252526; border-bottom: 1px solid #3c3c3c; display: flex; gap: 0.25rem; font-size: 0.75rem;"
         >
           <button
             @click=${(e: Event) => {
@@ -3640,8 +3640,8 @@ export class Commander extends LitElement {
               this.toggleSort('name')
             }}
             style="padding: 0.25rem 0.5rem; background: ${pane.sortBy === 'name'
-              ? '#0ea5e9'
-              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+              ? '#007acc'
+              : '#3c3c3c'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
             title="Sort by name"
           >
             📝
@@ -3658,8 +3658,8 @@ export class Commander extends LitElement {
               this.toggleSort('size')
             }}
             style="padding: 0.25rem 0.5rem; background: ${pane.sortBy === 'size'
-              ? '#0ea5e9'
-              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+              ? '#007acc'
+              : '#3c3c3c'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
             title="Sort by size"
           >
             📊
@@ -3677,8 +3677,8 @@ export class Commander extends LitElement {
             }}
             style="padding: 0.25rem 0.5rem; background: ${pane.sortBy ===
             'modified'
-              ? '#0ea5e9'
-              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+              ? '#007acc'
+              : '#3c3c3c'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
             title="Sort by modified date"
           >
             🕐
@@ -3696,8 +3696,8 @@ export class Commander extends LitElement {
             }}
             style="padding: 0.25rem 0.5rem; background: ${pane.sortBy ===
             'extension'
-              ? '#0ea5e9'
-              : '#475569'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+              ? '#007acc'
+              : '#3c3c3c'}; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
             title="Sort by extension"
           >
             🏷️
@@ -3713,7 +3713,7 @@ export class Commander extends LitElement {
               e.stopPropagation()
               this.loadDirectory(side, pane.currentPath)
             }}
-            style="padding: 0.25rem 0.5rem; background: #059669; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
+            style="padding: 0.25rem 0.5rem; background: #007acc; border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.75rem;"
             title="Refresh directory (Ctrl+R)"
           >
             🔄
