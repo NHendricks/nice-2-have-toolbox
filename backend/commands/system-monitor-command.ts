@@ -33,6 +33,14 @@ interface ResourceAvailability {
   diskTotalGB: number | null;
 }
 
+interface OpenPort {
+  protocol: string;
+  localAddress: string;
+  localPort: number;
+  pid: number;
+  processName: string;
+}
+
 interface MonitorResponse {
   success: boolean;
   metric?: ResourceMetric;
@@ -40,6 +48,7 @@ interface MonitorResponse {
   entries?: ProcessUsage[];
   diskIoMBps?: number | null;
   resources?: ResourceAvailability;
+  openPorts?: OpenPort[];
   warning?: string;
   error?: string;
 }
@@ -56,7 +65,7 @@ export class SystemMonitorCommand implements ICommand {
         type: 'select',
         description: 'Action to perform',
         required: true,
-        options: ['top-processes', 'kill-process'],
+        options: ['top-processes', 'kill-process', 'open-ports'],
         default: 'top-processes',
       },
       {
@@ -99,6 +108,15 @@ export class SystemMonitorCommand implements ICommand {
     try {
       if (action === 'kill-process') {
         return await this.killProcess(params?.pid);
+      }
+
+      if (action === 'open-ports') {
+        const openPorts = await this.getOpenPorts();
+        return {
+          success: true,
+          updatedAt: new Date().toISOString(),
+          openPorts,
+        };
       }
 
       if (action !== 'top-processes') {
@@ -528,7 +546,7 @@ export class SystemMonitorCommand implements ICommand {
     limit: number,
   ): Promise<ProcessUsage[]> {
     const perfDataQuery =
-      'Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne "_Total" -and $_.Name -ne "Idle" } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate | ConvertTo-Json -Depth 3';
+      'Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne "_Total" -and $_.Name -ne "Idle" } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate,IODataBytesPersec | ConvertTo-Json -Depth 3';
     const perfRaw = await this.runPowerShellJson(perfDataQuery, 9000);
     const perfList = Array.isArray(perfRaw) ? perfRaw : [perfRaw];
 
@@ -549,33 +567,14 @@ export class SystemMonitorCommand implements ICommand {
       // ignore command line enrichment failure
     }
 
-    const ioMap = new Map<number, number>();
-    try {
-      const ioQuery =
-        'Get-Process | Select-Object Id,IOReadBytes,IOWriteBytes | ConvertTo-Json -Depth 3';
-      const ioRaw = await this.runPowerShellJson(ioQuery, 9000);
-      const ioList = Array.isArray(ioRaw) ? ioRaw : [ioRaw];
-      for (const item of ioList) {
-        const pid = Number(item?.Id);
-        const readBytes = Number(item?.IOReadBytes || 0);
-        const writeBytes = Number(item?.IOWriteBytes || 0);
-        if (Number.isFinite(pid)) {
-          const totalBytes =
-            (Number.isFinite(readBytes) ? Math.max(0, readBytes) : 0) +
-            (Number.isFinite(writeBytes) ? Math.max(0, writeBytes) : 0);
-          ioMap.set(pid, totalBytes / (1024 * 1024));
-        }
-      }
-    } catch {
-      // ignore IO enrichment failure
-    }
-
     const entries = perfList
       .map((item: any) => {
         const pid = Number(item?.IDProcess);
         const processName = String(item?.Name || 'unknown');
         const cpu = Number(item?.PercentProcessorTime || 0);
         const memoryMB = Number(item?.WorkingSetPrivate || 0) / (1024 * 1024);
+        const ioBytesPersec = Number(item?.IODataBytesPersec || 0);
+        const ioMB = ioBytesPersec / (1024 * 1024);
 
         if (!Number.isFinite(pid)) return null;
 
@@ -585,7 +584,7 @@ export class SystemMonitorCommand implements ICommand {
           command: commandMap.get(pid) || processName,
           cpu: Number.isFinite(cpu) ? Math.max(0, cpu) : 0,
           memoryMB: Number.isFinite(memoryMB) ? Math.max(0, memoryMB) : 0,
-          ioMB: ioMap.get(pid) || 0,
+          ioMB: Number.isFinite(ioMB) ? Math.max(0, ioMB) : 0,
         } as ProcessUsage;
       })
       .filter((item: ProcessUsage | null): item is ProcessUsage => !!item)
@@ -629,5 +628,176 @@ export class SystemMonitorCommand implements ICommand {
       'Weder "powershell" noch "pwsh" wurden gefunden. Bitte stelle sicher, dass mindestens eine PowerShell-Version installiert und im PATH ist. Ursprünglicher Fehler: ' +
         (lastError?.message || lastError || 'Unbekannt'),
     );
+  }
+
+  private async getOpenPorts(): Promise<OpenPort[]> {
+    try {
+      if (process.platform === 'win32') {
+        return await this.getOpenPortsWindows();
+      } else if (process.platform === 'darwin') {
+        return await this.getOpenPortsMac();
+      } else {
+        return await this.getOpenPortsLinux();
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  private async getOpenPortsWindows(): Promise<OpenPort[]> {
+    // Get listening TCP ports via netstat
+    const { stdout: netstatOut } = await execAsync('netstat -ano -p TCP', {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+
+    const lines = netstatOut.trim().split('\n');
+    const portEntries: {
+      localAddress: string;
+      localPort: number;
+      pid: number;
+    }[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('TCP')) continue;
+      // Format: TCP    0.0.0.0:port    0.0.0.0:0    LISTENING    pid
+      // On localized Windows: LISTENING = ABHÖREN (DE), ÉCOUTE (FR), etc.
+      const parts = trimmed.split(/\s+/);
+      if (parts.length < 5) continue;
+      // Status is at index 3; PID at last position. Skip non-listening states.
+      const pid = parseInt(parts[parts.length - 1], 10);
+      // Listening states have remote address 0.0.0.0:0 or [::]:0
+      const remoteAddr = parts[2];
+      if (!remoteAddr.endsWith(':0')) continue;
+
+      const localPart = parts[1];
+      const lastColon = localPart.lastIndexOf(':');
+      if (lastColon === -1) continue;
+
+      const localAddress = localPart.substring(0, lastColon);
+      const localPort = parseInt(localPart.substring(lastColon + 1), 10);
+
+      if (!isNaN(localPort) && !isNaN(pid)) {
+        portEntries.push({ localAddress, localPort, pid });
+      }
+    }
+
+    // Resolve PIDs to process names via tasklist
+    const uniquePids = [...new Set(portEntries.map((e) => e.pid))];
+    const pidNameMap = new Map<number, string>();
+
+    if (uniquePids.length > 0) {
+      try {
+        const { stdout: tasklistOut } = await execAsync(
+          'tasklist /FO CSV /NH',
+          { encoding: 'utf8', timeout: 10000 },
+        );
+        for (const tLine of tasklistOut.trim().split('\n')) {
+          // Format: "name.exe","pid","Session","SessionNum","Mem"
+          const match = tLine.match(/^"([^"]+)","(\d+)"/);
+          if (match) {
+            pidNameMap.set(parseInt(match[2], 10), match[1]);
+          }
+        }
+      } catch {
+        // Fallback: no process names
+      }
+    }
+
+    return portEntries
+      .map((e) => ({
+        protocol: 'TCP',
+        localAddress: e.localAddress,
+        localPort: e.localPort,
+        pid: e.pid,
+        processName: pidNameMap.get(e.pid) || `PID ${e.pid}`,
+      }))
+      .sort((a, b) => a.localPort - b.localPort);
+  }
+
+  private async getOpenPortsMac(): Promise<OpenPort[]> {
+    const { stdout } = await execAsync('lsof -iTCP -sTCP:LISTEN -P -n -F pcn', {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+
+    const ports: OpenPort[] = [];
+    let currentPid = 0;
+    let currentName = '';
+
+    for (const line of stdout.trim().split('\n')) {
+      if (line.startsWith('p')) {
+        currentPid = parseInt(line.substring(1), 10);
+      } else if (line.startsWith('c')) {
+        currentName = line.substring(1);
+      } else if (line.startsWith('n')) {
+        // Format: n*:port or n[addr]:port
+        const addr = line.substring(1);
+        const lastColon = addr.lastIndexOf(':');
+        if (lastColon !== -1) {
+          const localAddress = addr.substring(0, lastColon);
+          const localPort = parseInt(addr.substring(lastColon + 1), 10);
+          if (!isNaN(localPort)) {
+            ports.push({
+              protocol: 'TCP',
+              localAddress,
+              localPort,
+              pid: currentPid,
+              processName: currentName,
+            });
+          }
+        }
+      }
+    }
+
+    return ports.sort((a, b) => a.localPort - b.localPort);
+  }
+
+  private async getOpenPortsLinux(): Promise<OpenPort[]> {
+    const { stdout } = await execAsync('ss -tlnp', {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+
+    const ports: OpenPort[] = [];
+    const lines = stdout.trim().split('\n').slice(1); // skip header
+
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 6) continue;
+
+      // Local Address:Port is at index 3
+      const localPart = parts[3];
+      const lastColon = localPart.lastIndexOf(':');
+      if (lastColon === -1) continue;
+
+      const localAddress = localPart.substring(0, lastColon);
+      const localPort = parseInt(localPart.substring(lastColon + 1), 10);
+
+      // Process info in last column: users:(("name",pid=123,fd=4))
+      let pid = 0;
+      let processName = '';
+      const procMatch = parts
+        .slice(5)
+        .join(' ')
+        .match(/\("([^"]+)",pid=(\d+)/);
+      if (procMatch) {
+        processName = procMatch[1];
+        pid = parseInt(procMatch[2], 10);
+      }
+
+      if (!isNaN(localPort)) {
+        ports.push({
+          protocol: 'TCP',
+          localAddress,
+          localPort,
+          pid,
+          processName: processName || `PID ${pid}`,
+        });
+      }
+    }
+
+    return ports.sort((a, b) => a.localPort - b.localPort);
   }
 }

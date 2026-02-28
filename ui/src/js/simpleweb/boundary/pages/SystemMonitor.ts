@@ -2,7 +2,7 @@ import * as d3 from 'd3'
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 
-type Metric = 'cpu' | 'memory' | 'io'
+type Metric = 'cpu' | 'memory' | 'io' | 'ports'
 
 interface UsageEntry {
   pid: number
@@ -19,6 +19,14 @@ interface ResourceAvailability {
   diskFreeGB?: number | null
 }
 
+interface OpenPort {
+  protocol: string
+  localAddress: string
+  localPort: number
+  pid: number
+  processName: string
+}
+
 @customElement('nh-system-monitor')
 export class SystemMonitor extends LitElement {
   @state() private metric: Metric = 'cpu'
@@ -33,6 +41,7 @@ export class SystemMonitor extends LitElement {
   @state() private diskIoMBps: number | null = null
   @state() private resources: ResourceAvailability | null = null
   @state() private liveMode = false
+  @state() private openPorts: OpenPort[] = []
   private refreshTimer: number | null = null
 
   static styles = css`
@@ -239,6 +248,75 @@ export class SystemMonitor extends LitElement {
       padding: 1.2rem;
     }
 
+    .ports-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .ports-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .ports-count {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .ports-list {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .port-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 0.65rem;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.82rem;
+    }
+
+    .port-number {
+      color: #93c5fd;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      min-width: 4em;
+    }
+
+    .port-address {
+      color: #94a3b8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .port-pid {
+      color: #cbd5e1;
+      font-size: 0.78rem;
+    }
+
+    .port-process {
+      color: #f8fafc;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     @media (max-width: 980px) {
       .chart-wrap {
         min-height: 300px;
@@ -253,6 +331,7 @@ export class SystemMonitor extends LitElement {
   connectedCallback() {
     super.connectedCallback()
     this.refreshData()
+    this.loadOpenPorts()
   }
 
   disconnectedCallback() {
@@ -269,12 +348,12 @@ export class SystemMonitor extends LitElement {
   private async refreshData() {
     this.loading = true
     this.error = ''
-    this.loadingFeedback = 'Starte Systemabfrage...'
+    this.loadingFeedback = 'Starting system query...'
     this.loadingCommand = ''
     this.loadingWait = ''
     this.loadingCommandFull = ''
 
-    // Plattform erkennen
+    // Detect platform
     let platform = ''
     try {
       platform =
@@ -288,22 +367,24 @@ export class SystemMonitor extends LitElement {
       platform = ''
     }
 
+    this.loadOpenPorts()
+
     try {
-      this.loadingFeedback = 'Hole Systemdaten vom Backend...'
+      this.loadingFeedback = 'Fetching system data...'
       this.loadingCommand =
         'system-monitor (action: top-processes, metric: ' +
         this.metric +
         ', limit: 8)'
-      // Exakter Backend-Command je nach Plattform:
+      // Platform-specific backend command:
       if (platform === 'win32') {
         this.loadingCommandFull =
           'powershell -NoProfile -Command "Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne \"_Total\" -and $_.Name -ne \"Idle\" } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate | ConvertTo-Json -Depth 3"'
       } else {
-        // Unix/Mac: ps -axo pid=,%cpu=,rss=,comm=,args= | sort -nrk2 | head -n 8 (CPU) oder -nrk3 (MEM)
+        // Unix/Mac: ps -axo pid=,%cpu=,rss=,comm=,args= | sort -nrk2 | head -n 8 (CPU) or -nrk3 (MEM)
         const sortCol = this.metric === 'cpu' ? '2' : '3'
         this.loadingCommandFull = `ps -axo pid=,%cpu=,rss=,comm=,args= | sort -nrk${sortCol} | head -n 8`
       }
-      this.loadingWait = 'Warte auf Backend-Antwort...'
+      this.loadingWait = 'Waiting for backend response...'
       const response = await (window as any).electron.ipcRenderer.invoke(
         'cli-execute',
         'system-monitor',
@@ -314,13 +395,13 @@ export class SystemMonitor extends LitElement {
         },
       )
 
-      this.loadingFeedback = 'Verarbeite Antwort...'
-      this.loadingWait = 'Backend-Antwort wird verarbeitet...'
+      this.loadingFeedback = 'Processing response...'
+      this.loadingWait = 'Processing backend response...'
       const result = response.data || response
       if (!result?.success) {
         this.error =
           (result?.error
-            ? `Fehler: ${result.error}`
+            ? `Error: ${result.error}`
             : 'Failed to load system usage') +
           (this.loadingCommandFull
             ? `\nBackend-Command: ${this.loadingCommandFull}`
@@ -342,7 +423,7 @@ export class SystemMonitor extends LitElement {
     } catch (error: any) {
       this.error =
         (error?.message
-          ? `Fehler: ${error.message}`
+          ? `Error: ${error.message}`
           : 'Failed to load system usage') +
         (this.loadingCommandFull
           ? `\nBackend-Command: ${this.loadingCommandFull}`
@@ -356,6 +437,22 @@ export class SystemMonitor extends LitElement {
       this.loadingCommand = ''
       this.loadingWait = ''
       this.loadingCommandFull = ''
+    }
+  }
+
+  private async loadOpenPorts() {
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'system-monitor',
+        { action: 'open-ports' },
+      )
+      const result = response.data || response
+      if (result?.success && Array.isArray(result.openPorts)) {
+        this.openPorts = result.openPorts
+      }
+    } catch {
+      // silently ignore
     }
   }
 
@@ -646,7 +743,11 @@ export class SystemMonitor extends LitElement {
   private switchMetric(metric: Metric) {
     if (this.metric === metric) return
     this.metric = metric
-    this.refreshData()
+    if (metric === 'ports') {
+      this.loadOpenPorts()
+    } else {
+      this.refreshData()
+    }
   }
 
   render() {
@@ -674,25 +775,41 @@ export class SystemMonitor extends LitElement {
               File I/O
             </button>
             <button
+              class=${this.metric === 'ports' ? 'active' : ''}
+              @click=${() => this.switchMetric('ports')}
+            >
+              Ports
+            </button>
+            <button
               class=${this.liveMode ? 'active' : ''}
               @click=${() => this.toggleLiveMode()}
             >
               Live ${this.liveMode ? 'On' : 'Off'}
             </button>
-            <button @click=${() => this.refreshData()}>Refresh</button>
+            <button
+              @click=${() => {
+                if (this.metric === 'ports') {
+                  this.loadOpenPorts()
+                } else {
+                  this.refreshData()
+                }
+              }}
+            >
+              Refresh
+            </button>
           </div>
           <div class="meta">
             ${this.updatedAt
               ? `Updated: ${new Date(this.updatedAt).toLocaleTimeString()}`
               : ''}
             ${typeof this.resources?.cpuFreePercent === 'number'
-              ? ` • CPU frei: ${this.resources.cpuFreePercent.toFixed(1)} %`
+              ? ` • CPU free: ${this.resources.cpuFreePercent.toFixed(1)} %`
               : ''}
             ${this.resources?.memoryFreeMB != null
-              ? ` • MEM frei: ${this.formatFreeMemory()}`
+              ? ` • MEM free: ${this.formatFreeMemory()}`
               : ''}
             ${typeof this.resources?.diskFreeGB === 'number'
-              ? ` • Disk frei: ${this.resources.diskFreeGB.toFixed(1)} GB`
+              ? ` • Disk free: ${this.resources.diskFreeGB.toFixed(1)} GB`
               : ''}
             ${typeof this.diskIoMBps === 'number'
               ? ` • Disk I/O: ${this.diskIoMBps.toFixed(2)} MB/s`
@@ -701,68 +818,103 @@ export class SystemMonitor extends LitElement {
         </div>
 
         <div class="content">
-          <div class="panel chart-wrap">
-            ${this.loading && !this.entries.length
-              ? html`<div class="state">
-                  <div>${this.loadingFeedback || 'Lade Systemdaten...'}</div>
-                  <div style="font-size:0.92em;color:#60a5fa;margin-top:0.5em">
-                    ${this.loadingCommand
-                      ? html`<div>
-                          Befehl:
-                          <span style="font-family:monospace"
-                            >${this.loadingCommand}</span
-                          >
-                        </div>`
-                      : ''}
-                    ${this.loadingCommandFull
-                      ? html`<div
-                          style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
-                        >
-                          Backend-Command:<br /><span
-                            style="font-family:monospace;word-break:break-all"
-                            >${this.loadingCommandFull}</span
-                          >
-                        </div>`
-                      : ''}
-                    ${this.loadingWait
-                      ? html`<div style="margin-top:0.2em">
-                          Status: ${this.loadingWait}
-                        </div>`
-                      : ''}
+          ${this.metric === 'ports'
+            ? html`
+                <div class="panel ports-list">
+                  <div class="ports-header">
+                    <span class="ports-title">Open Ports (TCP Listening)</span>
+                    <span class="ports-count"
+                      >${this.openPorts.length} listening</span
+                    >
                   </div>
-                </div>`
-              : this.error
-                ? html`<div class="state">${this.error}</div>`
-                : html`
-                    <svg id="resource-pie"></svg>
-                    <div id="pie-tooltip" class="tooltip"></div>
-                  `}
-          </div>
-
-          <div class="panel list">
-            ${this.entries.map(
-              (entry) => html`
-                <div class="row">
-                  <div class="name" title=${this.getCommandText(entry)}>
-                    ${this.getDisplayProcessName(this.getCommandText(entry))}
-                  </div>
-                  <div class="value">${this.formatValue(entry)}</div>
-                  <button
-                    class="copy-btn"
-                    @click=${(e: Event) => this.copyCommand(entry, e)}
-                  >
-                    Copy
-                  </button>
-                  <button
-                    class="kill-btn"
-                    @click=${(e: Event) => this.killProcess(entry, e)}
-                  >
-                    Kill
-                  </button>
+                  ${this.openPorts.length > 0
+                    ? this.openPorts.map(
+                        (port) => html`
+                          <div class="port-row">
+                            <span class="port-number">${port.localPort}</span>
+                            <span class="port-address"
+                              >${port.localAddress}</span
+                            >
+                            <span class="port-pid">PID ${port.pid}</span>
+                            <span class="port-process"
+                              >${port.processName}</span
+                            >
+                          </div>
+                        `,
+                      )
+                    : html`<div class="state">No open ports found</div>`}
                 </div>
-              `,
-            )}
-          </div>
+              `
+            : html`
+                <div class="panel chart-wrap">
+                  ${this.loading && !this.entries.length
+                    ? html`<div class="state">
+                        <div>
+                          ${this.loadingFeedback || 'Loading system data...'}
+                        </div>
+                        <div
+                          style="font-size:0.92em;color:#60a5fa;margin-top:0.5em"
+                        >
+                          ${this.loadingCommand
+                            ? html`<div>
+                                Command:
+                                <span style="font-family:monospace"
+                                  >${this.loadingCommand}</span
+                                >
+                              </div>`
+                            : ''}
+                          ${this.loadingCommandFull
+                            ? html`<div
+                                style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
+                              >
+                                Backend-Command:<br /><span
+                                  style="font-family:monospace;word-break:break-all"
+                                  >${this.loadingCommandFull}</span
+                                >
+                              </div>`
+                            : ''}
+                          ${this.loadingWait
+                            ? html`<div style="margin-top:0.2em">
+                                Status: ${this.loadingWait}
+                              </div>`
+                            : ''}
+                        </div>
+                      </div>`
+                    : this.error
+                      ? html`<div class="state">${this.error}</div>`
+                      : html`
+                          <svg id="resource-pie"></svg>
+                          <div id="pie-tooltip" class="tooltip"></div>
+                        `}
+                </div>
+
+                <div class="panel list">
+                  ${this.entries.map(
+                    (entry) => html`
+                      <div class="row">
+                        <div class="name" title=${this.getCommandText(entry)}>
+                          ${this.getDisplayProcessName(
+                            this.getCommandText(entry),
+                          )}
+                        </div>
+                        <div class="value">${this.formatValue(entry)}</div>
+                        <button
+                          class="copy-btn"
+                          @click=${(e: Event) => this.copyCommand(entry, e)}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          class="kill-btn"
+                          @click=${(e: Event) => this.killProcess(entry, e)}
+                        >
+                          Kill
+                        </button>
+                      </div>
+                    `,
+                  )}
+                </div>
+              `}
         </div>
       </div>
     `
