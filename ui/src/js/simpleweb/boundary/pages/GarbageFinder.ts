@@ -1100,9 +1100,16 @@ export class GarbageFinder extends LitElement {
               ${node.depth === 0 ? '💾' : node.isExpanded ? '📂' : '📁'}
             </span>
             <span class="folder-label" title="${node.path}">${node.name}</span>
-            ${driveInfo?.freeSpace !== undefined
+            ${driveInfo &&
+            (driveInfo.freeSpace !== undefined ||
+              driveInfo.totalSpace !== undefined)
               ? html`<span class="drive-info">
-                  (${this.formatSize(driveInfo.freeSpace)} free)
+                  (${driveInfo.freeSpace !== undefined
+                    ? this.formatSize(driveInfo.freeSpace) + ' free'
+                    : ''}
+                  ${driveInfo.totalSpace !== undefined
+                    ? '/ ' + this.formatSize(driveInfo.totalSpace) + ' total'
+                    : ''})
                 </span>`
               : ''}
           </div>
