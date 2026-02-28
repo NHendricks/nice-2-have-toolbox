@@ -1445,11 +1445,16 @@ export class FileOperationsCommand implements ICommand {
 
         if (isSymlink) {
           try {
-            stats = await stat(fullPath); // folgt dem Link
+            stats = await stat(fullPath); // follows the link
             linkTargetType = stats.isDirectory() ? 'directory' : 'file';
+            // For symlink directories, verify we can actually read them
+            // (Windows legacy junctions like "Eigene Videos" resolve via stat but block readdir with EPERM)
+            if (linkTargetType === 'directory') {
+              await readdir(fullPath);
+            }
           } catch {
-            // broken symlink
-            linkTargetType = null;
+            // Broken symlink or inaccessible junction - skip entirely
+            continue;
           }
         }
 
