@@ -545,16 +545,24 @@ export class SystemMonitorCommand implements ICommand {
     metric: ResourceMetric,
     limit: number,
   ): Promise<ProcessUsage[]> {
+    // Win32_Process is fast and always available — use it for memory.
+    // Win32_PerfFormattedData_PerfProc_Process requires WMI perf counters which
+    // can take 15-30s to initialise on cold start; only use it for CPU and IO.
+    if (metric === 'memory') {
+      return this.getTopProcessesWindowsMemory(limit);
+    }
+
+    // CPU / IO: PerfData query — increase timeout to survive WMI cold start
     const perfDataQuery =
       'Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne "_Total" -and $_.Name -ne "Idle" } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate,IODataBytesPersec | ConvertTo-Json -Depth 3';
-    const perfRaw = await this.runPowerShellJson(perfDataQuery, 9000);
+    const perfRaw = await this.runPowerShellJson(perfDataQuery, 30000);
     const perfList = Array.isArray(perfRaw) ? perfRaw : [perfRaw];
 
     const commandMap = new Map<number, string>();
     try {
       const commandLineQuery =
         'Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLine | ConvertTo-Json -Depth 3';
-      const commandRaw = await this.runPowerShellJson(commandLineQuery, 9000);
+      const commandRaw = await this.runPowerShellJson(commandLineQuery, 15000);
       const commandList = Array.isArray(commandRaw) ? commandRaw : [commandRaw];
       for (const item of commandList) {
         const pid = Number(item?.ProcessId);
@@ -588,16 +596,40 @@ export class SystemMonitorCommand implements ICommand {
         } as ProcessUsage;
       })
       .filter((item: ProcessUsage | null): item is ProcessUsage => !!item)
-      .sort((a, b) =>
-        metric === 'cpu'
-          ? b.cpu - a.cpu
-          : metric === 'memory'
-            ? b.memoryMB - a.memoryMB
-            : b.ioMB - a.ioMB,
-      )
+      .sort((a, b) => (metric === 'cpu' ? b.cpu - a.cpu : b.ioMB - a.ioMB))
       .slice(0, limit);
 
     return entries;
+  }
+
+  private async getTopProcessesWindowsMemory(
+    limit: number,
+  ): Promise<ProcessUsage[]> {
+    // Win32_Process is available immediately without WMI perf-counter warm-up
+    const query =
+      'Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -gt 0 } | Select-Object ProcessId,Name,WorkingSetSize,CommandLine | ConvertTo-Json -Depth 3';
+    const raw = await this.runPowerShellJson(query, 15000);
+    const list = Array.isArray(raw) ? raw : [raw];
+
+    return list
+      .map((item: any) => {
+        const pid = Number(item?.ProcessId);
+        const processName = String(item?.Name || 'unknown');
+        const memoryMB = Number(item?.WorkingSetSize || 0) / (1024 * 1024);
+        const command = String(item?.CommandLine || processName).trim();
+        if (!Number.isFinite(pid)) return null;
+        return {
+          pid,
+          name: processName,
+          command: command || processName,
+          cpu: 0,
+          memoryMB: Number.isFinite(memoryMB) ? Math.max(0, memoryMB) : 0,
+          ioMB: 0,
+        } as ProcessUsage;
+      })
+      .filter((item): item is ProcessUsage => !!item)
+      .sort((a, b) => b.memoryMB - a.memoryMB)
+      .slice(0, limit);
   }
 
   private async runPowerShellJson(
@@ -624,9 +656,15 @@ export class SystemMonitorCommand implements ICommand {
       }
     }
 
+    const msg = lastError?.message || String(lastError) || 'Unbekannt';
+    const isTimeout = msg.includes('ETIMEDOUT') || msg.includes('timed out') || msg.includes('timeout');
+    if (isTimeout) {
+      throw new Error(
+        'WMI-Abfrage hat zu lange gedauert (Windows Performance Counter braucht beim ersten Start bis zu 30 Sekunden). Bitte erneut versuchen.',
+      );
+    }
     throw new Error(
-      'Weder "powershell" noch "pwsh" wurden gefunden. Bitte stelle sicher, dass mindestens eine PowerShell-Version installiert und im PATH ist. Ursprünglicher Fehler: ' +
-        (lastError?.message || lastError || 'Unbekannt'),
+      'PowerShell konnte nicht ausgeführt werden. Ursprünglicher Fehler: ' + msg,
     );
   }
 
