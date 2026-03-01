@@ -1279,6 +1279,9 @@ export class ResticUI extends LitElement {
   @state() private repository: ResticRepository | null = null
   @state() private repoPath: string = ''
   @state() private repoPassword: string = ''
+  @state() private useSSHKey: boolean = false
+  @state() private sftpLsOutput: string = ''
+  @state() private sftpLsLoading: boolean = false
   @state() private snapshots: ResticSnapshot[] = []
   @state() private selectedSnapshot: ResticSnapshot | null = null
   @state() private browseEntries: ResticFileEntry[] = []
@@ -1525,15 +1528,21 @@ export class ResticUI extends LitElement {
       this.showMessage('error', 'Please enter a repository path')
       return
     }
-    if (!this.repoPassword) {
-      this.showMessage('error', 'Please enter a password')
+    if (!this.useSSHKey && !this.repoPassword) {
+      this.showMessage(
+        'error',
+        'Please enter a password (or enable SSH key auth)',
+      )
       return
     }
 
     const connection: SavedResticConnection = {
       name: this.connectionName.trim(),
       repoPath: this.repoPath,
-      passwordObfuscated: obfuscatePassword(this.repoPassword),
+      passwordObfuscated: this.useSSHKey
+        ? undefined
+        : obfuscatePassword(this.repoPassword),
+      useSSHKey: this.useSSHKey || undefined,
       backupPaths:
         this.backupPaths.length > 0 ? [...this.backupPaths] : undefined,
     }
@@ -1555,7 +1564,10 @@ export class ResticUI extends LitElement {
 
   private loadConnection(connection: SavedResticConnection) {
     this.repoPath = connection.repoPath
-    this.repoPassword = deobfuscatePassword(connection.passwordObfuscated)
+    this.useSSHKey = connection.useSSHKey ?? false
+    this.repoPassword = connection.passwordObfuscated
+      ? deobfuscatePassword(connection.passwordObfuscated)
+      : ''
     this.connectionName = connection.name
     // Restore saved backup paths
     if (connection.backupPaths?.length) {
@@ -1667,7 +1679,11 @@ export class ResticUI extends LitElement {
           // Merge with existing connections (skip duplicates by name)
           let addedCount = 0
           for (const conn of imported) {
-            if (conn.name && conn.repoPath && conn.passwordObfuscated) {
+            if (
+              conn.name &&
+              conn.repoPath &&
+              (conn.passwordObfuscated || conn.useSSHKey)
+            ) {
               const exists = this.savedConnections.some(
                 (c) => c.name === conn.name,
               )
@@ -1791,8 +1807,23 @@ export class ResticUI extends LitElement {
     return undefined
   }
 
+  private async sftpListDir() {
+    if (!this.repoPath.startsWith('sftp:')) return
+    this.sftpLsLoading = true
+    this.sftpLsOutput = ''
+    try {
+      const response = await this.invokeRestic({ operation: 'sftp-ls' })
+      const result = response.data || response
+      this.sftpLsOutput = result.output || result.error || 'No output'
+    } catch (err: any) {
+      this.sftpLsOutput = err?.message || 'Error'
+    } finally {
+      this.sftpLsLoading = false
+    }
+  }
+
   private async connectRepository() {
-    if (!this.repoPath || !this.repoPassword) {
+    if (!this.repoPath || (!this.useSSHKey && !this.repoPassword)) {
       this.showMessage('error', 'Please enter repository path and password')
       return
     }
@@ -1870,7 +1901,7 @@ export class ResticUI extends LitElement {
   }
 
   private async initRepository() {
-    if (!this.repoPath || !this.repoPassword) {
+    if (!this.repoPath || (!this.useSSHKey && !this.repoPassword)) {
       this.showMessage('error', 'Please enter repository path and password')
       return
     }
@@ -3220,17 +3251,38 @@ export class ResticUI extends LitElement {
               />
             </div>
             <div class="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                placeholder="Repository password"
-                .value=${this.repoPassword}
-                @input=${(e: Event) =>
-                  (this.repoPassword = (e.target as HTMLInputElement).value)}
-                ?disabled=${this.isLoading}
-              />
+              <label
+                style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;"
+              >
+                <input
+                  type="checkbox"
+                  .checked=${this.useSSHKey}
+                  @change=${(e: Event) => {
+                    this.useSSHKey = (e.target as HTMLInputElement).checked
+                    if (this.useSSHKey) this.repoPassword = ''
+                  }}
+                  ?disabled=${this.isLoading}
+                  style="accent-color:#3b82f6;width:1em;height:1em;"
+                />
+                SSH key auth (no password)
+              </label>
             </div>
-            <div style="display: flex; gap: 0.5rem">
+            ${this.useSSHKey
+              ? ''
+              : html`<div class="form-group">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    placeholder="Repository password"
+                    .value=${this.repoPassword}
+                    @input=${(e: Event) =>
+                      (this.repoPassword = (
+                        e.target as HTMLInputElement
+                      ).value)}
+                    ?disabled=${this.isLoading}
+                  />
+                </div>`}
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button
                 class="btn btn-primary"
                 @click=${this.connectRepository}
@@ -3247,7 +3299,26 @@ export class ResticUI extends LitElement {
               >
                 Initialize
               </button>
+              ${this.repoPath.startsWith('sftp:')
+                ? html`<button
+                    class="btn btn-secondary"
+                    @click=${this.sftpListDir}
+                    ?disabled=${this.isLoading || this.sftpLsLoading}
+                    title="List remote directory via SSH"
+                  >
+                    ${this.sftpLsLoading
+                      ? html`<span class="spinner"></span>`
+                      : '📂 List remote dir'}
+                  </button>`
+                : ''}
             </div>
+            ${this.sftpLsOutput
+              ? html`<pre
+                  style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:#0f172a;border:1px solid #334155;border-radius:6px;font-size:0.78rem;color:#94a3b8;overflow-x:auto;white-space:pre;max-height:200px;overflow-y:auto;"
+                >
+${this.sftpLsOutput}</pre
+                >`
+              : ''}
           </div>
           <div
             style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #334155;"

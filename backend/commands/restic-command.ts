@@ -143,6 +143,8 @@ export class ResticCommand implements ICommand {
             params.filePath,
             env,
           );
+        case 'sftp-ls':
+          return await this.sftpListDir(repoPath);
         default:
           return { success: false, error: `Unknown operation: ${operation}` };
       }
@@ -877,5 +879,149 @@ export class ResticCommand implements ICommand {
         type: 'string',
       },
     ];
+  }
+
+  /**
+   * List a remote SFTP directory via SSH for debugging.
+   * Parses sftp:user@host:/path and runs SSH + SFTP subsystem diagnostics.
+   */
+  private async sftpListDir(repoPath: string): Promise<any> {
+    if (!repoPath) {
+      return { success: false, error: 'repoPath is required' };
+    }
+    // Accept sftp:user@host:/path or sftp:user@host:path
+    const match = repoPath.match(/^sftp:([^:]+):(.*)$/);
+    if (!match) {
+      return {
+        success: false,
+        error: 'Invalid SFTP path. Expected format: sftp:user@host:/path',
+      };
+    }
+    const userHost = match[1];
+    const remotePath = match[2] || '/';
+    const parentPath = remotePath.replace(/\/[^/]+\/?$/, '') || '/';
+
+    const lines: string[] = [];
+
+    // Helper: run a command and return stdout+stderr
+    const runCmd = async (cmd: string): Promise<string> => {
+      try {
+        const { stdout, stderr } = await execPromise(cmd, {
+          env: this.getExtendedEnv(),
+          timeout: 10000,
+        });
+        return (stdout || stderr).trim();
+      } catch (err: any) {
+        return (err.stdout || err.stderr || err.message || '').trim();
+      }
+    };
+
+    // Helper: pipe commands as stdin to sftp -b - (avoids shell escaping issues)
+    const runSftp = (cmds: string[]): Promise<string> => {
+      return new Promise((resolve) => {
+        const proc = spawn('sftp', ['-q', '-b', '-', userHost], {
+          env: this.getExtendedEnv(),
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        let out = '';
+        proc.stdout?.on('data', (d: Buffer) => {
+          out += d.toString();
+        });
+        proc.stderr?.on('data', (d: Buffer) => {
+          out += d.toString();
+        });
+        proc.on('close', () => resolve(out.trim() || '(no output)'));
+        proc.on('error', (e) => resolve(`sftp spawn error: ${e.message}`));
+        const input = cmds.join('\n') + '\n';
+        proc.stdin?.write(input);
+        proc.stdin?.end();
+        setTimeout(() => {
+          try {
+            proc.kill();
+          } catch {}
+          resolve(out.trim() || '(timeout)');
+        }, 10000);
+      });
+    };
+
+    // === SSH shell listing ===
+    lines.push(`=== SSH shell ===`);
+    lines.push(`$ ssh ${userHost} ls -la "${remotePath}"`);
+    lines.push(await runCmd(`ssh ${userHost} "ls -la '${remotePath}'"`));
+    if (parentPath && parentPath !== remotePath) {
+      lines.push('');
+      lines.push(`$ ssh ${userHost} ls -la "${parentPath}"`);
+      lines.push(await runCmd(`ssh ${userHost} "ls -la '${parentPath}'"`));
+    }
+
+    // === SFTP subsystem ===
+    // This shows what the SFTP protocol sees — may differ from SSH shell if chrooted
+    lines.push('');
+    lines.push(`=== SFTP subsystem (pwd + ls) ===`);
+    lines.push(`sftp cmds: pwd, ls ${remotePath}, ls ${parentPath}`);
+    lines.push(
+      await runSftp([`pwd`, `ls ${remotePath}`, `ls ${parentPath}`, `bye`]),
+    );
+
+    // Explore what the SFTP root filesystem actually contains
+    lines.push('');
+    lines.push(`=== SFTP root exploration ===`);
+    lines.push(
+      await runSftp([`ls /`, `ls /volume1`, `ls /volume1/backup`, `bye`]),
+    );
+
+    // === SFTP config file access ===
+    const configPath = remotePath.endsWith('/')
+      ? `${remotePath}config`
+      : `${remotePath}/config`;
+    lines.push('');
+    lines.push(`=== SFTP get config (${configPath}) ===`);
+    lines.push(await runSftp([`get ${configPath} /dev/null`, `bye`]));
+
+    // === Find restic binary ===
+    lines.push('');
+    lines.push(`=== restic location ===`);
+    const resticWhere = await runCmd(
+      'where restic 2>&1 || which restic 2>&1 || echo not found',
+    );
+    lines.push(resticWhere);
+
+    // === restic verbose snapshots ===
+    const resticBin = resticWhere.split('\n')[0].trim();
+    if (
+      resticBin &&
+      resticBin !== 'not found' &&
+      !resticBin.includes('not found')
+    ) {
+      lines.push('');
+      lines.push(`=== restic -vv snapshots ===`);
+      const resticEnv = {
+        ...this.getExtendedEnv(),
+        RESTIC_REPOSITORY: repoPath,
+        RESTIC_PASSWORD: 'dummy-for-diagnostic',
+      };
+      try {
+        const { stdout, stderr } = await execPromise(
+          `"${resticBin}" -vv snapshots --json`,
+          {
+            env: resticEnv,
+            timeout: 15000,
+          },
+        );
+        lines.push(
+          (stdout + stderr).trim().split('\n').slice(0, 40).join('\n'),
+        );
+      } catch (err: any) {
+        lines.push(
+          (err.stdout || err.stderr || err.message || '')
+            .trim()
+            .split('\n')
+            .slice(0, 40)
+            .join('\n'),
+        );
+      }
+    }
+
+    return { success: true, output: lines.join('\n'), userHost, remotePath };
   }
 }
