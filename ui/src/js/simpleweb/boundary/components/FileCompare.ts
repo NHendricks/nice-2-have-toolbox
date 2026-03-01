@@ -542,7 +542,19 @@ export class FileCompare extends LitElement {
 
   /* ── Keyboard ── */
   onKeyDown = (e: KeyboardEvent) => {
-    if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
+    const isTextarea = (e.target as HTMLElement).tagName === 'TEXTAREA';
+    // Allow left/right arrow copy in edit mode even in textarea
+    if (this.editMode && e.key === 'ArrowRight') {
+      e.preventDefault();
+      this.copyLeftToRight();
+      return;
+    }
+    if (this.editMode && e.key === 'ArrowLeft') {
+      e.preventDefault();
+      this.copyRightToLeft();
+      return;
+    }
+    if (isTextarea) return;
     if (e.key === 'Escape') this.close()
     if (e.key === 'n' || e.key === 'ArrowDown') {
       e.preventDefault()
@@ -621,6 +633,7 @@ export class FileCompare extends LitElement {
               this.leftDirty = true
             }}
             @scroll=${(e: Event) => this.onPaneScroll(e, 'left')}
+            @keydown=${this.onKeyDown}
             spellcheck="false"
           ></textarea>
         </div>
@@ -656,14 +669,14 @@ export class FileCompare extends LitElement {
               this.rightDirty = true
             }}
             @scroll=${(e: Event) => this.onPaneScroll(e, 'right')}
+            @keydown=${this.onKeyDown}
             spellcheck="false"
           ></textarea>
         </div>
       </div>
-    `
+    `;
   }
 
-  /* ── Render: unified view ── */
   private renderUnified() {
     const changes: ChangeObject<string>[] = diffLines(
       this.leftContent,
@@ -739,14 +752,16 @@ export class FileCompare extends LitElement {
             </span>
 
             <div class="toolbar-sep"></div>
-            <button
-              class="btn ${this.editMode ? 'edit active' : ''}"
-              @click=${() => {
-                this.editMode = !this.editMode
-              }}
-            >
-              ${this.editMode ? '✏️ Editing' : '👁 View'}
-            </button>
+            ${this.viewMode === 'side' ? html`
+              <button
+                class="btn ${this.editMode ? 'edit active' : ''}"
+                @click=${() => {
+                  this.editMode = !this.editMode
+                }}
+              >
+                ${this.editMode ? '✏️ Editing' : '👁 View'}
+              </button>
+            ` : ''}
 
             ${this.leftDirty
               ? html` <div class="toolbar-sep"></div>
