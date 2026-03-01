@@ -542,19 +542,19 @@ export class FileCompare extends LitElement {
 
   /* ── Keyboard ── */
   onKeyDown = (e: KeyboardEvent) => {
-    const isTextarea = (e.target as HTMLElement).tagName === 'TEXTAREA';
+    const isTextarea = (e.target as HTMLElement).tagName === 'TEXTAREA'
     // Allow left/right arrow copy in edit mode even in textarea
     if (this.editMode && e.key === 'ArrowRight') {
-      e.preventDefault();
-      this.copyLeftToRight();
-      return;
+      e.preventDefault()
+      this.copyLeftToRight()
+      return
     }
     if (this.editMode && e.key === 'ArrowLeft') {
-      e.preventDefault();
-      this.copyRightToLeft();
-      return;
+      e.preventDefault()
+      this.copyRightToLeft()
+      return
     }
-    if (isTextarea) return;
+    if (isTextarea) return
     if (e.key === 'Escape') this.close()
     if (e.key === 'n' || e.key === 'ArrowDown') {
       e.preventDefault()
@@ -674,7 +674,7 @@ export class FileCompare extends LitElement {
           ></textarea>
         </div>
       </div>
-    `;
+    `
   }
 
   private renderUnified() {
@@ -752,17 +752,18 @@ export class FileCompare extends LitElement {
             </span>
 
             <div class="toolbar-sep"></div>
-            ${this.viewMode === 'side' ? html`
-              <button
-                class="btn ${this.editMode ? 'edit active' : ''}"
-                @click=${() => {
-                  this.editMode = !this.editMode
-                }}
-              >
-                ${this.editMode ? '✏️ Editing' : '👁 View'}
-              </button>
-            ` : ''}
-
+            ${this.viewMode === 'side'
+              ? html`
+                  <button
+                    class="btn ${this.editMode ? 'edit active' : ''}"
+                    @click=${() => {
+                      this.editMode = !this.editMode
+                    }}
+                  >
+                    ${this.editMode ? '✏️ Editing' : '👁 View'}
+                  </button>
+                `
+              : ''}
             ${this.leftDirty
               ? html` <div class="toolbar-sep"></div>
                   <button
