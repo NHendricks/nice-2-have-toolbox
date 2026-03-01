@@ -1,10 +1,10 @@
 {
   "id": "task-1771955930434-ftt4pow5s",
-  "summary": "other ideas",
-  "description": "- split pdf incl. preview\n- find text in pdfs \n  - write textfile for each pdf\n  - find text within text files\n- file rename batch utility\n\n- simple db show and edit tool for sql databases\n- check gnu-tools",
+  "summary": "- file rename batch utility",
+  "description": "",
   "priority": "medium",
   "category": "General",
   "person": "Nils",
   "created": "2026-02-24T17:58:50.434Z",
-  "updated": "2026-02-24T18:34:58.551Z"
+  "updated": "2026-03-01T17:33:40.388Z"
 }
