@@ -1273,15 +1273,70 @@ export class ResticUI extends LitElement {
       font-weight: 700;
       font-size: 1.25rem;
     }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      width: min(90vw, 860px);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid #334155;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      flex-shrink: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      padding: 0.8rem 1rem;
+      flex: 1;
+    }
   `
 
   @state() private activeTab: ResticTab = 'backup'
   @state() private repository: ResticRepository | null = null
   @state() private repoPath: string = ''
   @state() private repoPassword: string = ''
-  @state() private useSSHKey: boolean = false
   @state() private sftpLsOutput: string = ''
   @state() private sftpLsLoading: boolean = false
+  @state() private showSftpModal: boolean = false
   @state() private snapshots: ResticSnapshot[] = []
   @state() private selectedSnapshot: ResticSnapshot | null = null
   @state() private browseEntries: ResticFileEntry[] = []
@@ -1528,21 +1583,15 @@ export class ResticUI extends LitElement {
       this.showMessage('error', 'Please enter a repository path')
       return
     }
-    if (!this.useSSHKey && !this.repoPassword) {
-      this.showMessage(
-        'error',
-        'Please enter a password (or enable SSH key auth)',
-      )
+    if (!this.repoPassword) {
+      this.showMessage('error', 'Please enter a password')
       return
     }
 
     const connection: SavedResticConnection = {
       name: this.connectionName.trim(),
       repoPath: this.repoPath,
-      passwordObfuscated: this.useSSHKey
-        ? undefined
-        : obfuscatePassword(this.repoPassword),
-      useSSHKey: this.useSSHKey || undefined,
+      passwordObfuscated: obfuscatePassword(this.repoPassword),
       backupPaths:
         this.backupPaths.length > 0 ? [...this.backupPaths] : undefined,
     }
@@ -1564,7 +1613,6 @@ export class ResticUI extends LitElement {
 
   private loadConnection(connection: SavedResticConnection) {
     this.repoPath = connection.repoPath
-    this.useSSHKey = connection.useSSHKey ?? false
     this.repoPassword = connection.passwordObfuscated
       ? deobfuscatePassword(connection.passwordObfuscated)
       : ''
@@ -1679,11 +1727,7 @@ export class ResticUI extends LitElement {
           // Merge with existing connections (skip duplicates by name)
           let addedCount = 0
           for (const conn of imported) {
-            if (
-              conn.name &&
-              conn.repoPath &&
-              (conn.passwordObfuscated || conn.useSSHKey)
-            ) {
+            if (conn.name && conn.repoPath && conn.passwordObfuscated) {
               const exists = this.savedConnections.some(
                 (c) => c.name === conn.name,
               )
@@ -1815,15 +1859,17 @@ export class ResticUI extends LitElement {
       const response = await this.invokeRestic({ operation: 'sftp-ls' })
       const result = response.data || response
       this.sftpLsOutput = result.output || result.error || 'No output'
+      this.showSftpModal = true
     } catch (err: any) {
       this.sftpLsOutput = err?.message || 'Error'
+      this.showSftpModal = true
     } finally {
       this.sftpLsLoading = false
     }
   }
 
   private async connectRepository() {
-    if (!this.repoPath || (!this.useSSHKey && !this.repoPassword)) {
+    if (!this.repoPath || !this.repoPassword) {
       this.showMessage('error', 'Please enter repository path and password')
       return
     }
@@ -1901,7 +1947,7 @@ export class ResticUI extends LitElement {
   }
 
   private async initRepository() {
-    if (!this.repoPath || (!this.useSSHKey && !this.repoPassword)) {
+    if (!this.repoPath || !this.repoPassword) {
       this.showMessage('error', 'Please enter repository path and password')
       return
     }
@@ -3251,37 +3297,16 @@ export class ResticUI extends LitElement {
               />
             </div>
             <div class="form-group">
-              <label
-                style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;user-select:none;"
-              >
-                <input
-                  type="checkbox"
-                  .checked=${this.useSSHKey}
-                  @change=${(e: Event) => {
-                    this.useSSHKey = (e.target as HTMLInputElement).checked
-                    if (this.useSSHKey) this.repoPassword = ''
-                  }}
-                  ?disabled=${this.isLoading}
-                  style="accent-color:#3b82f6;width:1em;height:1em;"
-                />
-                SSH key auth (no password)
-              </label>
+              <label>Password</label>
+              <input
+                type="password"
+                placeholder="Repository password"
+                .value=${this.repoPassword}
+                @input=${(e: Event) =>
+                  (this.repoPassword = (e.target as HTMLInputElement).value)}
+                ?disabled=${this.isLoading}
+              />
             </div>
-            ${this.useSSHKey
-              ? ''
-              : html`<div class="form-group">
-                  <label>Password</label>
-                  <input
-                    type="password"
-                    placeholder="Repository password"
-                    .value=${this.repoPassword}
-                    @input=${(e: Event) =>
-                      (this.repoPassword = (
-                        e.target as HTMLInputElement
-                      ).value)}
-                    ?disabled=${this.isLoading}
-                  />
-                </div>`}
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button
                 class="btn btn-primary"
@@ -3312,13 +3337,6 @@ export class ResticUI extends LitElement {
                   </button>`
                 : ''}
             </div>
-            ${this.sftpLsOutput
-              ? html`<pre
-                  style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:#0f172a;border:1px solid #334155;border-radius:6px;font-size:0.78rem;color:#94a3b8;overflow-x:auto;white-space:pre;max-height:200px;overflow-y:auto;"
-                >
-${this.sftpLsOutput}</pre
-                >`
-              : ''}
           </div>
           <div
             style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #334155;"
@@ -3429,6 +3447,36 @@ ${this.sftpLsOutput}</pre
               </div>
             `}
       </div>
+
+      ${this.showSftpModal
+        ? html`<div
+            class="modal-overlay"
+            @click=${(e: Event) => {
+              if (e.target === e.currentTarget) this.showSftpModal = false
+            }}
+          >
+            <div class="modal">
+              <div class="modal-header">
+                <span>📂 Remote directory listing</span>
+                <button
+                  class="modal-close"
+                  @click=${() => {
+                    this.showSftpModal = false
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div class="modal-body">
+                <pre
+                  style="margin:0;font-size:0.8rem;color:#94a3b8;white-space:pre;font-family:ui-monospace,monospace;"
+                >
+${this.sftpLsOutput}</pre
+                >
+              </div>
+            </div>
+          </div>`
+        : ''}
     `
   }
 
