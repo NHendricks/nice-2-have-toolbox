@@ -40,9 +40,7 @@ export class PdfSplitCommand implements ICommand {
    * Returns SVG DataURLs for all pages of a PDF for preview purposes.
    * params: { inputPath: string }
    */
-  async getPreviews(
-    params: any,
-  ): Promise<{
+  async getPreviews(params: any): Promise<{
     success: boolean;
     totalPages?: number;
     previews?: string[];
