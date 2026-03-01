@@ -1,7 +1,13 @@
-import { diffLines, diffWords, type ChangeObject } from 'diff'
+import { diffLines, type ChangeObject } from 'diff'
 import { LitElement, css, html } from 'lit'
 import { property, state } from 'lit/decorators.js'
+import { live } from 'lit/directives/live.js'
 import './SimpleDialog'
+
+interface DiffBlock {
+  start: number
+  end: number
+}
 
 export class FileCompare extends LitElement {
   static styles = css`
@@ -19,6 +25,14 @@ export class FileCompare extends LitElement {
       background: #1e293b;
       border-bottom: 1px solid #334155;
       align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-sep {
+      width: 1px;
+      height: 1.2rem;
+      background: #334155;
+      flex-shrink: 0;
     }
 
     .btn {
@@ -30,58 +44,148 @@ export class FileCompare extends LitElement {
       cursor: pointer;
       font-size: 0.8rem;
       font-weight: bold;
+      white-space: nowrap;
     }
 
     .btn.active {
       background: #0ea5e9;
     }
-
+    .btn.save {
+      background: #059669;
+    }
+    .btn.edit {
+      background: #7c3aed;
+    }
     .btn:disabled {
       opacity: 0.4;
       cursor: default;
     }
+    .btn:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
 
-    .compare-body {
+    /* ── Side view ── */
+    .side-view {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2px;
+      grid-template-columns: 1fr 26px 1fr;
       flex: 1;
       overflow: hidden;
     }
 
-    .file {
-      overflow: auto;
-      padding: 1rem;
+    .pane {
+      display: flex;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* Gutter: line numbers with diff coloring */
+    .gutter {
+      width: 46px;
+      flex-shrink: 0;
+      overflow-y: scroll;
+      scrollbar-width: none;
+      background: #0c1525;
+      border-right: 1px solid #1e293b;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.85rem;
       line-height: 1.5;
-    }
-
-    .line {
-      display: block;
-    }
-
-    .line.modified {
-      background: rgba(251, 191, 36, 0.15);
-      color: #fbbf24;
-    }
-
-    .num {
-      display: inline-block;
-      width: 42px;
-      color: #64748b;
+      padding-top: 0.5rem;
+      color: #475569;
       text-align: right;
-      padding-right: 1rem;
       user-select: none;
     }
+    .gutter::-webkit-scrollbar {
+      display: none;
+    }
 
+    .gutter-line {
+      display: block;
+      padding: 0 5px;
+      line-height: 1.5;
+      font-size: 0.85rem;
+    }
+    .gutter-line.diff {
+      background: rgba(251, 191, 36, 0.18);
+      color: #ca8a04;
+    }
+    .gutter-line.current {
+      background: #0ea5e9;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    /* Textarea fills remaining pane width */
+    .pane-ta[readonly] {
+      background: #080f1e;
+      cursor: default;
+    }
+
+    .pane-ta {
+      flex: 1;
+      min-width: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: none;
+      padding: 0.5rem 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      resize: none;
+      outline: none;
+      overflow: auto;
+      white-space: pre;
+      word-wrap: normal;
+      overflow-wrap: normal;
+      tab-size: 2;
+      box-sizing: border-box;
+    }
+
+    /* Copy column between panes */
+    .copy-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 0.5rem;
+      gap: 0.2rem;
+      background: #1e293b;
+      border-left: 1px solid #334155;
+      border-right: 1px solid #334155;
+    }
+
+    .arrow-btn {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      background: #334155;
+      border: none;
+      color: #94a3b8;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .arrow-btn:hover:not(:disabled) {
+      background: #0ea5e9;
+      color: #fff;
+    }
+    .arrow-btn:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    /* ── Unified view ── */
     .unified {
       padding: 1rem;
       overflow: auto;
+      flex: 1;
       font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
       white-space: pre;
     }
-
     .add {
       color: #10b981;
     }
@@ -92,97 +196,86 @@ export class FileCompare extends LitElement {
       color: #0ea5e9;
       font-weight: bold;
     }
-
-    .inline-add {
-      background-color: rgba(16, 185, 129, 0.2);
-    }
-
-    .inline-del {
-      background-color: rgba(239, 68, 68, 0.2);
-    }
   `
 
-  /* ---------- Inputs ---------- */
+  /* ── Props ── */
   @property() leftPath = ''
   @property() rightPath = ''
-
-  /* ---------- State ---------- */
   @property() leftContent = ''
   @property() rightContent = ''
-
   @property({ type: Boolean }) loading = false
   @property() error = ''
+  @property({ type: String }) viewMode: 'side' | 'unified' = 'side'
 
-  @property({ type: String })
-  viewMode: 'side' | 'unified' = 'side'
-
-  @property({ type: Boolean })
-  showOnlyDiffs = false
-
-  @state()
-  private diffLines: number[] = []
-
-  @state()
-  private lineDiffMap: { left: string; right: string; changed: boolean }[] = []
-
-  @state()
-  private isBinary = false
+  /* ── State ── */
+  @state() private diffBlocks: DiffBlock[] = []
+  @state() private leftChangedLines = new Set<number>()
+  @state() private rightChangedLines = new Set<number>()
+  @state() private isBinary = false
+  @state() private leftDirty = false
+  @state() private rightDirty = false
+  @state() private saving = false
+  @state() private editMode = false
 
   private currentDiff = 0
   private isSyncing = false
+  private diffTimer: ReturnType<typeof setTimeout> | null = null
 
-  /* ---------- Lifecycle ---------- */
+  /* lineDiffMap: one row per "virtual" diff line (may have phantoms) */
+  private lineDiffMap: { left: string; right: string; changed: boolean }[] = []
+  /* map from file-line-index → lineDiffMap row */
+  private leftLineToMapRow: number[] = []
+  private rightLineToMapRow: number[] = []
+
+  /* ── Lifecycle ── */
   connectedCallback() {
     super.connectedCallback()
     window.addEventListener('keydown', this.onKeyDown)
   }
-
   disconnectedCallback() {
     window.removeEventListener('keydown', this.onKeyDown)
     super.disconnectedCallback()
   }
 
   updated(changed: Map<string, unknown>) {
-    if (changed.has('leftContent') || changed.has('rightContent')) {
-      this.computeDiffs()
-      this.currentDiff = 0
-    }
-    // Load files when paths are set (properties may not be available in connectedCallback)
     if (changed.has('leftPath') || changed.has('rightPath')) {
-      if (this.leftPath && this.rightPath) {
-        this.loadFiles()
-      }
+      if (this.leftPath && this.rightPath) this.loadFiles()
+    }
+    /* User typing → debounce diff recompute to avoid lag */
+    if (changed.has('leftContent') || changed.has('rightContent')) {
+      this.scheduleDiff()
     }
   }
 
-  /* ---------- File loading ---------- */
+  /* ── File I/O ── */
   async loadFiles() {
-    if (!this.leftPath || !this.rightPath) return
-
     this.loading = true
     this.error = ''
-
+    this.leftDirty = false
+    this.rightDirty = false
     try {
-      const left = await (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'file-operations',
-        { operation: 'read', filePath: this.leftPath },
-      )
-
-      const right = await (window as any).electron.ipcRenderer.invoke(
-        'cli-execute',
-        'file-operations',
-        { operation: 'read', filePath: this.rightPath },
-      )
-
+      const [left, right] = await Promise.all([
+        (window as any).electron.ipcRenderer.invoke(
+          'cli-execute',
+          'file-operations',
+          { operation: 'read', filePath: this.leftPath },
+        ),
+        (window as any).electron.ipcRenderer.invoke(
+          'cli-execute',
+          'file-operations',
+          { operation: 'read', filePath: this.rightPath },
+        ),
+      ])
       if (left.success && right.success) {
-        // Check if files are binary (images or contain null bytes)
-        const isLeftBinary = left.data.isImage || this.containsNullBytes(left.data.content)
-        const isRightBinary = right.data.isImage || this.containsNullBytes(right.data.content)
-        this.isBinary = isLeftBinary || isRightBinary
-
+        this.isBinary =
+          left.data.isImage ||
+          right.data.isImage ||
+          this.containsNullBytes(left.data.content) ||
+          this.containsNullBytes(right.data.content)
         this.leftContent = left.data.content
         this.rightContent = right.data.content
+        this.currentDiff = 0
+        this.computeDiffs() // immediate on load
       } else {
         this.error = left.error || right.error || 'Error loading'
       }
@@ -193,24 +286,49 @@ export class FileCompare extends LitElement {
     }
   }
 
-  /* ---------- Diff logic ---------- */
-  computeDiffs() {
-    const l = this.leftContent
-    const r = this.rightContent
+  private scheduleDiff() {
+    if (this.diffTimer) clearTimeout(this.diffTimer)
+    this.diffTimer = setTimeout(() => {
+      this.computeDiffs()
+    }, 350)
+  }
 
-    // Skip diff computation for binary files to avoid freezing UI
+  async saveFile(side: 'left' | 'right') {
+    const path = side === 'left' ? this.leftPath : this.rightPath
+    const content = side === 'left' ? this.leftContent : this.rightContent
+    this.saving = true
+    try {
+      const res = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        { operation: 'write', filePath: path, content },
+      )
+      if (res.success) {
+        if (side === 'left') this.leftDirty = false
+        else this.rightDirty = false
+      } else {
+        alert('Save failed: ' + (res.error || 'Unknown error'))
+      }
+    } catch (e: any) {
+      alert('Save failed: ' + e.message)
+    } finally {
+      this.saving = false
+    }
+  }
+
+  /* ── Diff computation ── */
+  private computeDiffs() {
     if (this.isBinary) {
-      this.diffLines = []
-      this.lineDiffMap = []
+      this.diffBlocks = []
       return
     }
 
-    const changes: ChangeObject<string>[] = diffLines(l, r)
-
-    this.diffLines = []
+    const changes: ChangeObject<string>[] = diffLines(
+      this.leftContent,
+      this.rightContent,
+    )
     this.lineDiffMap = []
 
-    let lineNum = 1
     let i = 0
     while (i < changes.length) {
       const change = changes[i]
@@ -218,13 +336,10 @@ export class FileCompare extends LitElement {
       if (lines[lines.length - 1] === '') lines.pop()
 
       if (change.removed) {
-        // Check if next change is 'added' (modification pair)
         const next = changes[i + 1]
         if (next?.added) {
           const addedLines = next.value.split('\n')
           if (addedLines[addedLines.length - 1] === '') addedLines.pop()
-
-          // Pair removed and added lines together
           const maxLen = Math.max(lines.length, addedLines.length)
           for (let j = 0; j < maxLen; j++) {
             this.lineDiffMap.push({
@@ -232,79 +347,218 @@ export class FileCompare extends LitElement {
               right: addedLines[j] ?? '',
               changed: true,
             })
-            this.diffLines.push(lineNum)
-            lineNum++
           }
-          i += 2 // Skip both removed and added
+          i += 2
           continue
         } else {
-          // Only removed (deleted lines)
-          lines.forEach((line) => {
-            this.lineDiffMap.push({ left: line, right: '', changed: true })
-            this.diffLines.push(lineNum)
-            lineNum++
-          })
+          lines.forEach((l) =>
+            this.lineDiffMap.push({ left: l, right: '', changed: true }),
+          )
         }
       } else if (change.added) {
-        // Only added (new lines, not paired with removed)
-        lines.forEach((line) => {
-          this.lineDiffMap.push({ left: '', right: line, changed: true })
-          this.diffLines.push(lineNum)
-          lineNum++
-        })
+        lines.forEach((l) =>
+          this.lineDiffMap.push({ left: '', right: l, changed: true }),
+        )
       } else {
-        // Unchanged lines
-        lines.forEach((line) => {
-          this.lineDiffMap.push({ left: line, right: line, changed: false })
-        })
-        lineNum += lines.length
+        lines.forEach((l) =>
+          this.lineDiffMap.push({ left: l, right: l, changed: false }),
+        )
       }
       i++
     }
+
+    /* Build diff blocks (contiguous changed rows) */
+    const blocks: DiffBlock[] = []
+    let r = 0
+    while (r < this.lineDiffMap.length) {
+      if (this.lineDiffMap[r].changed) {
+        let end = r
+        while (
+          end + 1 < this.lineDiffMap.length &&
+          this.lineDiffMap[end + 1].changed
+        )
+          end++
+        blocks.push({ start: r, end })
+        r = end + 1
+      } else {
+        r++
+      }
+    }
+    this.diffBlocks = blocks
+
+    /* Build file-line → map-row mappings and changed-line sets */
+    const lMap: number[] = [],
+      rMap: number[] = []
+    const lChanged = new Set<number>(),
+      rChanged = new Set<number>()
+
+    for (let row = 0; row < this.lineDiffMap.length; row++) {
+      const entry = this.lineDiffMap[row]
+      if (!entry.changed) {
+        lMap.push(row)
+        rMap.push(row)
+      } else {
+        if (entry.left !== '') {
+          lChanged.add(lMap.length)
+          lMap.push(row)
+        }
+        if (entry.right !== '') {
+          rChanged.add(rMap.length)
+          rMap.push(row)
+        }
+      }
+    }
+
+    this.leftLineToMapRow = lMap
+    this.rightLineToMapRow = rMap
+    this.leftChangedLines = lChanged
+    this.rightChangedLines = rChanged
   }
 
-  /* ---------- Helper methods ---------- */
-  containsNullBytes(content: string): boolean {
-    // Check first 8KB for null bytes (indicator of binary content)
-    const sample = content.substring(0, 8192)
-    return sample.includes('\0')
+  /* ── Copy diff block ── */
+  private currentBlock(): DiffBlock | null {
+    return this.diffBlocks[this.currentDiff] ?? null
+  }
+
+  private linesInBlock(lineToMap: number[], block: DiffBlock): Set<number> {
+    const s = new Set<number>()
+    lineToMap.forEach((row, i) => {
+      if (row >= block.start && row <= block.end) s.add(i)
+    })
+    return s
+  }
+
+  private reconstructSide(
+    map: { left: string; right: string; changed: boolean }[],
+    side: 'left' | 'right',
+  ): string {
+    const lines: string[] = []
+    for (const row of map) {
+      const v = row[side]
+      if (!row.changed || v !== '') lines.push(v)
+    }
+    return lines.join('\n')
+  }
+
+  private copyLeftToRight() {
+    const block = this.currentBlock()
+    if (!block) return
+    const newMap = this.lineDiffMap.map((row, i) =>
+      i >= block.start && i <= block.end ? { ...row, right: row.left } : row,
+    )
+    this.rightContent = this.reconstructSide(newMap, 'right')
+    this.rightDirty = true
+  }
+
+  private copyRightToLeft() {
+    const block = this.currentBlock()
+    if (!block) return
+    const newMap = this.lineDiffMap.map((row, i) =>
+      i >= block.start && i <= block.end ? { ...row, left: row.right } : row,
+    )
+    this.leftContent = this.reconstructSide(newMap, 'left')
+    this.leftDirty = true
+  }
+
+  /* ── Navigation ── */
+  nextDiff() {
+    if (this.currentDiff < this.diffBlocks.length - 1)
+      this.scrollToDiff(this.currentDiff + 1)
+  }
+  prevDiff() {
+    if (this.currentDiff > 0) this.scrollToDiff(this.currentDiff - 1)
   }
 
   scrollToDiff(index: number) {
-    if (this.viewMode !== 'side') return
-
-    const line = this.diffLines[index]
-    if (!line) return
-
-    this.renderRoot
-      .querySelectorAll(`[data-line="${line}"]`)
-      .forEach((el) =>
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-      )
-
     this.currentDiff = index
+    this.requestUpdate()
+    this.updateComplete.then(() => {
+      const block = this.diffBlocks[index]
+      if (!block) return
+
+      const firstLeft = this.leftLineToMapRow.findIndex(
+        (r) => r >= block.start && r <= block.end,
+      )
+      const firstRight = this.rightLineToMapRow.findIndex(
+        (r) => r >= block.start && r <= block.end,
+      )
+      const lineH = this.getLineHeight()
+      const lScroll =
+        firstLeft >= 0 ? Math.max(0, (firstLeft - 2) * lineH) : null
+      const rScroll =
+        firstRight >= 0 ? Math.max(0, (firstRight - 2) * lineH) : null
+
+      this.isSyncing = true
+      const lTA = this.renderRoot.querySelector(
+        '.pane-ta[data-side="left"]',
+      ) as HTMLElement
+      const rTA = this.renderRoot.querySelector(
+        '.pane-ta[data-side="right"]',
+      ) as HTMLElement
+      const lG = this.renderRoot.querySelector(
+        '.gutter[data-side="left"]',
+      ) as HTMLElement
+      const rG = this.renderRoot.querySelector(
+        '.gutter[data-side="right"]',
+      ) as HTMLElement
+      if (lTA && lScroll !== null) lTA.scrollTop = lScroll
+      if (rTA && rScroll !== null) rTA.scrollTop = rScroll
+      if (lG && lScroll !== null) lG.scrollTop = lScroll
+      if (rG && rScroll !== null) rG.scrollTop = rScroll
+      requestAnimationFrame(() => {
+        this.isSyncing = false
+      })
+    })
   }
 
-  nextDiff() {
-    if (this.currentDiff < this.diffLines.length - 1) {
-      this.scrollToDiff(this.currentDiff + 1)
-    }
+  private getLineHeight(): number {
+    const el = this.renderRoot.querySelector('.gutter-line')
+    return el ? (el as HTMLElement).getBoundingClientRect().height : 21
   }
 
-  prevDiff() {
-    if (this.currentDiff > 0) {
-      this.scrollToDiff(this.currentDiff - 1)
-    }
+  /* ── Scroll sync ── */
+  private onPaneScroll = (e: Event, side: 'left' | 'right') => {
+    if (this.isSyncing) return
+    this.isSyncing = true
+    const ta = e.target as HTMLElement
+    const st = ta.scrollTop
+    const other = side === 'left' ? 'right' : 'left'
+    const gutter = this.renderRoot.querySelector(
+      `.gutter[data-side="${side}"]`,
+    ) as HTMLElement
+    const otherTA = this.renderRoot.querySelector(
+      `.pane-ta[data-side="${other}"]`,
+    ) as HTMLElement
+    const otherGut = this.renderRoot.querySelector(
+      `.gutter[data-side="${other}"]`,
+    ) as HTMLElement
+    if (gutter) gutter.scrollTop = st
+    if (otherTA) otherTA.scrollTop = st
+    if (otherGut) otherGut.scrollTop = st
+    requestAnimationFrame(() => {
+      this.isSyncing = false
+    })
   }
 
-  /* ---------- Keyboard ---------- */
+  /* ── Keyboard ── */
   onKeyDown = (e: KeyboardEvent) => {
+    if ((e.target as HTMLElement).tagName === 'TEXTAREA') return
     if (e.key === 'Escape') this.close()
-    if (e.key === 'n' || e.key === 'ArrowDown') this.nextDiff()
-    if (e.key === 'p' || e.key === 'ArrowUp') this.prevDiff()
-    if (e.key === 'd') this.showOnlyDiffs = !this.showOnlyDiffs
+    if (e.key === 'n' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      this.nextDiff()
+    }
+    if (e.key === 'p' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      this.prevDiff()
+    }
     if (e.key === 'u') this.viewMode = 'unified'
     if (e.key === 's') this.viewMode = 'side'
+    if (e.key === 'e') {
+      e.preventDefault()
+      e.stopPropagation()
+      this.editMode = !this.editMode
+    }
   }
 
   close() {
@@ -313,113 +567,108 @@ export class FileCompare extends LitElement {
     )
   }
 
-  /* ---------- Synchronized scrolling ---------- */
-  private syncScroll = (e: Event) => {
-    if (this.isSyncing) return
-
-    const source = e.target as HTMLElement
-    const panes = this.renderRoot.querySelectorAll('.file')
-    if (panes.length !== 2) return
-
-    this.isSyncing = true
-    panes.forEach((pane) => {
-      if (pane !== source) {
-        ;(pane as HTMLElement).scrollTop = source.scrollTop
-        ;(pane as HTMLElement).scrollLeft = source.scrollLeft
-      }
-    })
-    this.isSyncing = false
+  /* ── Helpers ── */
+  containsNullBytes(content: string): boolean {
+    return content.substring(0, 8192).includes('\0')
   }
 
-  /* ---------- Render helpers ---------- */
-  renderSide() {
-    const visible = this.showOnlyDiffs
-      ? this.lineDiffMap.filter((r) => r.changed)
-      : this.lineDiffMap
+  /* ── Render: gutter ── */
+  private renderGutter(side: 'left' | 'right') {
+    const content = side === 'left' ? this.leftContent : this.rightContent
+    const changed =
+      side === 'left' ? this.leftChangedLines : this.rightChangedLines
+    const block = this.currentBlock()
+    const lineToMap =
+      side === 'left' ? this.leftLineToMapRow : this.rightLineToMapRow
+    const currentSet = block
+      ? this.linesInBlock(lineToMap, block)
+      : new Set<number>()
+    const lineCount = content ? content.split('\n').length : 0
 
     return html`
-      <div class="compare-body">
-        <div class="file" @scroll=${this.syncScroll}>
-          ${visible.map(
-            (row, i) => html`
-              <span
-                class="line ${row.changed ? 'modified' : ''}"
-                data-line=${i + 1}
-              >
-                <span class="num">${i + 1}</span>${this.renderInlineDiff(
-                  row.left,
-                  row.right,
-                  'left',
-                )}
-              </span>
-            `,
-          )}
+      <div class="gutter" data-side="${side}">
+        ${Array.from(
+          { length: lineCount },
+          (_, i) => html`
+            <div
+              class="gutter-line ${changed.has(i)
+                ? 'diff'
+                : ''} ${currentSet.has(i) ? 'current' : ''}"
+            >
+              ${i + 1}
+            </div>
+          `,
+        )}
+      </div>
+    `
+  }
+
+  /* ── Render: side view ── */
+  private renderSide() {
+    const hasDiff = this.diffBlocks.length > 0
+
+    return html`
+      <div class="side-view">
+        <div class="pane">
+          ${this.renderGutter('left')}
+          <textarea
+            class="pane-ta"
+            data-side="left"
+            .value=${live(this.leftContent)}
+            ?readonly=${!this.editMode}
+            @input=${(e: Event) => {
+              this.leftContent = (e.target as HTMLTextAreaElement).value
+              this.leftDirty = true
+            }}
+            @scroll=${(e: Event) => this.onPaneScroll(e, 'left')}
+            spellcheck="false"
+          ></textarea>
         </div>
-        <div class="file" @scroll=${this.syncScroll}>
-          ${visible.map(
-            (row, i) => html`
-              <span
-                class="line ${row.changed ? 'modified' : ''}"
-                data-line=${i + 1}
-              >
-                <span class="num">${i + 1}</span>${this.renderInlineDiff(
-                  row.left,
-                  row.right,
-                  'right',
-                )}
-              </span>
-            `,
-          )}
+
+        <div class="copy-col">
+          <button
+            class="arrow-btn"
+            title="Copy current diff left → right (L→R)"
+            ?disabled=${!hasDiff}
+            @click=${this.copyLeftToRight}
+          >
+            →
+          </button>
+          <button
+            class="arrow-btn"
+            title="Copy current diff right → left (R→L)"
+            ?disabled=${!hasDiff}
+            @click=${this.copyRightToLeft}
+          >
+            ←
+          </button>
+        </div>
+
+        <div class="pane">
+          ${this.renderGutter('right')}
+          <textarea
+            class="pane-ta"
+            data-side="right"
+            .value=${live(this.rightContent)}
+            ?readonly=${!this.editMode}
+            @input=${(e: Event) => {
+              this.rightContent = (e.target as HTMLTextAreaElement).value
+              this.rightDirty = true
+            }}
+            @scroll=${(e: Event) => this.onPaneScroll(e, 'right')}
+            spellcheck="false"
+          ></textarea>
         </div>
       </div>
     `
   }
 
-  renderInlineDiff(left: string, right: string, side: 'left' | 'right') {
-    if (!left && !right) return html``
-    if (left === right) return html`${left}`
-
-    // Handle cases where one side is empty
-    if (side === 'left') {
-      if (!left) return html`` // Left is empty, show nothing on left side
-      if (!right)
-        return html`<span class="inline-del">${left}</span>` // Entire line deleted
-    } else {
-      if (!right) return html`` // Right is empty, show nothing on right side
-      if (!left)
-        return html`<span class="inline-add">${right}</span>` // Entire line added
-    }
-
-    // Both sides have content - show word-level diff
-    const diffs = diffWords(left, right)
-
-    if (side === 'left') {
-      // Left pane: show removed (red) + unchanged, skip added
-      return html`${diffs.map((part) =>
-        part.added
-          ? html`` // Don't show added content on left side
-          : part.removed
-            ? html`<span class="inline-del">${part.value}</span>`
-            : html`${part.value}`,
-      )}`
-    } else {
-      // Right pane: show added (green) + unchanged, skip removed
-      return html`${diffs.map((part) =>
-        part.removed
-          ? html`` // Don't show removed content on right side
-          : part.added
-            ? html`<span class="inline-add">${part.value}</span>`
-            : html`${part.value}`,
-      )}`
-    }
-  }
-
-  renderUnified() {
+  /* ── Render: unified view ── */
+  private renderUnified() {
     const changes: ChangeObject<string>[] = diffLines(
       this.leftContent,
       this.rightContent,
     )
-
     return html`
       <div class="unified">
         <div class="hdr">--- ${this.leftPath}</div>
@@ -427,11 +676,9 @@ export class FileCompare extends LitElement {
         ${changes.map((change) => {
           const lines = change.value.split('\n')
           if (lines[lines.length - 1] === '') lines.pop()
-
           return lines.map((line) => {
             if (change.added) return html`<div class="add">+${line}</div>`
             if (change.removed) return html`<div class="del">-${line}</div>`
-            if (this.showOnlyDiffs) return null
             return html`<div>${line}</div>`
           })
         })}
@@ -439,12 +686,16 @@ export class FileCompare extends LitElement {
     `
   }
 
-  /* ---------- Render ---------- */
+  /* ── Main render ── */
   render() {
+    const hasDiff = this.diffBlocks.length > 0
+    const canPrev = hasDiff && this.currentDiff > 0
+    const canNext = hasDiff && this.currentDiff < this.diffBlocks.length - 1
+
     return html`
       <simple-dialog
         .open=${true}
-        title="📊 file comparison"
+        title="📊 File compare"
         width="95%"
         @dialog-close=${this.close}
       >
@@ -454,45 +705,71 @@ export class FileCompare extends LitElement {
               class="btn ${this.viewMode === 'side' ? 'active' : ''}"
               @click=${() => (this.viewMode = 'side')}
             >
-              Side
+              Side (S)
             </button>
-
             <button
               class="btn ${this.viewMode === 'unified' ? 'active' : ''}"
               @click=${() => (this.viewMode = 'unified')}
             >
-              Unified
+              Unified (U)
             </button>
 
-            <button
-              class="btn ${this.showOnlyDiffs ? 'active' : ''}"
-              @click=${() => (this.showOnlyDiffs = !this.showOnlyDiffs)}
-            >
-              Diffs Only
-            </button>
+            <div class="toolbar-sep"></div>
 
             <button
               class="btn"
-              ?disabled=${this.viewMode !== 'side' || this.currentDiff === 0}
+              ?disabled=${!canPrev}
               @click=${this.prevDiff}
+              title="Previous diff (P/↑)"
             >
               ⬆
             </button>
-
             <button
               class="btn"
-              ?disabled=${this.viewMode !== 'side' ||
-              this.currentDiff >= this.diffLines.length - 1}
+              ?disabled=${!canNext}
               @click=${this.nextDiff}
+              title="Next diff (N/↓)"
             >
               ⬇
             </button>
-
-            <span style="color:#94a3b8">
-              ${this.diffLines.length
-                ? `${this.currentDiff + 1}/${this.diffLines.length}`
+            <span style="color:#94a3b8;font-size:0.8rem;min-width:3rem">
+              ${hasDiff
+                ? `${this.currentDiff + 1} / ${this.diffBlocks.length}`
                 : 'no diffs'}
             </span>
+
+            <div class="toolbar-sep"></div>
+            <button
+              class="btn ${this.editMode ? 'edit active' : ''}"
+              @click=${() => {
+                this.editMode = !this.editMode
+              }}
+            >
+              ${this.editMode ? '✏️ Editing' : '👁 View'}
+            </button>
+
+            ${this.leftDirty
+              ? html` <div class="toolbar-sep"></div>
+                  <button
+                    class="btn save"
+                    ?disabled=${this.saving}
+                    @click=${() => this.saveFile('left')}
+                  >
+                    💾 save left${this.saving ? '…' : ''}
+                  </button>`
+              : ''}
+            ${this.rightDirty
+              ? html` ${!this.leftDirty
+                    ? html`<div class="toolbar-sep"></div>`
+                    : ''}
+                  <button
+                    class="btn save"
+                    ?disabled=${this.saving}
+                    @click=${() => this.saveFile('right')}
+                  >
+                    💾 save right${this.saving ? '…' : ''}
+                  </button>`
+              : ''}
           </div>
 
           ${this.loading
@@ -503,17 +780,9 @@ export class FileCompare extends LitElement {
                 </div>`
               : this.isBinary
                 ? html`<div style="padding:2rem;color:#94a3b8">
-                    <div style="font-size:1.2rem;margin-bottom:1rem">⚠️ Binary File Comparison</div>
-                    <div>Binary files cannot be compared as text.</div>
-                    <div style="margin-top:1rem">
-                      Left: ${this.leftPath} (${this.leftContent.length} bytes)<br/>
-                      Right: ${this.rightPath} (${this.rightContent.length} bytes)
-                    </div>
-                    <div style="margin-top:1rem;color:#fbbf24">
-                      ${this.leftContent.length === this.rightContent.length
-                        ? '✓ Files are the same size'
-                        : '✗ Files have different sizes'}
-                    </div>
+                    Binary files — cannot compare as text.<br />
+                    Left: ${this.leftContent.length} bytes &nbsp;|&nbsp; Right:
+                    ${this.rightContent.length} bytes
                   </div>`
                 : this.viewMode === 'side'
                   ? this.renderSide()
@@ -521,6 +790,11 @@ export class FileCompare extends LitElement {
         </div>
 
         <div slot="footer">
+          <span style="color:#64748b;font-size:0.75rem;">
+            ${this.leftDirty || this.rightDirty ? '● unsaved  ·  ' : ''} N/↓
+            next · P/↑ prev · S side · U unified · E edit · → copy L▶R · ← copy
+            R▶L
+          </span>
           <button class="btn" @click=${this.close}>Close (Esc)</button>
         </div>
       </simple-dialog>

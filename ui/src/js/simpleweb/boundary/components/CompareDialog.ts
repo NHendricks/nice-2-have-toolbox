@@ -1,6 +1,5 @@
 import { LitElement, css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import './FileCompare'
 import './SimpleDialog'
 
 export class CompareDialog extends LitElement {
@@ -78,6 +77,7 @@ export class CompareDialog extends LitElement {
     /* ---- Table Styles ---- */
     .compare-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       background: #0f172a;
       border-radius: 8px;
@@ -125,6 +125,7 @@ export class CompareDialog extends LitElement {
       color: #cbd5e1;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.9rem;
+      overflow: hidden;
     }
 
     .compare-table td.status-col {
@@ -136,6 +137,14 @@ export class CompareDialog extends LitElement {
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      overflow: hidden;
+    }
+
+    .file-name span:nth-child(2) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
     }
 
     .file-size {
@@ -360,9 +369,6 @@ export class CompareDialog extends LitElement {
   @property({ type: Boolean })
   showRegexDialog = false
 
-  @property({ type: Object })
-  fileCompareData: { leftPath: string; rightPath: string } | null = null
-
   formatFileSize(bytes: number): string {
     if (bytes === 0) return ''
     const sizes = ['B', 'KB', 'MB', 'GB']
@@ -580,15 +586,14 @@ export class CompareDialog extends LitElement {
       !item.leftFile.isDirectory &&
       !item.rightFile.isDirectory
     ) {
-      this.fileCompareData = {
-        leftPath: item.leftFile.path,
-        rightPath: item.rightFile.path,
-      }
+      this.dispatchEvent(
+        new CustomEvent('compare-files', {
+          bubbles: true,
+          composed: true,
+          detail: { leftPath: item.leftFile.path, rightPath: item.rightFile.path },
+        }),
+      )
     }
-  }
-
-  closeFileCompare() {
-    this.fileCompareData = null
   }
 
   render() {
@@ -1056,15 +1061,6 @@ export class CompareDialog extends LitElement {
                 </button>
               </div>
             </simple-dialog>
-          `
-        : ''}
-      ${this.fileCompareData
-        ? html`
-            <file-compare
-              .leftPath=${this.fileCompareData.leftPath}
-              .rightPath=${this.fileCompareData.rightPath}
-              @close=${this.closeFileCompare}
-            ></file-compare>
           `
         : ''}
     `

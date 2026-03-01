@@ -2259,6 +2259,8 @@ export class Commander extends LitElement {
       leftPath,
       rightPath,
     }
+    // Mark compareDialog as open for global keyboard handler
+    this.compareDialog = { result: null, recursive: false }
 
     const matchInfo =
       inactiveItem.name === activeFocusedItem.name
@@ -3363,13 +3365,17 @@ export class Commander extends LitElement {
               @close=${this.closeCompare}
               @toggle-recursive=${this.toggleCompareRecursive}
               @recompare=${this.handleCompare}
+              @compare-files=${(e: CustomEvent) => (this.fileCompareDialog = e.detail)}
             ></compare-dialog>`
           : ''}
         ${this.fileCompareDialog
           ? html`<file-compare
               .leftPath=${this.fileCompareDialog.leftPath}
               .rightPath=${this.fileCompareDialog.rightPath}
-              @close=${() => (this.fileCompareDialog = null)}
+              @close=${() => {
+                this.fileCompareDialog = null;
+                this.compareDialog = null;
+              }}
             ></file-compare>`
           : ''}
         ${this.showDriveSelector
