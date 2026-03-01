@@ -102,7 +102,6 @@ export const commanderStyles = css`
   }
 
   .pane.active .pane-header {
-    background: var(--accent);
     color: white;
   }
 
