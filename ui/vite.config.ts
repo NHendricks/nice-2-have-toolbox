@@ -9,4 +9,7 @@ export default defineConfig({
     minify: true,
     emptyOutDir: true,
   },
+  optimizeDeps: {
+    exclude: ['pdfjs-dist'],
+  },
 })

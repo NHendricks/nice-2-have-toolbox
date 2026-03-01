@@ -19,7 +19,8 @@
       "Bash(scanimage:*)",
       "Bash(grep -n \"animation:.*infinite\\\\|animation:.*4s\\\\|animation:.*1.5s\" /d/dev/nh-toolbox/ui/src/js/simpleweb/boundary/**/*.ts)",
       "Bash(grep -n \"@keyframes spin\\\\|@keyframes pulse\" /d/dev/nh-toolbox/ui/src/js/simpleweb/boundary/**/*.ts)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npm ls canvas)"
     ]
   }
 }

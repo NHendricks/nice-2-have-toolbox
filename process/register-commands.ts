@@ -22,6 +22,14 @@ export function registerCommands(ipcMain: any, version: string) {
   ipcMain.handle('getVersion', () => version);
   ipcMain.handle('get-home-path', () => app.getPath('home'));
 
+  ipcMain.handle(
+    'read-file-buffer',
+    async (_event: IpcMainInvokeEvent, filePath: string) => {
+      const fs = require('fs') as typeof import('fs');
+      return fs.readFileSync(filePath);
+    },
+  );
+
   // Backend CLI Commands - dynamically load available commands
   ipcMain.handle('cli-getCommands', async () => {
     try {
