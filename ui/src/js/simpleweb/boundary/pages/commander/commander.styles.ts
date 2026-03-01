@@ -16,7 +16,7 @@ export const commanderStyles = css`
     --accent: #007acc;
     --accent-strong: #1e90ff;
     --warning: #d7ba7d;
-    --success: #6a9955;
+    --success: #6ad955;
     --danger: #f48771;
 
     --border: #3c3c3c;
