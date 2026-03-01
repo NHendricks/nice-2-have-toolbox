@@ -11,14 +11,9 @@
       "icon": "🗑️"
     },
     {
-      "label": "MoneyFinder",
-      "path": "/moneyfinder",
-      "icon": "💰"
-    },
-    {
-      "label": "Restic UI",
-      "path": "/restic",
-      "icon": "💾"
+      "label": "System Monitor",
+      "path": "/tools/system-monitor",
+      "icon": "📊"
     },
     {
       "label": "TaskBoard",
@@ -26,12 +21,22 @@
       "icon": "✅"
     },
     {
+      "label": "Restic UI",
+      "path": "/restic",
+      "icon": "💾"
+    },
+    {
       "label": "DocManager",
       "path": "/docmanager",
       "icon": "📄"
     },
     {
-      "label": "Utils",
+      "label": "MoneyFinder",
+      "path": "/moneyfinder",
+      "icon": "💰"
+    },
+    {
+      "label": "Tiny Helpers",
       "icon": "📂",
       "hasSubmenu": true,
       "submenu": [
@@ -51,11 +56,6 @@
           "icon": "🎯"
         },
         {
-          "label": "System Monitor",
-          "path": "/tools/system-monitor",
-          "icon": "📊"
-        },
-        {
           "label": "PDF Splitter",
           "path": "/tools/pdf-splitter",
           "icon": "📑"
@@ -63,7 +63,7 @@
       ]
     },
     {
-      "label": "Help",
+      "label": "FAQ",
       "path": "/faq",
       "icon": "❓"
     }
