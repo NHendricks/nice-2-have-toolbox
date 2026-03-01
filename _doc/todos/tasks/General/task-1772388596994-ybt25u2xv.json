@@ -1,0 +1,10 @@
+{
+  "id": "task-1772388596994-ybt25u2xv",
+  "summary": "task manager - support projects",
+  "description": "when click on path show dropdown for recent paths. save them in localstorage",
+  "priority": "medium",
+  "category": "General",
+  "person": "Nils",
+  "created": "2026-03-01T18:09:56.994Z",
+  "updated": "2026-03-01T18:10:42.747Z"
+}

@@ -24,14 +24,18 @@ import {
   formatFileSize,
 } from './commander/utils/FormatUtils.js'
 import {
+  getFileName,
   getParentPath,
   getPathSeparator,
+  isFtpPath,
+  isSambaPath,
   maskFtpPassword,
 } from './commander/utils/PathUtils.js'
 import { getNextSortState, sortItems } from './commander/utils/SortUtils.js'
 
 // Import dialog components
 import './commander/dialogs/index.js'
+import './commander/dialogs/OverwriteDialog.js'
 
 export class Commander extends LitElement {
   static styles = commanderStyles
@@ -53,6 +57,19 @@ export class Commander extends LitElement {
 
   // Delegate to imported utility
   maskFtpPassword = maskFtpPassword
+
+  private overwriteAll = false
+
+  @property({ type: Object })
+  overwriteDialog: {
+    fileName: string
+    destination: string
+    type: 'copy' | 'move'
+    onConfirm: () => void
+    onAll: () => void
+    onSkip: () => void
+    onCancel: () => void
+  } | null = null
 
   @property({ type: Object })
   leftPane: PaneState = {
@@ -2085,11 +2102,122 @@ export class Commander extends LitElement {
     this.ftpDownloadProgress = null
     this.ftpUploadProgress = null
 
+    const anyFtp = files.some((f) => isFtpPath(f) || isSambaPath(f))
+    const destFtp = isFtpPath(destination) || isSambaPath(destination)
+
+    if (!anyFtp && !destFtp) {
+      // Local-to-local: per-file calls so we can ask on overwrite
+      this.setStatus(
+        `${type === 'copy' ? 'Copying' : 'Moving'} ${files.length} file(s)...`,
+        'normal',
+      )
+      this.overwriteAll = false
+      let successCount = 0
+
+      for (const file of files) {
+        const fileName = getFileName(file) || 'file'
+        const sep = getPathSeparator(destination)
+        const destPath = destination + sep + fileName
+
+        let response = await (window as any).electron.ipcRenderer.invoke(
+          'cli-execute',
+          'file-operations',
+          { operation: type, sourcePath: file, destinationPath: destPath },
+        )
+
+        if (response.success && response.data?.prompt === 'overwrite') {
+          const isDir = response.data?.type === 'directory'
+
+          if (isDir) {
+            // Scan for conflicting files inside the directory, then prompt per file
+            const scanResp = await (window as any).electron.ipcRenderer.invoke(
+              'cli-execute',
+              'file-operations',
+              { operation: 'scan-conflicts', sourcePath: file, destinationPath: destPath },
+            )
+            const conflicts: string[] = scanResp.data?.conflicts ?? []
+            const overwriteFiles: string[] = []
+
+            for (let i = 0; i < conflicts.length; i++) {
+              const conflict = conflicts[i]
+              if (this.overwriteAll) {
+                overwriteFiles.push(conflict)
+              } else {
+                const conflictName = conflict.split('/').pop() || conflict
+                const decision = await this.promptOverwrite(conflictName, destPath + '/' + conflict, type)
+                if (decision === 'cancel') {
+                  this.setStatus('Operation cancelled', 'error')
+                  this.operationDialog = null
+                  return
+                }
+                if (decision === 'skip') continue
+                if (decision === 'all') {
+                  this.overwriteAll = true
+                  for (let j = i; j < conflicts.length; j++) overwriteFiles.push(conflicts[j])
+                  break
+                }
+                overwriteFiles.push(conflict)
+              }
+            }
+
+            response = await (window as any).electron.ipcRenderer.invoke(
+              'cli-execute',
+              'file-operations',
+              { operation: type, sourcePath: file, destinationPath: destPath, overwrite: true, overwriteFiles },
+            )
+          } else {
+            if (!this.overwriteAll) {
+              const decision = await this.promptOverwrite(fileName, destination, type)
+              if (decision === 'cancel') {
+                this.setStatus('Operation cancelled', 'error')
+                this.operationDialog = null
+                return
+              }
+              if (decision === 'skip') continue
+              if (decision === 'all') this.overwriteAll = true
+            }
+            // (re-)call with overwrite flag
+            response = await (window as any).electron.ipcRenderer.invoke(
+              'cli-execute',
+              'file-operations',
+              { operation: type, sourcePath: file, destinationPath: destPath, overwrite: true },
+            )
+          }
+        }
+
+        if (response.success && !response.data?.prompt) {
+          successCount++
+        } else if (!response.success) {
+          this.setStatus(response.error || 'Unknown error', 'error')
+          this.operationDialog = null
+          return
+        }
+      }
+
+      this.copyProgress = null
+      this.setStatus(
+        `${successCount} file(s) ${type === 'copy' ? 'copied' : 'moved'}`,
+        'success',
+      )
+      if (successCount > 0) {
+        if (type === 'move' && this.clipboardFiles?.operation === 'cut') {
+          this.clipboardFiles = null
+        }
+        await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
+        await this.loadDirectory(
+          this.activePane === 'left' ? 'right' : 'left',
+          this.getInactivePane().currentPath,
+        )
+      }
+      this.operationDialog = null
+      return
+    }
+
+    // FTP / Samba: use existing batch handler
     this.setStatus(
       `${type === 'copy' ? 'Copying' : 'Moving'} ${files.length} file(s)...`,
       'normal',
     )
-
     const result = await executeFileOperation(type, files, destination)
     this.copyProgress = null
     this.ftpDownloadProgress = null
@@ -2098,16 +2226,10 @@ export class Commander extends LitElement {
     this.setStatus(result.message, result.success ? 'success' : 'error')
 
     if (result.success) {
-      // Clear clipboard after successful move (cut+paste)
       if (type === 'move' && this.clipboardFiles?.operation === 'cut') {
         this.clipboardFiles = null
       }
-
-      // Refresh both panes
-      await this.loadDirectory(
-        this.activePane,
-        this.getActivePane().currentPath,
-      )
+      await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
       await this.loadDirectory(
         this.activePane === 'left' ? 'right' : 'left',
         this.getInactivePane().currentPath,
@@ -2115,6 +2237,24 @@ export class Commander extends LitElement {
     }
 
     this.operationDialog = null
+  }
+
+  private promptOverwrite(
+    fileName: string,
+    destination: string,
+    type: 'copy' | 'move',
+  ): Promise<'overwrite' | 'all' | 'skip' | 'cancel'> {
+    return new Promise((resolve) => {
+      this.overwriteDialog = {
+        fileName,
+        destination,
+        type,
+        onConfirm: () => { this.overwriteDialog = null; resolve('overwrite') },
+        onAll: () => { this.overwriteDialog = null; resolve('all') },
+        onSkip: () => { this.overwriteDialog = null; resolve('skip') },
+        onCancel: () => { this.overwriteDialog = null; resolve('cancel') },
+      }
+    })
   }
 
   async cancelOperation() {
@@ -3287,6 +3427,17 @@ export class Commander extends LitElement {
               @update-destination=${(e: CustomEvent) =>
                 this.updateDestination(e.detail)}
             ></operation-dialog>`
+          : ''}
+        ${this.overwriteDialog
+          ? html`<overwrite-dialog
+              .fileName=${this.overwriteDialog.fileName}
+              .destination=${this.overwriteDialog.destination}
+              .type=${this.overwriteDialog.type}
+              @overwrite=${this.overwriteDialog.onConfirm}
+              @overwrite-all=${this.overwriteDialog.onAll}
+              @skip=${this.overwriteDialog.onSkip}
+              @cancel=${this.overwriteDialog.onCancel}
+            ></overwrite-dialog>`
           : ''}
         ${this.deleteDialog
           ? html`<delete-dialog

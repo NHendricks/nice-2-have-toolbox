@@ -196,6 +196,11 @@ export class KeyboardHandler {
       return true
     }
 
+    if (this.commander.overwriteDialog) {
+      this.commander.overwriteDialog.onCancel()
+      return true
+    }
+
     if (this.commander.operationDialog) {
       this.commander.cancelOperation()
       return true

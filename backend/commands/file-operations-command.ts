@@ -156,7 +156,14 @@ export class FileOperationsCommand implements ICommand {
               destinationPath,
             );
           }
-          return await this.copyFile(sourcePath, destinationPath);
+          return await this.copyFile(
+            sourcePath,
+            destinationPath,
+            params.overwrite === true,
+            params.overwriteFiles ? new Set<string>(params.overwriteFiles) : undefined,
+          );
+        case 'scan-conflicts':
+          return await this.scanConflicts(params.sourcePath, params.destinationPath);
         case 'move':
           // Support moving multiple files in one operation when sourcePath is an array
           if (Array.isArray(params.sourcePath)) {
@@ -165,7 +172,7 @@ export class FileOperationsCommand implements ICommand {
               destinationPath,
             );
           }
-          return await this.moveFile(sourcePath, destinationPath);
+          return await this.moveFile(sourcePath, destinationPath, params.overwrite === true);
         case 'rename':
           return await this.renameFile(sourcePath, destinationPath);
         case 'mkdir':
@@ -1655,6 +1662,8 @@ export class FileOperationsCommand implements ICommand {
   private async copyFile(
     sourcePath: string,
     destinationPath: string,
+    overwrite = false,
+    overwriteFiles?: Set<string>,
   ): Promise<any> {
     if (!sourcePath) {
       throw new Error('sourcePath is required for copy operation');
@@ -1874,9 +1883,18 @@ export class FileOperationsCommand implements ICommand {
 
     const sourceStats = await stat(absoluteSource);
 
-    // Get unique destination path if file/folder already exists
-    const absoluteDestination =
-      this.getUniqueDestinationPath(resolvedDestination);
+    // If destination exists and overwrite not requested, prompt the user
+    if (!overwrite && fs.existsSync(resolvedDestination)) {
+      return {
+        prompt: 'overwrite',
+        operation: 'copy',
+        source: absoluteSource,
+        destination: resolvedDestination,
+        type: sourceStats.isDirectory() ? 'directory' : 'file',
+      };
+    }
+
+    const absoluteDestination = resolvedDestination;
 
     if (sourceStats.isDirectory()) {
       // Count total files for progress tracking
@@ -1897,6 +1915,7 @@ export class FileOperationsCommand implements ICommand {
             this.progressCallback(currentFile, totalFiles, fileName);
           }
         },
+        overwriteFiles,
       );
       return {
         success: true,
@@ -2040,6 +2059,8 @@ export class FileOperationsCommand implements ICommand {
     source: string,
     destination: string,
     onFileCopied?: (fileName: string) => void,
+    overwriteFiles?: Set<string>,
+    relPath = '',
   ): Promise<void> {
     // Check for cancellation
     if (this.cancelled) {
@@ -2062,22 +2083,26 @@ export class FileOperationsCommand implements ICommand {
 
       const sourcePath = path.join(source, entry.name);
       const destPath = path.join(destination, entry.name);
+      const childRelPath = relPath ? `${relPath}/${entry.name}` : entry.name;
 
       try {
         if (entry.isDirectory()) {
           // Recursively copy subdirectory
-          await this.copyDirectoryRecursive(sourcePath, destPath, onFileCopied);
+          await this.copyDirectoryRecursive(sourcePath, destPath, onFileCopied, overwriteFiles, childRelPath);
         } else if (entry.isFile()) {
-          // Copy file
-          await copyFile(sourcePath, destPath);
+          const exists = fs.existsSync(destPath);
+          // Copy only if file doesn't exist, or user explicitly approved overwrite
+          if (!exists || overwriteFiles?.has(childRelPath)) {
+            await copyFile(sourcePath, destPath);
 
-          // Report progress
-          if (onFileCopied) {
-            onFileCopied(entry.name);
+            // Report progress
+            if (onFileCopied) {
+              onFileCopied(entry.name);
+            }
+
+            // Small delay to allow UI to update
+            await new Promise((resolve) => setTimeout(resolve, 50));
           }
-
-          // Small delay to allow UI to update
-          await new Promise((resolve) => setTimeout(resolve, 50));
         }
       } catch (error: any) {
         // Re-throw cancellation errors
@@ -2087,6 +2112,35 @@ export class FileOperationsCommand implements ICommand {
         // Skip files that are locked or inaccessible
         console.warn(`Warning: Unable to copy ${sourcePath}: ${error.message}`);
         continue;
+      }
+    }
+  }
+
+  /**
+   * Scan a source directory for files that conflict with the destination directory.
+   * Returns relative paths (e.g. "subdir/file.txt") of conflicting files.
+   */
+  private async scanConflicts(sourcePath: string, destPath: string): Promise<{ conflicts: string[] }> {
+    const absoluteSource = path.resolve(sourcePath);
+    const absoluteDest = path.resolve(destPath);
+    const conflicts: string[] = [];
+    if (fs.existsSync(absoluteSource) && fs.existsSync(absoluteDest)) {
+      await this.collectConflicts(absoluteSource, absoluteDest, '', conflicts);
+    }
+    return { conflicts };
+  }
+
+  private async collectConflicts(source: string, dest: string, rel: string, conflicts: string[]): Promise<void> {
+    const entries = await readdir(source, { withFileTypes: true });
+    for (const entry of entries) {
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      const destChild = path.join(dest, entry.name);
+      if (entry.isDirectory()) {
+        if (fs.existsSync(destChild)) {
+          await this.collectConflicts(path.join(source, entry.name), destChild, childRel, conflicts);
+        }
+      } else if (entry.isFile() && fs.existsSync(destChild)) {
+        conflicts.push(childRel);
       }
     }
   }
@@ -2146,6 +2200,7 @@ export class FileOperationsCommand implements ICommand {
   private async moveFile(
     sourcePath: string,
     destinationPath: string,
+    overwrite = false,
   ): Promise<any> {
     if (!sourcePath) {
       throw new Error('sourcePath is required for move operation');
@@ -2163,6 +2218,17 @@ export class FileOperationsCommand implements ICommand {
     }
 
     const sourceStats = await stat(absoluteSource);
+
+    // If destination exists and overwrite not requested, prompt the user
+    if (!overwrite && fs.existsSync(absoluteDestination)) {
+      return {
+        prompt: 'overwrite',
+        operation: 'move',
+        source: absoluteSource,
+        destination: absoluteDestination,
+        type: sourceStats.isDirectory() ? 'directory' : 'file',
+      };
+    }
 
     // Create destination parent directory if it doesn't exist
     const destDir = path.dirname(absoluteDestination);
