@@ -3365,7 +3365,8 @@ export class Commander extends LitElement {
               @close=${this.closeCompare}
               @toggle-recursive=${this.toggleCompareRecursive}
               @recompare=${this.handleCompare}
-              @compare-files=${(e: CustomEvent) => (this.fileCompareDialog = e.detail)}
+              @compare-files=${(e: CustomEvent) =>
+                (this.fileCompareDialog = e.detail)}
             ></compare-dialog>`
           : ''}
         ${this.fileCompareDialog
@@ -3373,8 +3374,8 @@ export class Commander extends LitElement {
               .leftPath=${this.fileCompareDialog.leftPath}
               .rightPath=${this.fileCompareDialog.rightPath}
               @close=${() => {
-                this.fileCompareDialog = null;
-                this.compareDialog = null;
+                this.fileCompareDialog = null
+                this.compareDialog = null
               }}
             ></file-compare>`
           : ''}
