@@ -2133,7 +2133,11 @@ export class Commander extends LitElement {
             const scanResp = await (window as any).electron.ipcRenderer.invoke(
               'cli-execute',
               'file-operations',
-              { operation: 'scan-conflicts', sourcePath: file, destinationPath: destPath },
+              {
+                operation: 'scan-conflicts',
+                sourcePath: file,
+                destinationPath: destPath,
+              },
             )
             const conflicts: string[] = scanResp.data?.conflicts ?? []
             const overwriteFiles: string[] = []
@@ -2144,7 +2148,11 @@ export class Commander extends LitElement {
                 overwriteFiles.push(conflict)
               } else {
                 const conflictName = conflict.split('/').pop() || conflict
-                const decision = await this.promptOverwrite(conflictName, destPath + '/' + conflict, type)
+                const decision = await this.promptOverwrite(
+                  conflictName,
+                  destPath + '/' + conflict,
+                  type,
+                )
                 if (decision === 'cancel') {
                   this.setStatus('Operation cancelled', 'error')
                   this.operationDialog = null
@@ -2153,7 +2161,8 @@ export class Commander extends LitElement {
                 if (decision === 'skip') continue
                 if (decision === 'all') {
                   this.overwriteAll = true
-                  for (let j = i; j < conflicts.length; j++) overwriteFiles.push(conflicts[j])
+                  for (let j = i; j < conflicts.length; j++)
+                    overwriteFiles.push(conflicts[j])
                   break
                 }
                 overwriteFiles.push(conflict)
@@ -2163,11 +2172,21 @@ export class Commander extends LitElement {
             response = await (window as any).electron.ipcRenderer.invoke(
               'cli-execute',
               'file-operations',
-              { operation: type, sourcePath: file, destinationPath: destPath, overwrite: true, overwriteFiles },
+              {
+                operation: type,
+                sourcePath: file,
+                destinationPath: destPath,
+                overwrite: true,
+                overwriteFiles,
+              },
             )
           } else {
             if (!this.overwriteAll) {
-              const decision = await this.promptOverwrite(fileName, destination, type)
+              const decision = await this.promptOverwrite(
+                fileName,
+                destination,
+                type,
+              )
               if (decision === 'cancel') {
                 this.setStatus('Operation cancelled', 'error')
                 this.operationDialog = null
@@ -2180,7 +2199,12 @@ export class Commander extends LitElement {
             response = await (window as any).electron.ipcRenderer.invoke(
               'cli-execute',
               'file-operations',
-              { operation: type, sourcePath: file, destinationPath: destPath, overwrite: true },
+              {
+                operation: type,
+                sourcePath: file,
+                destinationPath: destPath,
+                overwrite: true,
+              },
             )
           }
         }
@@ -2203,7 +2227,10 @@ export class Commander extends LitElement {
         if (type === 'move' && this.clipboardFiles?.operation === 'cut') {
           this.clipboardFiles = null
         }
-        await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
+        await this.loadDirectory(
+          this.activePane,
+          this.getActivePane().currentPath,
+        )
         await this.loadDirectory(
           this.activePane === 'left' ? 'right' : 'left',
           this.getInactivePane().currentPath,
@@ -2229,7 +2256,10 @@ export class Commander extends LitElement {
       if (type === 'move' && this.clipboardFiles?.operation === 'cut') {
         this.clipboardFiles = null
       }
-      await this.loadDirectory(this.activePane, this.getActivePane().currentPath)
+      await this.loadDirectory(
+        this.activePane,
+        this.getActivePane().currentPath,
+      )
       await this.loadDirectory(
         this.activePane === 'left' ? 'right' : 'left',
         this.getInactivePane().currentPath,
@@ -2249,10 +2279,22 @@ export class Commander extends LitElement {
         fileName,
         destination,
         type,
-        onConfirm: () => { this.overwriteDialog = null; resolve('overwrite') },
-        onAll: () => { this.overwriteDialog = null; resolve('all') },
-        onSkip: () => { this.overwriteDialog = null; resolve('skip') },
-        onCancel: () => { this.overwriteDialog = null; resolve('cancel') },
+        onConfirm: () => {
+          this.overwriteDialog = null
+          resolve('overwrite')
+        },
+        onAll: () => {
+          this.overwriteDialog = null
+          resolve('all')
+        },
+        onSkip: () => {
+          this.overwriteDialog = null
+          resolve('skip')
+        },
+        onCancel: () => {
+          this.overwriteDialog = null
+          resolve('cancel')
+        },
       }
     })
   }

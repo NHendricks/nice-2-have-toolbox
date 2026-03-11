@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit'
+import { LitElement, css, html } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 @customElement('overwrite-dialog')
@@ -70,16 +70,24 @@ export class OverwriteDialog extends LitElement {
   @property({ type: String }) type: 'copy' | 'move' = 'copy'
 
   private onOverwrite() {
-    this.dispatchEvent(new CustomEvent('overwrite', { bubbles: true, composed: true }))
+    this.dispatchEvent(
+      new CustomEvent('overwrite', { bubbles: true, composed: true }),
+    )
   }
   private onOverwriteAll() {
-    this.dispatchEvent(new CustomEvent('overwrite-all', { bubbles: true, composed: true }))
+    this.dispatchEvent(
+      new CustomEvent('overwrite-all', { bubbles: true, composed: true }),
+    )
   }
   private onSkip() {
-    this.dispatchEvent(new CustomEvent('skip', { bubbles: true, composed: true }))
+    this.dispatchEvent(
+      new CustomEvent('skip', { bubbles: true, composed: true }),
+    )
   }
   private onCancel() {
-    this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }))
+    this.dispatchEvent(
+      new CustomEvent('cancel', { bubbles: true, composed: true }),
+    )
   }
 
   render() {
@@ -87,12 +95,17 @@ export class OverwriteDialog extends LitElement {
       <div class="dialog">
         <div class="dialog-title">File exists</div>
         <div class="dialog-message">
-          ${this.type === 'copy' ? 'Copy' : 'Move'} <b>${this.fileName}</b> to <b>${this.destination}</b>?<br />
+          ${this.type === 'copy' ? 'Copy' : 'Move'} <b>${this.fileName}</b> to
+          <b>${this.destination}</b>?<br />
           The file already exists. What do you want to do?
         </div>
         <div class="dialog-buttons">
-          <button class="btn-overwrite" @click=${this.onOverwrite}>Overwrite</button>
-          <button class="btn-overwrite-all" @click=${this.onOverwriteAll}>Overwrite All</button>
+          <button class="btn-overwrite" @click=${this.onOverwrite}>
+            Overwrite
+          </button>
+          <button class="btn-overwrite-all" @click=${this.onOverwriteAll}>
+            Overwrite All
+          </button>
           <button class="btn-skip" @click=${this.onSkip}>Skip</button>
           <button class="btn-cancel" @click=${this.onCancel}>Cancel</button>
         </div>

@@ -160,10 +160,15 @@ export class FileOperationsCommand implements ICommand {
             sourcePath,
             destinationPath,
             params.overwrite === true,
-            params.overwriteFiles ? new Set<string>(params.overwriteFiles) : undefined,
+            params.overwriteFiles
+              ? new Set<string>(params.overwriteFiles)
+              : undefined,
           );
         case 'scan-conflicts':
-          return await this.scanConflicts(params.sourcePath, params.destinationPath);
+          return await this.scanConflicts(
+            params.sourcePath,
+            params.destinationPath,
+          );
         case 'move':
           // Support moving multiple files in one operation when sourcePath is an array
           if (Array.isArray(params.sourcePath)) {
@@ -172,7 +177,11 @@ export class FileOperationsCommand implements ICommand {
               destinationPath,
             );
           }
-          return await this.moveFile(sourcePath, destinationPath, params.overwrite === true);
+          return await this.moveFile(
+            sourcePath,
+            destinationPath,
+            params.overwrite === true,
+          );
         case 'rename':
           return await this.renameFile(sourcePath, destinationPath);
         case 'mkdir':
@@ -2088,7 +2097,13 @@ export class FileOperationsCommand implements ICommand {
       try {
         if (entry.isDirectory()) {
           // Recursively copy subdirectory
-          await this.copyDirectoryRecursive(sourcePath, destPath, onFileCopied, overwriteFiles, childRelPath);
+          await this.copyDirectoryRecursive(
+            sourcePath,
+            destPath,
+            onFileCopied,
+            overwriteFiles,
+            childRelPath,
+          );
         } else if (entry.isFile()) {
           const exists = fs.existsSync(destPath);
           // Copy only if file doesn't exist, or user explicitly approved overwrite
@@ -2120,7 +2135,10 @@ export class FileOperationsCommand implements ICommand {
    * Scan a source directory for files that conflict with the destination directory.
    * Returns relative paths (e.g. "subdir/file.txt") of conflicting files.
    */
-  private async scanConflicts(sourcePath: string, destPath: string): Promise<{ conflicts: string[] }> {
+  private async scanConflicts(
+    sourcePath: string,
+    destPath: string,
+  ): Promise<{ conflicts: string[] }> {
     const absoluteSource = path.resolve(sourcePath);
     const absoluteDest = path.resolve(destPath);
     const conflicts: string[] = [];
@@ -2130,14 +2148,24 @@ export class FileOperationsCommand implements ICommand {
     return { conflicts };
   }
 
-  private async collectConflicts(source: string, dest: string, rel: string, conflicts: string[]): Promise<void> {
+  private async collectConflicts(
+    source: string,
+    dest: string,
+    rel: string,
+    conflicts: string[],
+  ): Promise<void> {
     const entries = await readdir(source, { withFileTypes: true });
     for (const entry of entries) {
       const childRel = rel ? `${rel}/${entry.name}` : entry.name;
       const destChild = path.join(dest, entry.name);
       if (entry.isDirectory()) {
         if (fs.existsSync(destChild)) {
-          await this.collectConflicts(path.join(source, entry.name), destChild, childRel, conflicts);
+          await this.collectConflicts(
+            path.join(source, entry.name),
+            destChild,
+            childRel,
+            conflicts,
+          );
         }
       } else if (entry.isFile() && fs.existsSync(destChild)) {
         conflicts.push(childRel);

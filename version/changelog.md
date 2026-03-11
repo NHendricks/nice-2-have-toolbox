@@ -10,8 +10,37 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+- new app system monitor
+  - show running processes with cpu/memory usage
+  - show open ports
+  - option to kill processes
+  - copy full command line to clipboard
+  - windows support
+- new app pdf splitter
+  - preview pages
+  - select and export specific pages
+- commander
+  - overwrite files: ask for skip / overwrite per file
+  - edit files directly in file compare dialog
+  - fix broken junction links on windows
+  - ui improvements (colors, active pane highlight)
+- restic
+  - show diagnostic data in popup
+  - sftp diagnostics
+- garbagefinder
+  - show free disk space
+  - update free disk space after deleting files
+- taskboard
+  - scroll in lanes when dragging cards
+  - focus title on create, focus description on edit
+  - ESC closes modal
 - docmanager
   - fix ocr on windows
+  - improve ocr matching
+  - new button to open file in system explorer
+- general
+  - reorg menu / rename tools to utils
+  - update dependencies
 
 ### v2.2.0 (24.02.2026)
 
