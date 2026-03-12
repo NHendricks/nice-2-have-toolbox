@@ -15,6 +15,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - show file modification times in panes
   - fix ask for overwrite when target file exists
   - fix ESC closes only file diff window, not all compare dialogs
+  - fix compare zip and directory recusive (directories in zips were marked as non existent)
 
 ### v2.2.0 (24.02.2026)
 

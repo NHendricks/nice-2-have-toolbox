@@ -2948,6 +2948,35 @@ export class FileOperationsCommand implements ICommand {
       });
     }
 
+    // Synthesize missing directory entries from file paths.
+    // Many ZIP tools (and addFile()) don't create explicit directory entries,
+    // so we derive them from the paths of files inside the ZIP.
+    const existingPaths = new Set(files.map((f) => f.relativePath));
+    const dirsToAdd = new Set<string>();
+    for (const file of files) {
+      if (!file.isDirectory) {
+        const parts = file.relativePath.split('/');
+        for (let i = 1; i < parts.length; i++) {
+          const dirPath = parts.slice(0, i).join('/');
+          if (!existingPaths.has(dirPath)) {
+            dirsToAdd.add(dirPath);
+          }
+        }
+      }
+    }
+    for (const dirPath of dirsToAdd) {
+      const fullInternalPath = normalizedInternal
+        ? `${normalizedInternal}/${dirPath}`
+        : dirPath;
+      files.push({
+        relativePath: dirPath,
+        fullPath: `${zipFilePath}/${fullInternalPath}`,
+        size: 0,
+        modified: new Date(0).toISOString(),
+        isDirectory: true,
+      });
+    }
+
     return files;
   }
 
