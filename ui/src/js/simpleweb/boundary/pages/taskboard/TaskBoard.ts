@@ -369,6 +369,7 @@ export class TaskBoard extends LitElement {
       font-weight: 500;
       margin-bottom: 0.5rem;
       word-break: break-word;
+      cursor: pointer;
     }
 
     .task-summary-input {
@@ -395,6 +396,7 @@ export class TaskBoard extends LitElement {
       text-overflow: ellipsis;
       white-space: normal;
       word-break: break-word;
+      cursor: pointer;
     }
 
     .task-description-more {
@@ -2576,16 +2578,16 @@ export class TaskBoard extends LitElement {
           👤 ${personName}
         </div>
 
-        <div class="task-summary" @dblclick=${() => this.startEditing(task)}>
+        <div class="task-summary" @click=${() => this.startEditing(task)}>
           ${task.summary}
         </div>
         ${descriptionText
           ? html`
-              <div class="task-description" title=${descriptionText}>
+              <div class="task-description" title=${descriptionText} @click=${() => this.startEditing(task)}>
                 ${descriptionText}
               </div>
               ${showDescriptionMore
-                ? html`<div class="task-description-more">...</div>`
+                ? html`<div class="task-description-more" @click=${() => this.startEditing(task)}>...</div>`
                 : ''}
             `
           : ''}

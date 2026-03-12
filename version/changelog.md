@@ -16,6 +16,9 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - fix ask for overwrite when target file exists
   - fix ESC closes only file diff window, not all compare dialogs
   - fix compare zip and directory recusive (directories in zips were marked as non existent)
+- task board
+  -
+  - when click on path show dropdown for recent paths. save them in localstorage
 
 ### v2.2.0 (24.02.2026)
 
