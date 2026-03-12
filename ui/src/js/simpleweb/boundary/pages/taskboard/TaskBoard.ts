@@ -2583,11 +2583,20 @@ export class TaskBoard extends LitElement {
         </div>
         ${descriptionText
           ? html`
-              <div class="task-description" title=${descriptionText} @click=${() => this.startEditing(task)}>
+              <div
+                class="task-description"
+                title=${descriptionText}
+                @click=${() => this.startEditing(task)}
+              >
                 ${descriptionText}
               </div>
               ${showDescriptionMore
-                ? html`<div class="task-description-more" @click=${() => this.startEditing(task)}>...</div>`
+                ? html`<div
+                    class="task-description-more"
+                    @click=${() => this.startEditing(task)}
+                  >
+                    ...
+                  </div>`
                 : ''}
             `
           : ''}
