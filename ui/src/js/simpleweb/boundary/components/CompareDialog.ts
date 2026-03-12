@@ -590,7 +590,10 @@ export class CompareDialog extends LitElement {
         new CustomEvent('compare-files', {
           bubbles: true,
           composed: true,
-          detail: { leftPath: item.leftFile.path, rightPath: item.rightFile.path },
+          detail: {
+            leftPath: item.leftFile.path,
+            rightPath: item.rightFile.path,
+          },
         }),
       )
     }
@@ -792,7 +795,10 @@ export class CompareDialog extends LitElement {
                             <td>
                               ${item.leftFile
                                 ? html`
-                                    <div class="file-name" title="${item.leftFile.path}">
+                                    <div
+                                      class="file-name"
+                                      title="${item.leftFile.path}"
+                                    >
                                       <span
                                         >${item.leftFile.isDirectory
                                           ? '📁'
@@ -818,7 +824,10 @@ export class CompareDialog extends LitElement {
                             <td>
                               ${item.rightFile
                                 ? html`
-                                    <div class="file-name" title="${item.rightFile.path}">
+                                    <div
+                                      class="file-name"
+                                      title="${item.rightFile.path}"
+                                    >
                                       <span
                                         >${item.rightFile.isDirectory
                                           ? '📁'
