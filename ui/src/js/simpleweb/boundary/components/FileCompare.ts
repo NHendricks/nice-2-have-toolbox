@@ -230,10 +230,11 @@ export class FileCompare extends LitElement {
   /* ── Lifecycle ── */
   connectedCallback() {
     super.connectedCallback()
-    window.addEventListener('keydown', this.onKeyDown)
+    // Use capture phase so this fires BEFORE SimpleDialog's bubble-phase handlers
+    window.addEventListener('keydown', this.onKeyDown, true)
   }
   disconnectedCallback() {
-    window.removeEventListener('keydown', this.onKeyDown)
+    window.removeEventListener('keydown', this.onKeyDown, true)
     super.disconnectedCallback()
   }
 
@@ -462,11 +463,24 @@ export class FileCompare extends LitElement {
 
   /* ── Navigation ── */
   nextDiff() {
-    if (this.currentDiff < this.diffBlocks.length - 1)
+    if (this.diffBlocks.length === 0) return
+    // Allow scrolling to current diff if we haven't scrolled yet,
+    // or move to next diff if available
+    if (this.currentDiff < this.diffBlocks.length - 1) {
       this.scrollToDiff(this.currentDiff + 1)
+    } else if (this.diffBlocks.length === 1) {
+      // With only 1 diff, always allow jumping to it
+      this.scrollToDiff(0)
+    }
   }
   prevDiff() {
-    if (this.currentDiff > 0) this.scrollToDiff(this.currentDiff - 1)
+    if (this.diffBlocks.length === 0) return
+    if (this.currentDiff > 0) {
+      this.scrollToDiff(this.currentDiff - 1)
+    } else if (this.diffBlocks.length === 1) {
+      // With only 1 diff, always allow jumping to it
+      this.scrollToDiff(0)
+    }
   }
 
   scrollToDiff(index: number) {
@@ -555,7 +569,12 @@ export class FileCompare extends LitElement {
       return
     }
     if (isTextarea) return
-    if (e.key === 'Escape') this.close()
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      this.close()
+      return
+    }
     if (e.key === 'n' || e.key === 'ArrowDown') {
       e.preventDefault()
       this.nextDiff()
@@ -702,8 +721,13 @@ export class FileCompare extends LitElement {
   /* ── Main render ── */
   render() {
     const hasDiff = this.diffBlocks.length > 0
-    const canPrev = hasDiff && this.currentDiff > 0
-    const canNext = hasDiff && this.currentDiff < this.diffBlocks.length - 1
+    // When there's only 1 diff, both buttons should be enabled to allow jumping to it
+    const canPrev =
+      hasDiff && (this.currentDiff > 0 || this.diffBlocks.length === 1)
+    const canNext =
+      hasDiff &&
+      (this.currentDiff < this.diffBlocks.length - 1 ||
+        this.diffBlocks.length === 1)
 
     return html`
       <simple-dialog

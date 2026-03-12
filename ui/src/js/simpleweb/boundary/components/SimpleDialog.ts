@@ -105,6 +105,8 @@ export class SimpleDialog extends LitElement {
   }
 
   handleKeyDown = (e: KeyboardEvent) => {
+    // Don't handle if the event was already handled (e.g., by a child component)
+    if (e.defaultPrevented) return
     if (e.key === 'Escape' && this.open) {
       this.close()
     }

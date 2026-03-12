@@ -1892,20 +1892,31 @@ export class FileOperationsCommand implements ICommand {
 
     const sourceStats = await stat(absoluteSource);
 
-    // If destination exists and overwrite not requested, prompt the user
-    if (!overwrite && fs.existsSync(resolvedDestination)) {
-      return {
-        prompt: 'overwrite',
-        operation: 'copy',
-        source: absoluteSource,
-        destination: resolvedDestination,
-        type: sourceStats.isDirectory() ? 'directory' : 'file',
-      };
-    }
-
     const absoluteDestination = resolvedDestination;
 
     if (sourceStats.isDirectory()) {
+      // For directory copies, scan for conflicts even if destination exists
+      // But only if we haven't already received overwrite instructions
+      if (!overwrite && !overwriteFiles && fs.existsSync(absoluteDestination)) {
+        // Scan for file conflicts within the directory
+        const { conflicts } = await this.scanConflicts(
+          absoluteSource,
+          absoluteDestination,
+        );
+
+        // If there are conflicts, return them for user confirmation
+        if (conflicts.length > 0) {
+          return {
+            prompt: 'conflicts',
+            operation: 'copy',
+            source: absoluteSource,
+            destination: absoluteDestination,
+            type: 'directory',
+            conflicts: conflicts,
+          };
+        }
+        // If no conflicts, we can proceed with the copy
+      }
       // Count total files for progress tracking
       const totalFiles = await this.countFilesRecursive(absoluteSource);
       let currentFile = 0;
@@ -1935,6 +1946,17 @@ export class FileOperationsCommand implements ICommand {
         timestamp: new Date().toISOString(),
       };
     } else if (sourceStats.isFile()) {
+      // For file copies, check if destination exists and prompt for overwrite
+      if (!overwrite && fs.existsSync(absoluteDestination)) {
+        return {
+          prompt: 'overwrite',
+          operation: 'copy',
+          source: absoluteSource,
+          destination: absoluteDestination,
+          type: 'file',
+        };
+      }
+
       // Create destination directory if it doesn't exist
       const destDir = path.dirname(absoluteDestination);
       if (!fs.existsSync(destDir)) {
@@ -3213,6 +3235,10 @@ export class FileOperationsCommand implements ICommand {
       const totalFiles = allFiles.length;
       let addedCount = 0;
 
+      // Process files in batches to reduce UI update overhead
+      const BATCH_SIZE = 10;
+      const PROGRESS_UPDATE_INTERVAL = 5; // Update progress every N files
+
       for (let i = 0; i < allFiles.length; i++) {
         // Check for cancellation before processing each file
         if (this.cancelled) {
@@ -3221,13 +3247,18 @@ export class FileOperationsCommand implements ICommand {
 
         const file = allFiles[i];
 
-        // Report progress
-        if (progressCallback) {
+        // Report progress less frequently to reduce overhead
+        if (
+          progressCallback &&
+          (i % PROGRESS_UPDATE_INTERVAL === 0 || i === allFiles.length - 1)
+        ) {
           progressCallback(i + 1, totalFiles, file.displayName);
         }
 
         try {
           // Read file content and add to zip
+          // Using readFileSync is actually faster than async for many small files
+          // because it avoids the async/await overhead
           const fileContent = fs.readFileSync(file.fullPath);
           zip.addFile(file.zipPath.replace(/\\/g, '/'), fileContent);
           addedCount++;
@@ -3242,8 +3273,10 @@ export class FileOperationsCommand implements ICommand {
           continue;
         }
 
-        // Small delay to allow UI updates
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        // Yield control to event loop periodically, not on every file
+        if (i % BATCH_SIZE === 0 && i > 0) {
+          await new Promise((resolve) => setImmediate(resolve));
+        }
       }
 
       if (addedCount === 0) {

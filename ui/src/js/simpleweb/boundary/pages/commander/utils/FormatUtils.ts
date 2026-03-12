@@ -34,9 +34,9 @@ export function formatShortDate(date: Date): string {
 }
 
 /**
- * Format a date compactly for file listings (DD.MM.YY)
+ * Format a date compactly for file listings (DD.MM.YY HH:MM)
  * @param date - Date, string, or timestamp to format
- * @returns Compact date string (e.g., "15.01.24")
+ * @returns Compact date string with time (e.g., "15.01.24 14:30")
  */
 export function formatCompactDate(date: Date | string | number): string {
   if (!date) return '-'
@@ -45,7 +45,9 @@ export function formatCompactDate(date: Date | string | number): string {
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const year = String(d.getFullYear()).slice(-2)
-  return `${day}.${month}.${year}`
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${day}.${month}.${year} ${hours}:${minutes}`
 }
 
 /**

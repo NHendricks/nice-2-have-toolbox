@@ -10,6 +10,14 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 (you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
 
+- commander
+  - zips files 50 times faster
+  - show file modification times in panes
+  - fix ask for overwrite when target file exists
+  - fix ESC closes only file diff window, not all compare dialogs
+
+### v2.2.0 (24.02.2026)
+
 - new app system monitor
   - show running processes with cpu/memory usage
   - show open ports

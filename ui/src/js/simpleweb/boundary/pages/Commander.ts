@@ -2125,66 +2125,20 @@ export class Commander extends LitElement {
           { operation: type, sourcePath: file, destinationPath: destPath },
         )
 
-        if (response.success && response.data?.prompt === 'overwrite') {
-          const isDir = response.data?.type === 'directory'
+        if (response.success && response.data?.prompt === 'conflicts') {
+          // Directory copy: backend already scanned conflicts and returned them
+          const conflicts: string[] = response.data.conflicts ?? []
+          const overwriteFiles: string[] = []
 
-          if (isDir) {
-            // Scan for conflicting files inside the directory, then prompt per file
-            const scanResp = await (window as any).electron.ipcRenderer.invoke(
-              'cli-execute',
-              'file-operations',
-              {
-                operation: 'scan-conflicts',
-                sourcePath: file,
-                destinationPath: destPath,
-              },
-            )
-            const conflicts: string[] = scanResp.data?.conflicts ?? []
-            const overwriteFiles: string[] = []
-
-            for (let i = 0; i < conflicts.length; i++) {
-              const conflict = conflicts[i]
-              if (this.overwriteAll) {
-                overwriteFiles.push(conflict)
-              } else {
-                const conflictName = conflict.split('/').pop() || conflict
-                const decision = await this.promptOverwrite(
-                  conflictName,
-                  destPath + '/' + conflict,
-                  type,
-                )
-                if (decision === 'cancel') {
-                  this.setStatus('Operation cancelled', 'error')
-                  this.operationDialog = null
-                  return
-                }
-                if (decision === 'skip') continue
-                if (decision === 'all') {
-                  this.overwriteAll = true
-                  for (let j = i; j < conflicts.length; j++)
-                    overwriteFiles.push(conflicts[j])
-                  break
-                }
-                overwriteFiles.push(conflict)
-              }
-            }
-
-            response = await (window as any).electron.ipcRenderer.invoke(
-              'cli-execute',
-              'file-operations',
-              {
-                operation: type,
-                sourcePath: file,
-                destinationPath: destPath,
-                overwrite: true,
-                overwriteFiles,
-              },
-            )
-          } else {
-            if (!this.overwriteAll) {
+          for (let i = 0; i < conflicts.length; i++) {
+            const conflict = conflicts[i]
+            if (this.overwriteAll) {
+              overwriteFiles.push(conflict)
+            } else {
+              const conflictName = conflict.split('/').pop() || conflict
               const decision = await this.promptOverwrite(
-                fileName,
-                destination,
+                conflictName,
+                destPath + '/' + conflict,
                 type,
               )
               if (decision === 'cancel') {
@@ -2193,20 +2147,53 @@ export class Commander extends LitElement {
                 return
               }
               if (decision === 'skip') continue
-              if (decision === 'all') this.overwriteAll = true
+              if (decision === 'all') {
+                this.overwriteAll = true
+                for (let j = i; j < conflicts.length; j++)
+                  overwriteFiles.push(conflicts[j])
+                break
+              }
+              overwriteFiles.push(conflict)
             }
-            // (re-)call with overwrite flag
-            response = await (window as any).electron.ipcRenderer.invoke(
-              'cli-execute',
-              'file-operations',
-              {
-                operation: type,
-                sourcePath: file,
-                destinationPath: destPath,
-                overwrite: true,
-              },
-            )
           }
+
+          response = await (window as any).electron.ipcRenderer.invoke(
+            'cli-execute',
+            'file-operations',
+            {
+              operation: type,
+              sourcePath: file,
+              destinationPath: destPath,
+              overwriteFiles,
+            },
+          )
+        } else if (response.success && response.data?.prompt === 'overwrite') {
+          // Single file overwrite prompt
+          if (!this.overwriteAll) {
+            const decision = await this.promptOverwrite(
+              fileName,
+              destination,
+              type,
+            )
+            if (decision === 'cancel') {
+              this.setStatus('Operation cancelled', 'error')
+              this.operationDialog = null
+              return
+            }
+            if (decision === 'skip') continue
+            if (decision === 'all') this.overwriteAll = true
+          }
+          // (re-)call with overwrite flag
+          response = await (window as any).electron.ipcRenderer.invoke(
+            'cli-execute',
+            'file-operations',
+            {
+              operation: type,
+              sourcePath: file,
+              destinationPath: destPath,
+              overwrite: true,
+            },
+          )
         }
 
         if (response.success && !response.data?.prompt) {
@@ -3568,7 +3555,7 @@ export class Commander extends LitElement {
               .rightPath=${this.fileCompareDialog.rightPath}
               @close=${() => {
                 this.fileCompareDialog = null
-                this.compareDialog = null
+                // Don't close compareDialog - keep it open
               }}
             ></file-compare>`
           : ''}

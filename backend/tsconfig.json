@@ -17,5 +17,5 @@
     "types": ["node", "jest"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist", "__tests__"]
+  "exclude": ["node_modules", "dist"]
 }

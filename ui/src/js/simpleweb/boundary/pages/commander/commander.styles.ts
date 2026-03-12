@@ -128,7 +128,7 @@ export const commanderStyles = css`
 
   .file-item {
     display: grid;
-    grid-template-columns: 20px 1fr 75px 55px;
+    grid-template-columns: 20px 1fr 105px 55px;
     gap: 0.8rem;
     align-items: center;
     padding: 0.2rem 0.4rem;

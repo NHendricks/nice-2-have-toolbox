@@ -245,6 +245,107 @@ describe('FileOperationsCommand', () => {
       fs.rmSync(sourceDir, { recursive: true, force: true });
       fs.rmSync(destDir, { recursive: true, force: true });
     });
+
+    it('should detect conflicts when copying directory with existing files', async () => {
+      const sourceDir = path.join(testDir, 'copy-conflict-source');
+      const destDir = path.join(testDir, 'copy-conflict-dest');
+
+      // Create source directory with files
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, 'file1.txt'), 'source content 1');
+      fs.writeFileSync(path.join(sourceDir, 'file2.txt'), 'source content 2');
+      fs.mkdirSync(path.join(sourceDir, 'subdir'));
+      fs.writeFileSync(
+        path.join(sourceDir, 'subdir', 'nested.txt'),
+        'nested source',
+      );
+
+      // Create destination directory with conflicting files
+      fs.mkdirSync(destDir, { recursive: true });
+      fs.writeFileSync(path.join(destDir, 'file1.txt'), 'dest content 1');
+      fs.mkdirSync(path.join(destDir, 'subdir'));
+      fs.writeFileSync(
+        path.join(destDir, 'subdir', 'nested.txt'),
+        'nested dest',
+      );
+
+      // Try to copy without overwrite - should return conflicts
+      const result = await command.execute({
+        operation: 'copy',
+        sourcePath: sourceDir,
+        destinationPath: destDir,
+        overwrite: false,
+      });
+
+      expect(result.prompt).toBe('conflicts');
+      expect(result.operation).toBe('copy');
+      expect(result.type).toBe('directory');
+      expect(result.conflicts).toBeDefined();
+      expect(result.conflicts.length).toBe(2);
+      expect(result.conflicts).toContain('file1.txt');
+      expect(result.conflicts).toContain('subdir/nested.txt');
+
+      // Now copy with specific files to overwrite
+      const result2 = await command.execute({
+        operation: 'copy',
+        sourcePath: sourceDir,
+        destinationPath: destDir,
+        overwrite: false,
+        overwriteFiles: ['file1.txt'],
+      });
+
+      expect(result2.success).toBe(true);
+      expect(fs.readFileSync(path.join(destDir, 'file1.txt'), 'utf-8')).toBe(
+        'source content 1',
+      );
+      expect(fs.readFileSync(path.join(destDir, 'file2.txt'), 'utf-8')).toBe(
+        'source content 2',
+      );
+      // nested.txt should not be overwritten since it wasn't in the list
+      expect(
+        fs.readFileSync(path.join(destDir, 'subdir', 'nested.txt'), 'utf-8'),
+      ).toBe('nested dest');
+
+      // Cleanup
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+      fs.rmSync(destDir, { recursive: true, force: true });
+    });
+
+    it('should prompt for overwrite when copying file to existing file', async () => {
+      const sourceFile = path.join(testDir, 'copy-overwrite-source.txt');
+      const destFile = path.join(testDir, 'copy-overwrite-dest.txt');
+      fs.writeFileSync(sourceFile, 'new content');
+      fs.writeFileSync(destFile, 'old content');
+
+      const result = await command.execute({
+        operation: 'copy',
+        sourcePath: sourceFile,
+        destinationPath: destFile,
+        overwrite: false,
+      });
+
+      expect(result.prompt).toBe('overwrite');
+      expect(result.operation).toBe('copy');
+      expect(result.type).toBe('file');
+
+      // File should not be overwritten yet
+      expect(fs.readFileSync(destFile, 'utf-8')).toBe('old content');
+
+      // Now copy with overwrite
+      const result2 = await command.execute({
+        operation: 'copy',
+        sourcePath: sourceFile,
+        destinationPath: destFile,
+        overwrite: true,
+      });
+
+      expect(result2.success).toBe(true);
+      expect(fs.readFileSync(destFile, 'utf-8')).toBe('new content');
+
+      // Cleanup
+      fs.unlinkSync(sourceFile);
+      fs.unlinkSync(destFile);
+    });
   });
 
   describe('moveFile operation', () => {
@@ -432,6 +533,47 @@ describe('FileOperationsCommand', () => {
       // Cleanup
       fs.unlinkSync(file1);
       fs.unlinkSync(file2);
+      fs.unlinkSync(zipPath);
+    });
+
+    it('should efficiently zip many small files', async () => {
+      const tempFolder = path.join(testDir, 'many-files');
+      fs.mkdirSync(tempFolder, { recursive: true });
+
+      // Create 50 small files
+      const numFiles = 50;
+      for (let i = 0; i < numFiles; i++) {
+        fs.writeFileSync(
+          path.join(tempFolder, `file${i}.txt`),
+          `Content of file ${i}`,
+        );
+      }
+
+      const zipPath = path.join(testDir, 'many-files.zip');
+      const startTime = Date.now();
+
+      const result = await command.execute({
+        operation: 'zip',
+        files: [tempFolder],
+        zipFilePath: zipPath,
+      });
+
+      const duration = Date.now() - startTime;
+
+      expect(result.success).toBe(true);
+      expect(result.filesAdded).toBe(numFiles);
+      expect(fs.existsSync(zipPath)).toBe(true);
+
+      // Should complete in under 3 seconds (with optimizations)
+      // Without optimizations, this would take 50 * 50ms = 2.5s just for delays
+      expect(duration).toBeLessThan(3000);
+
+      console.log(
+        `\n  Zipped ${numFiles} files in ${duration}ms (${(duration / numFiles).toFixed(1)}ms per file)`,
+      );
+
+      // Cleanup
+      fs.rmSync(tempFolder, { recursive: true, force: true });
       fs.unlinkSync(zipPath);
     });
 
