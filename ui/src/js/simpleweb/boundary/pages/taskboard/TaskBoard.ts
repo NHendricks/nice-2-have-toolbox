@@ -125,6 +125,10 @@ export class TaskBoard extends LitElement {
       align-items: center;
     }
 
+    .folder-path-wrapper {
+      position: relative;
+    }
+
     .folder-path {
       background: #0f172a;
       border: 1px solid #334155;
@@ -136,6 +140,81 @@ export class TaskBoard extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .folder-path:hover {
+      border-color: #475569;
+      color: #cbd5e1;
+    }
+
+    .recent-paths-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      min-width: 100%;
+      max-width: 560px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .recent-paths-header {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #334155;
+    }
+
+    .recent-path-item {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .recent-path-item:hover {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .recent-path-item.active {
+      color: #3b82f6;
+    }
+
+    .recent-path-label {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-path-remove {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: #475569;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0 0.2rem;
+      line-height: 1;
+      border-radius: 3px;
+    }
+
+    .recent-path-remove:hover {
+      color: #f87171;
+      background: #3b1f1f;
     }
 
     .btn {
@@ -1030,23 +1109,35 @@ export class TaskBoard extends LitElement {
   @state() private editingBoardTitle: boolean = false
   @state() private topFiltersExpanded: boolean = false
   @state() private backlogExpanded: boolean = false
+  @state() private recentPaths: string[] = []
+  @state() private recentPathsOpen: boolean = false
   private readonly onWindowKeyDown = (e: KeyboardEvent) => {
-    if (e.key !== 'Escape') return
-    if (!this.editingTaskId) return
+    if (e.key === 'Escape') {
+      if (this.recentPathsOpen) {
+        this.recentPathsOpen = false
+        return
+      }
+      if (!this.editingTaskId) return
+      e.preventDefault()
+      e.stopPropagation()
+      this.cancelEditing()
+    }
+  }
 
-    e.preventDefault()
-    e.stopPropagation()
-    this.cancelEditing()
+  private readonly onWindowClick = () => {
+    if (this.recentPathsOpen) this.recentPathsOpen = false
   }
 
   connectedCallback() {
     super.connectedCallback()
     window.addEventListener('keydown', this.onWindowKeyDown, true)
+    window.addEventListener('click', this.onWindowClick)
     this.loadFolderPath()
   }
 
   disconnectedCallback() {
     window.removeEventListener('keydown', this.onWindowKeyDown, true)
+    window.removeEventListener('click', this.onWindowClick)
     super.disconnectedCallback()
   }
 
@@ -1078,7 +1169,23 @@ export class TaskBoard extends LitElement {
     })
   }
 
+  private loadRecentPaths() {
+    try {
+      const raw = localStorage.getItem('taskboard-recent-folders')
+      this.recentPaths = raw ? (JSON.parse(raw) as string[]) : []
+    } catch {
+      this.recentPaths = []
+    }
+  }
+
+  private addRecentPath(path: string) {
+    const updated = [path, ...this.recentPaths.filter((p) => p !== path)].slice(0, 10)
+    this.recentPaths = updated
+    localStorage.setItem('taskboard-recent-folders', JSON.stringify(updated))
+  }
+
   private async loadFolderPath() {
+    this.loadRecentPaths()
     const savedPath = localStorage.getItem('taskboard-folder')
     if (savedPath) {
       this.folderPath = savedPath
@@ -1584,6 +1691,7 @@ export class TaskBoard extends LitElement {
       ) {
         this.folderPath = response.filePaths[0]
         localStorage.setItem('taskboard-folder', this.folderPath)
+        this.addRecentPath(this.folderPath)
         await this.ensureReadmeFile()
         await this.loadBoardTitle()
 
@@ -2855,6 +2963,49 @@ export class TaskBoard extends LitElement {
     `
   }
 
+  private renderRecentPathsDropdown() {
+    if (!this.recentPathsOpen || this.recentPaths.length === 0) return ''
+    return html`
+      <div class="recent-paths-dropdown">
+        <div class="recent-paths-header">Recent folders</div>
+        ${this.recentPaths.map(
+          (p) => html`
+            <div
+              class="recent-path-item ${p === this.folderPath ? 'active' : ''}"
+              title=${p}
+              @click=${async (e: Event) => {
+                e.stopPropagation()
+                this.recentPathsOpen = false
+                if (p === this.folderPath) return
+                this.folderPath = p
+                localStorage.setItem('taskboard-folder', p)
+                await this.ensureReadmeFile()
+                await this.loadBoardTitle()
+                await this.ensureDefaultCategory()
+                await this.loadCategories()
+                await this.migrateOldTasks()
+                await this.loadTasks()
+              }}
+            >
+              <span class="recent-path-label">${p}</span>
+              <button
+                class="recent-path-remove"
+                title="Remove from recent"
+                @click=${(e: Event) => {
+                  e.stopPropagation()
+                  const updated = this.recentPaths.filter((r) => r !== p)
+                  this.recentPaths = updated
+                  localStorage.setItem('taskboard-recent-folders', JSON.stringify(updated))
+                  if (updated.length === 0) this.recentPathsOpen = false
+                }}
+              >✕</button>
+            </div>
+          `,
+        )}
+      </div>
+    `
+  }
+
   private renderColumn(column: {
     id: TaskStatus
     label: string
@@ -3275,9 +3426,23 @@ export class TaskBoard extends LitElement {
           </h1>
           <div class="header-actions">
             ${this.folderPath
-              ? html`<span class="folder-path" title=${this.folderPath}
-                  >${this.folderPath}</span
-                >`
+              ? html`
+                  <div
+                    class="folder-path-wrapper"
+                    @click=${(e: Event) => e.stopPropagation()}
+                  >
+                    <span
+                      class="folder-path"
+                      title=${this.folderPath}
+                      @click=${() => {
+                        if (this.recentPaths.length > 0) {
+                          this.recentPathsOpen = !this.recentPathsOpen
+                        }
+                      }}
+                    >${this.folderPath}</span>
+                    ${this.renderRecentPathsDropdown()}
+                  </div>
+                `
               : ''}
             <button class="btn btn-secondary" @click=${this.selectFolder}>
               ${this.folderPath ? 'Change Folder' : 'Select Folder'}
