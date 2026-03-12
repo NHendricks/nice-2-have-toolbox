@@ -158,7 +158,7 @@ export class TaskBoard extends LitElement {
       background: #1e293b;
       border: 1px solid #475569;
       border-radius: 6px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
       z-index: 1000;
       overflow: hidden;
     }
@@ -1179,7 +1179,10 @@ export class TaskBoard extends LitElement {
   }
 
   private addRecentPath(path: string) {
-    const updated = [path, ...this.recentPaths.filter((p) => p !== path)].slice(0, 10)
+    const updated = [path, ...this.recentPaths.filter((p) => p !== path)].slice(
+      0,
+      10,
+    )
     this.recentPaths = updated
     localStorage.setItem('taskboard-recent-folders', JSON.stringify(updated))
   }
@@ -2995,10 +2998,15 @@ export class TaskBoard extends LitElement {
                   e.stopPropagation()
                   const updated = this.recentPaths.filter((r) => r !== p)
                   this.recentPaths = updated
-                  localStorage.setItem('taskboard-recent-folders', JSON.stringify(updated))
+                  localStorage.setItem(
+                    'taskboard-recent-folders',
+                    JSON.stringify(updated),
+                  )
                   if (updated.length === 0) this.recentPathsOpen = false
                 }}
-              >✕</button>
+              >
+                ✕
+              </button>
             </div>
           `,
         )}
@@ -3439,7 +3447,8 @@ export class TaskBoard extends LitElement {
                           this.recentPathsOpen = !this.recentPathsOpen
                         }
                       }}
-                    >${this.folderPath}</span>
+                      >${this.folderPath}</span
+                    >
                     ${this.renderRecentPathsDropdown()}
                   </div>
                 `
