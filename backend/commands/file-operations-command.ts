@@ -204,6 +204,10 @@ export class FileOperationsCommand implements ICommand {
             params.files,
             params.zipFilePath,
             this.progressCallback,
+            params.overwrite === true,
+            params.overwriteFiles
+              ? new Set<string>(params.overwriteFiles)
+              : undefined,
           );
         case 'get-file-associations':
           return await this.getFileAssociations(filePath);
@@ -1837,11 +1841,64 @@ export class FileOperationsCommand implements ICommand {
           throw error;
         }
       } else {
-        ZipHelper.addToZip(
-          destZip.zipFile,
-          sourceFilePath,
-          destZip.internalPath,
-        );
+        const sourceIsDir =
+          fs.existsSync(sourceFilePath) &&
+          fs.statSync(sourceFilePath).isDirectory();
+
+        if (sourceIsDir) {
+          // Directory copy to ZIP: scan individual file conflicts
+          if (!overwrite && !overwriteFiles) {
+            const conflicts = ZipHelper.scanFolderConflictsInZip(
+              destZip.zipFile,
+              destZip.internalPath,
+              sourceFilePath,
+            );
+            if (conflicts.length > 0) {
+              return {
+                prompt: 'conflicts',
+                operation: 'copy',
+                source: sourceFilePath,
+                destination: destinationPath,
+                type: 'directory',
+                conflicts,
+              };
+            }
+          }
+          if (overwrite) {
+            // Overwrite all — addLocalFolder handles it
+            ZipHelper.addToZip(
+              destZip.zipFile,
+              sourceFilePath,
+              destZip.internalPath,
+            );
+          } else {
+            ZipHelper.addFolderToZipSelective(
+              destZip.zipFile,
+              sourceFilePath,
+              destZip.internalPath,
+              overwriteFiles ?? new Set<string>(),
+            );
+          }
+        } else {
+          // Single file: check for existing ZIP entry
+          if (
+            !overwrite &&
+            ZipHelper.entryExistsInZip(destZip.zipFile, destZip.internalPath)
+          ) {
+            return {
+              prompt: 'overwrite',
+              operation: 'copy',
+              source: sourceFilePath,
+              destination: destinationPath,
+              type: 'file',
+            };
+          }
+          ZipHelper.addToZip(
+            destZip.zipFile,
+            sourceFilePath,
+            destZip.internalPath,
+          );
+        }
       }
 
       return {
@@ -1856,6 +1913,20 @@ export class FileOperationsCommand implements ICommand {
 
     // Case 3: ZIP to ZIP (extract then add)
     if (sourceZip.isZipPath && destZip.isZipPath) {
+      // Check for existing entry in destination ZIP before overwriting
+      if (
+        !overwrite &&
+        ZipHelper.entryExistsInZip(destZip.zipFile, destZip.internalPath)
+      ) {
+        return {
+          prompt: 'overwrite',
+          operation: 'copy',
+          source: sourcePath,
+          destination: destinationPath,
+          type: 'file',
+        };
+      }
+
       // Create temp file
       const tempPath = path.join(
         os.tmpdir(),
@@ -3198,6 +3269,8 @@ export class FileOperationsCommand implements ICommand {
       total: number,
       fileName: string,
     ) => void,
+    overwrite = false,
+    overwriteFiles?: Set<string>,
   ): Promise<any> {
     if (!files || files.length === 0) {
       throw new Error('files array is required for zip operation');
@@ -3256,9 +3329,29 @@ export class FileOperationsCommand implements ICommand {
       }
 
       // Create or open the ZIP file
-      const zip = fs.existsSync(zipFilePath)
-        ? new AdmZip(zipFilePath)
-        : new AdmZip();
+      const zipExists = fs.existsSync(zipFilePath);
+      const zip = zipExists ? new AdmZip(zipFilePath) : new AdmZip();
+
+      // If ZIP exists and we haven't received overwrite instructions, check for conflicts
+      if (zipExists && !overwrite && !overwriteFiles) {
+        const conflicts: string[] = [];
+        for (const file of allFiles) {
+          const zipEntryPath = file.zipPath.replace(/\\/g, '/');
+          if (zip.getEntry(zipEntryPath) !== null) {
+            conflicts.push(zipEntryPath);
+          }
+        }
+
+        // If there are conflicts, return them for user confirmation
+        if (conflicts.length > 0) {
+          return {
+            prompt: 'conflicts',
+            operation: 'zip',
+            zipFile: zipFilePath,
+            conflicts: conflicts,
+          };
+        }
+      }
 
       // Now add each file individually with progress reporting
       const totalFiles = allFiles.length;
@@ -3275,6 +3368,7 @@ export class FileOperationsCommand implements ICommand {
         }
 
         const file = allFiles[i];
+        const zipEntryPath = file.zipPath.replace(/\\/g, '/');
 
         // Report progress less frequently to reduce overhead
         if (
@@ -3284,12 +3378,24 @@ export class FileOperationsCommand implements ICommand {
           progressCallback(i + 1, totalFiles, file.displayName);
         }
 
+        // Check if entry exists in zip
+        const entryExists = zip.getEntry(zipEntryPath) !== null;
+        if (entryExists) {
+          // Only add if user explicitly approved overwrite for this file
+          if (!overwriteFiles?.has(zipEntryPath)) {
+            console.log(
+              `File ${zipEntryPath} already exists in zip. Skipping (not in overwrite list).`,
+            );
+            continue;
+          }
+          // Remove existing entry before adding the new version
+          zip.deleteFile(zipEntryPath);
+        }
+
         try {
           // Read file content and add to zip
-          // Using readFileSync is actually faster than async for many small files
-          // because it avoids the async/await overhead
           const fileContent = fs.readFileSync(file.fullPath);
-          zip.addFile(file.zipPath.replace(/\\/g, '/'), fileContent);
+          zip.addFile(zipEntryPath, fileContent);
           addedCount++;
         } catch (error: any) {
           // Re-throw cancellation errors

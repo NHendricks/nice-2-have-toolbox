@@ -307,47 +307,57 @@ ipcMain.handle('show-save-dialog', async (_event: any, options: any) => {
 });
 
 // Drag and drop IPC handler
-ipcMain.on('start-drag', async (event: any, filePathOrPaths: string | string[]) => {
-  try {
-    const isMultiple = Array.isArray(filePathOrPaths);
+ipcMain.on(
+  'start-drag',
+  async (event: any, filePathOrPaths: string | string[]) => {
+    try {
+      const isMultiple = Array.isArray(filePathOrPaths);
 
-    if (isMultiple) {
-      // Handle multiple files
-      const absolutePaths = filePathOrPaths.map(fp =>
-        path.isAbsolute(fp) ? fp : path.resolve(fp)
-      );
+      if (isMultiple) {
+        // Handle multiple files
+        const absolutePaths = filePathOrPaths.map((fp) =>
+          path.isAbsolute(fp) ? fp : path.resolve(fp),
+        );
 
-      console.log('[start-drag] Dragging', absolutePaths.length, 'files:', absolutePaths);
+        console.log(
+          '[start-drag] Dragging',
+          absolutePaths.length,
+          'files:',
+          absolutePaths,
+        );
 
-      // Get icon from first file
-      const icon = await app.getFileIcon(absolutePaths[0], { size: 'normal' });
+        // Get icon from first file
+        const icon = await app.getFileIcon(absolutePaths[0], {
+          size: 'normal',
+        });
 
-      // Start drag with multiple files
-      event.sender.startDrag({
-        files: absolutePaths,
-        icon: icon,
-      });
-    } else {
-      // Handle single file
-      const absolutePath = path.isAbsolute(filePathOrPaths)
-        ? filePathOrPaths
-        : path.resolve(filePathOrPaths);
+        // Start drag with multiple files
+        event.sender.startDrag({
+          files: absolutePaths,
+          icon: icon,
+        });
+      } else {
+        // Handle single file
+        const absolutePath = path.isAbsolute(filePathOrPaths)
+          ? filePathOrPaths
+          : path.resolve(filePathOrPaths);
 
-      console.log('[start-drag] Dragging file:', absolutePath);
+        console.log('[start-drag] Dragging file:', absolutePath);
 
-      // Get file icon (required parameter)
-      const icon = await app.getFileIcon(absolutePath, { size: 'normal' });
+        // Get file icon (required parameter)
+        const icon = await app.getFileIcon(absolutePath, { size: 'normal' });
 
-      // Start drag with icon
-      event.sender.startDrag({
-        file: absolutePath,
-        icon: icon,
-      });
+        // Start drag with icon
+        event.sender.startDrag({
+          file: absolutePath,
+          icon: icon,
+        });
+      }
+    } catch (error: any) {
+      console.error('[start-drag] Error:', error);
     }
-  } catch (error: any) {
-    console.error('[start-drag] Error:', error);
-  }
-});
+  },
+);
 
 ipcMain.handle('open-terminal', async (_event: any, dirPath: string) => {
   try {
@@ -411,6 +421,65 @@ ipcMain.handle('open-terminal', async (_event: any, dirPath: string) => {
     return { success: false, error: error.message };
   }
 });
+
+// Overwrite dialog IPC handler for zip/copy operations
+const overwriteDialogPromises = new Map<
+  number,
+  { resolve: (value: any) => void; reject: (reason?: any) => void }
+>();
+let overwriteDialogIdCounter = 0;
+
+ipcMain.handle('show-overwrite-dialog', async (_event: any, options: any) => {
+  // options: { fileName, destination, type }
+  const win =
+    BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+  if (!win) {
+    return { success: false, error: 'No window available for dialog' };
+  }
+
+  try {
+    // Create a unique ID for this dialog request
+    const dialogId = overwriteDialogIdCounter++;
+
+    // Create a promise to wait for the response
+    const responsePromise = new Promise((resolve, reject) => {
+      overwriteDialogPromises.set(dialogId, { resolve, reject });
+
+      // Set a timeout to prevent hanging forever
+      setTimeout(() => {
+        if (overwriteDialogPromises.has(dialogId)) {
+          overwriteDialogPromises.delete(dialogId);
+          reject(new Error('Dialog timeout'));
+        }
+      }, 60000); // 60 second timeout
+    });
+
+    // Send message to renderer with dialog ID
+    win.webContents.send('show-overwrite-dialog', { ...options, dialogId });
+
+    // Wait for response
+    const decision = await responsePromise;
+    return { success: true, decision };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle response from renderer
+ipcMain.handle(
+  'overwrite-dialog-response',
+  async (_event: any, response: any) => {
+    const { dialogId, decision } = response;
+    const promise = overwriteDialogPromises.get(dialogId);
+
+    if (promise) {
+      overwriteDialogPromises.delete(dialogId);
+      promise.resolve(decision);
+    }
+
+    return { success: true };
+  },
+);
 
 // Create application menu with zoom functionality
 function createApplicationMenu() {

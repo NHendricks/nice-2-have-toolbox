@@ -422,6 +422,27 @@ export class Commander extends LitElement {
         }
       },
     )
+
+    // Add IPC listener for overwrite dialog (zip/copy)
+    ;(window as any).electron.ipcRenderer.on(
+      'show-overwrite-dialog',
+      async (options: any) => {
+        // options: { fileName, destination, type, dialogId }
+        const decision = await this.promptOverwrite(
+          options.fileName,
+          options.destination,
+          options.type || 'copy',
+        )
+        // Send response back to backend (main process) with dialogId
+        await (window as any).electron.ipcRenderer.invoke(
+          'overwrite-dialog-response',
+          {
+            dialogId: options.dialogId,
+            decision,
+          },
+        )
+      },
+    )
   }
 
   loadFavorites() {

@@ -480,6 +480,88 @@ export class ZipHelper {
   }
 
   /**
+   * Scan a source directory for files that conflict with existing entries in a ZIP.
+   * Returns relative paths (e.g. "subdir/file.txt") of conflicting files.
+   */
+  static scanFolderConflictsInZip(
+    zipFilePath: string,
+    internalPrefix: string,
+    sourceFolderPath: string,
+  ): string[] {
+    if (!fs.existsSync(zipFilePath)) return [];
+    const zip = new AdmZip(zipFilePath);
+    const conflicts: string[] = [];
+    const normalizedPrefix = internalPrefix
+      .replace(/\\/g, '/')
+      .replace(/\/$/, '');
+
+    const scan = (dir: string, relPath: string) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const childRel = relPath ? `${relPath}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          scan(path.join(dir, entry.name), childRel);
+        } else if (entry.isFile()) {
+          const zipEntryPath = normalizedPrefix
+            ? `${normalizedPrefix}/${childRel}`
+            : childRel;
+          if (zip.getEntry(zipEntryPath) !== null) {
+            conflicts.push(childRel);
+          }
+        }
+      }
+    };
+
+    scan(sourceFolderPath, '');
+    return conflicts;
+  }
+
+  /**
+   * Add a folder to ZIP selectively — adds new files and those in overwriteFiles,
+   * skips existing files not approved for overwriting.
+   * overwriteFiles: relative paths (e.g. "subdir/file.txt") approved for overwriting.
+   */
+  static addFolderToZipSelective(
+    zipFilePath: string,
+    sourceFolderPath: string,
+    internalPrefix: string,
+    overwriteFiles: Set<string>,
+  ): void {
+    const zip = fs.existsSync(zipFilePath)
+      ? new AdmZip(zipFilePath)
+      : new AdmZip();
+    const normalizedPrefix = internalPrefix
+      .replace(/\\/g, '/')
+      .replace(/\/$/, '');
+
+    const addDir = (dir: string, relPath: string) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const childRel = relPath ? `${relPath}/${entry.name}` : entry.name;
+        const zipEntryPath = normalizedPrefix
+          ? `${normalizedPrefix}/${childRel}`
+          : childRel;
+        if (entry.isDirectory()) {
+          addDir(path.join(dir, entry.name), childRel);
+        } else if (entry.isFile()) {
+          const entryExists = zip.getEntry(zipEntryPath) !== null;
+          if (entryExists && !overwriteFiles.has(childRel)) {
+            continue; // user did not approve overwriting this file
+          }
+          if (entryExists) {
+            zip.deleteFile(zipEntryPath);
+          }
+          const content = fs.readFileSync(path.join(dir, entry.name));
+          zip.addFile(zipEntryPath, content);
+        }
+      }
+    };
+
+    addDir(sourceFolderPath, '');
+    zip.writeZip(zipFilePath);
+  }
+
+  /**
    * Delete a file or directory from ZIP
    */
   static deleteFromZip(zipFilePath: string, internalPath: string): void {
