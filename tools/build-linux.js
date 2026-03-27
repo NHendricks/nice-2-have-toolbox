@@ -253,7 +253,7 @@ async function build() {
   const desktopFileContent = `[Desktop Entry]
 Name=nh-toolbox
 Comment=Utility app by Nils Hendricks
-Exec=nh-toolbox
+Exec=nh-toolbox --no-sandbox %U
 Icon=icon
 Type=Application
 Categories=Utility;
@@ -279,7 +279,7 @@ echo "Installing nh-toolbox..."
 # Create installation directory
 mkdir -p "$INSTALL_DIR"
 
-# Copy all files
+# Copy all files (exclude install/uninstall scripts themselves)
 cp -r ./* "$INSTALL_DIR/"
 
 # Create symlink to binary
@@ -290,17 +290,28 @@ cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Name=nh-toolbox
 Comment=Utility app by Nils Hendricks
-Exec=$INSTALL_DIR/nh-toolbox
+Exec=$INSTALL_DIR/nh-toolbox --no-sandbox %U
 Icon=$INSTALL_DIR/icon.png
 Type=Application
 Categories=Utility;
 Terminal=false
 StartupWMClass=nh-toolbox
+MimeType=x-scheme-handler/nh-toolbox;
 EOF
 
 # Set permissions
 chmod +x "$INSTALL_DIR/nh-toolbox"
 chmod 644 "$DESKTOP_FILE"
+
+# Update desktop database so the launcher picks up the new entry
+if command -v update-desktop-database &> /dev/null; then
+  update-desktop-database /usr/share/applications/ 2>/dev/null || true
+fi
+
+# Update icon cache
+if command -v gtk-update-icon-cache &> /dev/null; then
+  gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+fi
 
 echo "✅ nh-toolbox installed successfully!"
 echo "   Run from terminal: nh-toolbox"
