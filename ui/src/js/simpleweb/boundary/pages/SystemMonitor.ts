@@ -84,7 +84,6 @@ export class SystemMonitor extends LitElement {
     .header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 0.75rem;
       flex-wrap: wrap;
     }
@@ -95,6 +94,7 @@ export class SystemMonitor extends LitElement {
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      white-space: nowrap;
     }
 
     .controls {
@@ -125,17 +125,19 @@ export class SystemMonitor extends LitElement {
       color: #ffffff;
     }
 
-    .meta {
-      font-size: 0.85rem;
-      color: #cbd5e1;
-    }
-
     .content {
       flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 1rem;
+    }
+
+    .chart-row {
+      display: flex;
+      gap: 1rem;
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .chart-wrap {
@@ -146,6 +148,34 @@ export class SystemMonitor extends LitElement {
       align-items: center;
       justify-content: center;
       z-index: 20;
+    }
+
+    .summary-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      justify-content: center;
+      min-width: 180px;
+      flex: 0 0 auto;
+    }
+
+    .summary-item {
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 0.2rem;
+    }
+
+    .summary-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f8fafc;
     }
 
     svg {
@@ -945,23 +975,6 @@ export class SystemMonitor extends LitElement {
               Refresh
             </button>
           </div>
-          <div class="meta">
-            ${this.updatedAt
-              ? `Updated: ${new Date(this.updatedAt).toLocaleTimeString()}`
-              : ''}
-            ${typeof this.resources?.cpuFreePercent === 'number'
-              ? ` • CPU free: ${this.resources.cpuFreePercent.toFixed(1)} %`
-              : ''}
-            ${this.resources?.memoryFreeMB != null
-              ? ` • MEM free: ${this.formatFreeMemory()}`
-              : ''}
-            ${typeof this.resources?.diskFreeGB === 'number'
-              ? ` • Disk free: ${this.resources.diskFreeGB.toFixed(1)} GB`
-              : ''}
-            ${typeof this.diskIoMBps === 'number'
-              ? ` • Disk I/O: ${this.diskIoMBps.toFixed(2)} MB/s`
-              : ''}
-          </div>
         </div>
 
         <div class="content">
@@ -1051,46 +1064,91 @@ export class SystemMonitor extends LitElement {
                   </div>
                 `
               : html`
-                  <div class="panel chart-wrap">
-                    ${this.loading && !this.entries.length
-                      ? html`<div class="state">
-                          <div>
-                            ${this.loadingFeedback || 'Loading system data...'}
-                          </div>
-                          <div
-                            style="font-size:0.92em;color:#60a5fa;margin-top:0.5em"
-                          >
-                            ${this.loadingCommand
-                              ? html`<div>
-                                  Command:
-                                  <span style="font-family:monospace"
-                                    >${this.loadingCommand}</span
+                  <div class="chart-row">
+                    <div class="panel chart-wrap">
+                      ${this.loading && !this.entries.length
+                        ? html`<div class="state">
+                            <div>
+                              ${this.loadingFeedback ||
+                              'Loading system data...'}
+                            </div>
+                            <div
+                              style="font-size:0.92em;color:#60a5fa;margin-top:0.5em"
+                            >
+                              ${this.loadingCommand
+                                ? html`<div>
+                                    Command:
+                                    <span style="font-family:monospace"
+                                      >${this.loadingCommand}</span
+                                    >
+                                  </div>`
+                                : ''}
+                              ${this.loadingCommandFull
+                                ? html`<div
+                                    style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
                                   >
-                                </div>`
-                              : ''}
-                            ${this.loadingCommandFull
-                              ? html`<div
-                                  style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
-                                >
-                                  Backend-Command:<br /><span
-                                    style="font-family:monospace;word-break:break-all"
-                                    >${this.loadingCommandFull}</span
-                                  >
-                                </div>`
-                              : ''}
-                            ${this.loadingWait
-                              ? html`<div style="margin-top:0.2em">
-                                  Status: ${this.loadingWait}
-                                </div>`
-                              : ''}
-                          </div>
-                        </div>`
-                      : this.error
-                        ? html`<div class="state">${this.error}</div>`
-                        : html`
-                            <svg id="resource-pie"></svg>
-                            <div id="pie-tooltip" class="tooltip"></div>
-                          `}
+                                    Backend-Command:<br /><span
+                                      style="font-family:monospace;word-break:break-all"
+                                      >${this.loadingCommandFull}</span
+                                    >
+                                  </div>`
+                                : ''}
+                              ${this.loadingWait
+                                ? html`<div style="margin-top:0.2em">
+                                    Status: ${this.loadingWait}
+                                  </div>`
+                                : ''}
+                            </div>
+                          </div>`
+                        : this.error
+                          ? html`<div class="state">${this.error}</div>`
+                          : html`
+                              <svg id="resource-pie"></svg>
+                              <div id="pie-tooltip" class="tooltip"></div>
+                            `}
+                    </div>
+                    <div class="summary-bar">
+                      ${this.updatedAt
+                        ? html`<div class="summary-item">
+                            <div class="summary-label">Updated</div>
+                            <div class="summary-value">
+                              ${new Date(this.updatedAt).toLocaleTimeString()}
+                            </div>
+                          </div>`
+                        : ''}
+                      ${typeof this.resources?.cpuFreePercent === 'number'
+                        ? html`<div class="summary-item">
+                            <div class="summary-label">CPU free</div>
+                            <div class="summary-value">
+                              ${this.resources.cpuFreePercent.toFixed(1)} %
+                            </div>
+                          </div>`
+                        : ''}
+                      ${this.resources?.memoryFreeMB != null
+                        ? html`<div class="summary-item">
+                            <div class="summary-label">Memory free</div>
+                            <div class="summary-value">
+                              ${this.formatFreeMemory()}
+                            </div>
+                          </div>`
+                        : ''}
+                      ${typeof this.resources?.diskFreeGB === 'number'
+                        ? html`<div class="summary-item">
+                            <div class="summary-label">Disk free</div>
+                            <div class="summary-value">
+                              ${this.resources.diskFreeGB.toFixed(1)} GB
+                            </div>
+                          </div>`
+                        : ''}
+                      ${typeof this.diskIoMBps === 'number'
+                        ? html`<div class="summary-item">
+                            <div class="summary-label">Disk I/O</div>
+                            <div class="summary-value">
+                              ${this.diskIoMBps.toFixed(2)} MB/s
+                            </div>
+                          </div>`
+                        : ''}
+                    </div>
                   </div>
 
                   <div class="panel list">

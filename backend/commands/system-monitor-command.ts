@@ -314,7 +314,7 @@ export class SystemMonitorCommand implements ICommand {
   }> {
     try {
       const start = this.readCpuTimes();
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const end = this.readCpuTimes();
 
       const idleDelta = end.idle - start.idle;
@@ -760,12 +760,11 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
     // CPU/IO query can take longer (WMI perf counter cold-start)
     const timeout = metric === 'memory' ? 15000 : 30000;
 
-    // Run CPU measurement in parallel (uses Node os.cpus(), no PS needed)
-    const cpuPromise = this.getCpuAvailability();
+    // Measure CPU BEFORE launching the heavy PS query so the measurement
+    // is not skewed by the PowerShell/WMI process itself.
+    const cpu = await this.getCpuAvailability();
 
     const raw = await this.runPowerShellJson(psScript, timeout);
-
-    const cpu = await cpuPromise;
 
     // --- Parse disk availability ---
     const diskList = Array.isArray(raw?.disk)
@@ -877,6 +876,20 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
           metric === 'cpu' ? b.cpu - a.cpu : b.ioMB - a.ioMB,
         )
         .slice(0, limit);
+    }
+
+    // Fallback: if CPU free reads as 0 (e.g. WMI cold-start skews the
+    // os.cpus() measurement), estimate it from the process list instead:
+    // free ≈ 100% − sum of top-process CPU values.
+    if (
+      metric === 'cpu' &&
+      (resources.cpuFreePercent === null || resources.cpuFreePercent === 0) &&
+      entries.length > 0
+    ) {
+      const sumCpu = entries.reduce((s, e) => s + e.cpu, 0);
+      const estimated = Math.max(0, Math.min(100, 100 - sumCpu));
+      resources.cpuFreePercent = Number(estimated.toFixed(1));
+      resources.cpuUsedPercent = Number(Math.min(100, sumCpu).toFixed(1));
     }
 
     return { entries, resources };
