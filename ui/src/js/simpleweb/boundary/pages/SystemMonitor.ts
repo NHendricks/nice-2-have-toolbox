@@ -228,11 +228,25 @@ export class SystemMonitor extends LitElement {
 
     .name {
       overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
       color: #f8fafc;
       font-size: 0.88rem;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      display: flex;
+      min-width: 0;
+    }
+
+    .name .path-dir {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 0 1 auto;
+      min-width: 0;
+      opacity: 0.55;
+    }
+
+    .name .path-file {
+      flex: 0 0 auto;
+      white-space: nowrap;
     }
 
     .value {
@@ -507,14 +521,40 @@ export class SystemMonitor extends LitElement {
     return `${(entry.ioMB || 0).toFixed(1)} MB I/O`
   }
 
-  private getDisplayProcessName(nameOrCommand: string): string {
+  /**
+   * Extract the executable path from a command string (strips arguments).
+   */
+  private getExecutablePath(nameOrCommand: string): string {
     const normalized = (nameOrCommand || '').trim()
     if (!normalized) return 'unknown'
 
-    const firstToken = normalized.split(/\s+/)[0] || normalized
-    const parts = firstToken.split(/[\\/]/).filter(Boolean)
-    const lastPart = parts.length > 0 ? parts[parts.length - 1] : firstToken
-    return lastPart || normalized
+    // Handle quoted paths (e.g. "C:\Program Files\...\app.exe" --args)
+    if (normalized.startsWith('"')) {
+      const closingQuote = normalized.indexOf('"', 1)
+      return closingQuote > 1
+        ? normalized.substring(1, closingQuote)
+        : normalized.substring(1)
+    }
+
+    return normalized.split(/\s+/)[0] || normalized
+  }
+
+  /**
+   * Returns the full executable path for display.
+   * The list row handles middle-truncation via CSS.
+   */
+  private getDisplayProcessName(nameOrCommand: string): string {
+    return this.getExecutablePath(nameOrCommand) || 'unknown'
+  }
+
+  /**
+   * Returns only the executable filename (no directory) for contexts
+   * with very limited space (pie chart labels, kill confirmation).
+   */
+  private getShortProcessName(nameOrCommand: string): string {
+    const executable = this.getExecutablePath(nameOrCommand)
+    const parts = executable.split(/[\\/]/).filter(Boolean)
+    return (parts.length > 0 ? parts[parts.length - 1] : executable) || 'unknown'
   }
 
   private getCommandText(entry: UsageEntry): string {
@@ -530,7 +570,7 @@ export class SystemMonitor extends LitElement {
     const btn = event.currentTarget as HTMLButtonElement
     if (
       !confirm(
-        `Kill process "${this.getDisplayProcessName(this.getCommandText(entry))}" (PID ${entry.pid})?`,
+        `Kill process "${this.getShortProcessName(this.getCommandText(entry))}" (PID ${entry.pid})?`,
       )
     )
       return
@@ -649,7 +689,7 @@ export class SystemMonitor extends LitElement {
     slices
       .on('mousemove', (event, d) => {
         const fullCommand = d.data.command || d.data.name || 'unknown'
-        tooltipEl.innerHTML = `<strong>${this.getDisplayProcessName(fullCommand)}</strong><br/>PID: ${d.data.pid}<br/>CPU: ${(d.data.cpu || 0).toFixed(1)} %<br/>Memory: ${(d.data.memoryMB || 0).toFixed(1)} MB<br/>File I/O: ${(d.data.ioMB || 0).toFixed(1)} MB<br/>Command: ${fullCommand}`
+        tooltipEl.innerHTML = `<strong>${this.getShortProcessName(fullCommand)}</strong><br/>PID: ${d.data.pid}<br/>CPU: ${(d.data.cpu || 0).toFixed(1)} %<br/>Memory: ${(d.data.memoryMB || 0).toFixed(1)} MB<br/>File I/O: ${(d.data.ioMB || 0).toFixed(1)} MB<br/>Command: ${fullCommand}`
         tooltipEl.classList.add('visible')
 
         const margin = 12
@@ -715,7 +755,7 @@ export class SystemMonitor extends LitElement {
       .attr('fill', '#f8fafc')
       .attr('font-size', 10)
       .text((d) => {
-        const name = this.getDisplayProcessName(d.data.command || d.data.name)
+        const name = this.getShortProcessName(d.data.command || d.data.name)
         return name.length > 18 ? `${name.slice(0, 18)}…` : name
       })
 
@@ -893,9 +933,21 @@ export class SystemMonitor extends LitElement {
                     (entry) => html`
                       <div class="row">
                         <div class="name" title=${this.getCommandText(entry)}>
-                          ${this.getDisplayProcessName(
-                            this.getCommandText(entry),
-                          )}
+                          ${(() => {
+                            const fullPath = this.getDisplayProcessName(
+                              this.getCommandText(entry),
+                            )
+                            const sepIdx = Math.max(
+                              fullPath.lastIndexOf('/'),
+                              fullPath.lastIndexOf('\\'),
+                            )
+                            if (sepIdx > 0) {
+                              const dir = fullPath.substring(0, sepIdx + 1)
+                              const file = fullPath.substring(sepIdx + 1)
+                              return html`<span class="path-dir">${dir}</span><span class="path-file">${file}</span>`
+                            }
+                            return html`<span class="path-file">${fullPath}</span>`
+                          })()}
                         </div>
                         <div class="value">${this.formatValue(entry)}</div>
                         <button

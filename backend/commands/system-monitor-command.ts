@@ -54,6 +54,9 @@ interface MonitorResponse {
 }
 
 export class SystemMonitorCommand implements ICommand {
+  /** Cached PowerShell binary name (resolved once, then reused). */
+  private resolvedPsShell: string | null = null;
+
   getDescription(): string {
     return 'System monitor: top CPU/memory process usage';
   }
@@ -124,9 +127,9 @@ export class SystemMonitorCommand implements ICommand {
       }
 
       const diskIoMBps = await this.getGlobalDiskIoMBps();
-      const resources = await this.getResourceAvailability();
 
       if (metric === 'io' && process.platform !== 'win32') {
+        const resources = await this.getResourceAvailability();
         return {
           success: true,
           metric,
@@ -139,7 +142,26 @@ export class SystemMonitorCommand implements ICommand {
         };
       }
 
-      const entries = await this.getTopProcesses(metric, limit);
+      // On Windows, combine all PowerShell queries into a single invocation
+      // to avoid spawning multiple powershell.exe processes (each cold-start
+      // adds ~1-2s).  Resource availability and process list run in parallel.
+      if (process.platform === 'win32') {
+        const result = await this.getWindowsDataCombined(metric, limit);
+        return {
+          success: true,
+          metric,
+          updatedAt: new Date().toISOString(),
+          entries: result.entries,
+          diskIoMBps,
+          resources: result.resources,
+        };
+      }
+
+      // Non-Windows: run in parallel
+      const [resources, entries] = await Promise.all([
+        this.getResourceAvailability(),
+        this.getTopProcesses(metric, limit),
+      ]);
       return {
         success: true,
         metric,
@@ -632,40 +654,202 @@ export class SystemMonitorCommand implements ICommand {
       .slice(0, limit);
   }
 
+  /**
+   * Combined Windows query: fetches process data + disk availability in a
+   * SINGLE PowerShell invocation.  This avoids spawning 2-3 separate
+   * powershell.exe processes (each cold-start adds ~1-2s overhead).
+   *
+   * For the memory metric we only need Win32_Process (fast).
+   * For cpu/io we need Win32_PerfFormattedData_PerfProc_Process (slow on
+   * first access) + Win32_Process for CommandLine enrichment.
+   * Disk availability (Win32_LogicalDisk) is always included.
+   */
+  private async getWindowsDataCombined(
+    metric: ResourceMetric,
+    limit: number,
+  ): Promise<{ entries: ProcessUsage[]; resources: ResourceAvailability }> {
+    // Build a PowerShell script that outputs a JSON object with all data.
+    // Each sub-query is wrapped in try/catch so a single failure doesn't
+    // break the whole response.
+    const psScript =
+      metric === 'memory'
+        ? `
+$disk = try { Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object Size,FreeSpace } catch { @() }
+$proc = try { Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -gt 0 } | Select-Object ProcessId,Name,WorkingSetSize,CommandLine } catch { @() }
+@{ disk=$disk; proc=$proc } | ConvertTo-Json -Depth 3 -Compress
+`.trim()
+        : `
+$disk = try { Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object Size,FreeSpace } catch { @() }
+$perf = try { Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne '_Total' -and $_.Name -ne 'Idle' } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate,IODataBytesPersec } catch { @() }
+$cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLine } catch { @() }
+@{ disk=$disk; perf=$perf; cmd=$cmd } | ConvertTo-Json -Depth 3 -Compress
+`.trim();
+
+    // CPU/IO query can take longer (WMI perf counter cold-start)
+    const timeout = metric === 'memory' ? 15000 : 30000;
+
+    // Run CPU measurement in parallel (uses Node os.cpus(), no PS needed)
+    const cpuPromise = this.getCpuAvailability();
+
+    const raw = await this.runPowerShellJson(psScript, timeout);
+
+    const cpu = await cpuPromise;
+
+    // --- Parse disk availability ---
+    const diskList = Array.isArray(raw?.disk) ? raw.disk : raw?.disk ? [raw.disk] : [];
+    let totalBytes = 0;
+    let freeBytes = 0;
+    for (const item of diskList) {
+      const size = Number(item?.Size || 0);
+      const free = Number(item?.FreeSpace || 0);
+      if (Number.isFinite(size) && size > 0) {
+        totalBytes += size;
+        freeBytes += Number.isFinite(free) ? Math.max(0, free) : 0;
+      }
+    }
+    const usedBytes = Math.max(0, totalBytes - freeBytes);
+
+    const totalMemBytes = os.totalmem();
+    const freeMemBytes = os.freemem();
+    const usedMemBytes = Math.max(0, totalMemBytes - freeMemBytes);
+
+    const resources: ResourceAvailability = {
+      cpuFreePercent: cpu.free,
+      cpuUsedPercent: cpu.used,
+      memoryFreeMB: this.bytesToMB(freeMemBytes),
+      memoryUsedMB: this.bytesToMB(usedMemBytes),
+      memoryTotalMB: this.bytesToMB(totalMemBytes),
+      diskFreeGB: totalBytes > 0 ? this.bytesToGB(freeBytes) : null,
+      diskUsedGB: totalBytes > 0 ? this.bytesToGB(usedBytes) : null,
+      diskTotalGB: totalBytes > 0 ? this.bytesToGB(totalBytes) : null,
+    };
+
+    // --- Parse process entries ---
+    let entries: ProcessUsage[];
+
+    if (metric === 'memory') {
+      const procList = Array.isArray(raw?.proc) ? raw.proc : raw?.proc ? [raw.proc] : [];
+      entries = procList
+        .map((item: any) => {
+          const pid = Number(item?.ProcessId);
+          const processName = String(item?.Name || 'unknown');
+          const memoryMB = Number(item?.WorkingSetSize || 0) / (1024 * 1024);
+          const command = String(item?.CommandLine || processName).trim();
+          if (!Number.isFinite(pid)) return null;
+          return {
+            pid,
+            name: processName,
+            command: command || processName,
+            cpu: 0,
+            memoryMB: Number.isFinite(memoryMB) ? Math.max(0, memoryMB) : 0,
+            ioMB: 0,
+          } as ProcessUsage;
+        })
+        .filter((item: ProcessUsage | null): item is ProcessUsage => !!item)
+        .sort((a: ProcessUsage, b: ProcessUsage) => b.memoryMB - a.memoryMB)
+        .slice(0, limit);
+    } else {
+      // cpu / io
+      const perfList = Array.isArray(raw?.perf) ? raw.perf : raw?.perf ? [raw.perf] : [];
+      const cmdList = Array.isArray(raw?.cmd) ? raw.cmd : raw?.cmd ? [raw.cmd] : [];
+
+      const commandMap = new Map<number, string>();
+      for (const item of cmdList) {
+        const pid = Number(item?.ProcessId);
+        const commandLine = String(item?.CommandLine || '').trim();
+        if (Number.isFinite(pid) && commandLine) {
+          commandMap.set(pid, commandLine);
+        }
+      }
+
+      entries = perfList
+        .map((item: any) => {
+          const pid = Number(item?.IDProcess);
+          const processName = String(item?.Name || 'unknown');
+          const cpuVal = Number(item?.PercentProcessorTime || 0);
+          const memoryMB =
+            Number(item?.WorkingSetPrivate || 0) / (1024 * 1024);
+          const ioBytesPersec = Number(item?.IODataBytesPersec || 0);
+          const ioMB = ioBytesPersec / (1024 * 1024);
+
+          if (!Number.isFinite(pid)) return null;
+
+          return {
+            pid,
+            name: processName,
+            command: commandMap.get(pid) || processName,
+            cpu: Number.isFinite(cpuVal) ? Math.max(0, cpuVal) : 0,
+            memoryMB: Number.isFinite(memoryMB) ? Math.max(0, memoryMB) : 0,
+            ioMB: Number.isFinite(ioMB) ? Math.max(0, ioMB) : 0,
+          } as ProcessUsage;
+        })
+        .filter((item: ProcessUsage | null): item is ProcessUsage => !!item)
+        .sort((a: ProcessUsage, b: ProcessUsage) =>
+          metric === 'cpu' ? b.cpu - a.cpu : b.ioMB - a.ioMB,
+        )
+        .slice(0, limit);
+    }
+
+    return { entries, resources };
+  }
+
+  /** Return the PowerShell executable to use. */
+  private getPowerShell(): string {
+    // Windows always ships powershell.exe (Windows PowerShell 5.1).
+    // Use the full path so it works even when the child-process PATH
+    // differs from the interactive shell (common inside Electron).
+    if (process.platform === 'win32') {
+      return `${process.env.SystemRoot || 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+    }
+    // macOS / Linux: prefer pwsh (PowerShell Core), fall back to powershell
+    return this.resolvedPsShell || 'pwsh';
+  }
+
   private async runPowerShellJson(
     script: string,
     timeout: number,
   ): Promise<any> {
-    const escapedScript = script.replace(/"/g, '\\"');
-    const shells = ['powershell', 'pwsh']; // Try classic Windows PowerShell first, then pwsh
-    let lastError: any = null;
+    const shell = this.getPowerShell();
 
-    for (const shell of shells) {
-      try {
-        const { stdout } = await execAsync(
-          `${shell} -NoProfile -Command "${escapedScript}"`,
-          { timeout, maxBuffer: 10 * 1024 * 1024 },
-        );
-        const trimmed = (stdout || '').trim();
-        if (!trimmed) {
-          return [];
-        }
-        return JSON.parse(trimmed);
-      } catch (error) {
-        lastError = error;
+    // Use -EncodedCommand (Base64-encoded UTF-16LE) so that multi-line
+    // scripts, single quotes, dollar signs, etc. are passed through
+    // without any escaping issues.
+    const encoded = Buffer.from(script, 'utf16le').toString('base64');
+
+    try {
+      const { stdout } = await execAsync(
+        `"${shell}" -NoProfile -EncodedCommand ${encoded}`,
+        { timeout, maxBuffer: 10 * 1024 * 1024 },
+      );
+      const trimmed = (stdout || '').trim();
+      if (!trimmed) {
+        return [];
       }
-    }
-
-    const msg = lastError?.message || String(lastError) || 'Unbekannt';
-    const isTimeout = msg.includes('ETIMEDOUT') || msg.includes('timed out') || msg.includes('timeout');
-    if (isTimeout) {
+      // PowerShell may prepend CLIXML progress output (e.g. "Module werden
+      // vorbereitet") before the JSON.  Strip everything before the first
+      // '{' or '[' to isolate the JSON payload.
+      const jsonStart = trimmed.search(/[{\[]/);
+      if (jsonStart < 0) {
+        return [];
+      }
+      return JSON.parse(trimmed.substring(jsonStart));
+    } catch (error: any) {
+      const msg = error?.message || String(error) || 'Unbekannt';
+      const isTimeout =
+        error?.killed ||
+        msg.includes('ETIMEDOUT') ||
+        msg.includes('timed out') ||
+        msg.includes('timeout');
+      if (isTimeout) {
+        throw new Error(
+          'WMI-Abfrage hat zu lange gedauert (Windows Performance Counter braucht beim ersten Start bis zu 30 Sekunden). Bitte erneut versuchen.',
+        );
+      }
       throw new Error(
-        'WMI-Abfrage hat zu lange gedauert (Windows Performance Counter braucht beim ersten Start bis zu 30 Sekunden). Bitte erneut versuchen.',
+        'PowerShell konnte nicht ausgeführt werden. Ursprünglicher Fehler: ' +
+          msg,
       );
     }
-    throw new Error(
-      'PowerShell konnte nicht ausgeführt werden. Ursprünglicher Fehler: ' + msg,
-    );
   }
 
   private async getOpenPorts(): Promise<OpenPort[]> {
