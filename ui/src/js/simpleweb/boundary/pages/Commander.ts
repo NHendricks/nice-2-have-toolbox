@@ -531,8 +531,11 @@ export class Commander extends LitElement {
   }
 
   getDriveSelectorItems() {
-    // Combine favorites and drives into a single list
-    const items: { path: string; type: 'favorite' | 'drive' }[] = []
+    // Combine all selectable items into a single list
+    const items: {
+      path: string
+      type: 'favorite' | 'drive' | 'ftp' | 'network-share' | 'add-network'
+    }[] = []
 
     this.favoritePaths.forEach((path) => {
       items.push({ path, type: 'favorite' })
@@ -541,6 +544,17 @@ export class Commander extends LitElement {
     this.availableDrives.forEach((drive) => {
       items.push({ path: drive.path, type: 'drive' })
     })
+
+    // FTP connect button
+    items.push({ path: '', type: 'ftp' })
+
+    // Network shares
+    this.availableNetworkShares.forEach((share: any) => {
+      items.push({ path: share.remotePath, type: 'network-share' })
+    })
+
+    // Add Network Path button
+    items.push({ path: '', type: 'add-network' })
 
     return items
   }
@@ -576,7 +590,15 @@ export class Commander extends LitElement {
       return
 
     const selectedItem = items[this.driveSelectorFocusedIndex]
-    this.selectDrive(selectedItem.path)
+    if (selectedItem.type === 'ftp') {
+      this.showDriveSelector = false
+      this.showFTPDialog = true
+    } else if (selectedItem.type === 'add-network') {
+      this.showDriveSelector = false
+      this.showSMBDialog = true
+    } else {
+      this.selectDrive(selectedItem.path)
+    }
   }
 
   openHelp() {
@@ -3605,6 +3627,9 @@ export class Commander extends LitElement {
                 this.showDriveSelector = false
                 this.showSMBDialog = true
               }}
+              @focus-change=${(e: CustomEvent) => {
+                this.driveSelectorFocusedIndex = e.detail
+              }}
               @refresh-drives=${() => this.loadDrives()}
             ></drive-selector-dialog>`
           : ''}
@@ -3612,7 +3637,10 @@ export class Commander extends LitElement {
           ? html`<ftp-connection-dialog
               id="ftp-dialog"
               .open=${true}
-              @close=${() => (this.showFTPDialog = false)}
+              @close=${() => {
+                this.showFTPDialog = false
+                this.showDriveSelector = true
+              }}
               @cancel-connection=${() => {
                 this.ftpConnectionCancelled = true
               }}
@@ -3651,7 +3679,10 @@ export class Commander extends LitElement {
               id="smb-dialog"
               .open=${true}
               .initialPath=${this.pendingSmbPath || ''}
-              @close=${() => (this.showSMBDialog = false)}
+              @close=${() => {
+                this.showSMBDialog = false
+                this.showDriveSelector = true
+              }}
               @cancel-connection=${() => {
                 this.smbConnectionCancelled = true
               }}

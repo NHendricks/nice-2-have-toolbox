@@ -172,6 +172,11 @@ export class DriveSelectorDialog extends LitElement {
     .btn-add-network:hover {
       background: #1e4976;
     }
+    .btn-add-network.focused {
+      background: #0ea5e9;
+      color: #fff;
+      border-color: #0ea5e9;
+    }
   `
 
   @property({ type: Array }) drives: any[] = []
@@ -198,6 +203,48 @@ export class DriveSelectorDialog extends LitElement {
     // Don't handle if UNC input is active
     if (this.showUncInput) return
 
+    // Arrow key navigation through all selectable items
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      e.stopPropagation()
+      const items = this.getAllSelectableItems()
+      if (items.length === 0) return
+      const delta = e.key === 'ArrowDown' ? 1 : -1
+      const newIndex = Math.max(
+        0,
+        Math.min(items.length - 1, this.focusedIndex + delta),
+      )
+      this.focusedIndex = newIndex
+      this.dispatchEvent(new CustomEvent('focus-change', { detail: newIndex }))
+      this.scrollFocusedIntoView()
+      return
+    }
+
+    // Enter selects the focused item
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.stopPropagation()
+      const items = this.getAllSelectableItems()
+      if (items.length === 0 || this.focusedIndex >= items.length) return
+      const item = items[this.focusedIndex]
+      if (item.type === 'ftp') {
+        this.dispatchEvent(new CustomEvent('open-ftp'))
+      } else if (item.type === 'add-network') {
+        this.openNetworkDialog()
+      } else {
+        this.selectDrive(item.path)
+      }
+      return
+    }
+
+    // Escape closes the dialog
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      this.close()
+      return
+    }
+
     // Check if it's a single letter key (a-z)
     if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
       // Stop propagation to prevent command launcher from opening
@@ -210,13 +257,59 @@ export class DriveSelectorDialog extends LitElement {
       // Check if this drive exists
       const driveExists = this.drives.some(
         (drive) =>
-          drive.letter?.toUpperCase() === letter || drive.path === drivePath
+          drive.letter?.toUpperCase() === letter || drive.path === drivePath,
       )
 
       if (driveExists) {
         this.selectDrive(drivePath)
       }
     }
+  }
+
+  /**
+   * Build a flat list of all selectable items in render order.
+   * This must match the order items appear in the template.
+   */
+  private getAllSelectableItems(): {
+    path: string
+    type: 'favorite' | 'drive' | 'ftp' | 'network-share' | 'add-network'
+  }[] {
+    const items: {
+      path: string
+      type: 'favorite' | 'drive' | 'ftp' | 'network-share' | 'add-network'
+    }[] = []
+
+    // Favorites
+    for (const fav of this.favorites) {
+      items.push({ path: fav, type: 'favorite' })
+    }
+
+    // Drives
+    for (const drive of this.drives) {
+      items.push({ path: drive.path, type: 'drive' })
+    }
+
+    // FTP connect button
+    items.push({ path: '', type: 'ftp' })
+
+    // Network shares
+    for (const share of this.networkShares) {
+      items.push({ path: share.remotePath, type: 'network-share' })
+    }
+
+    // Add Network Path button
+    items.push({ path: '', type: 'add-network' })
+
+    return items
+  }
+
+  private scrollFocusedIntoView() {
+    setTimeout(() => {
+      const focused = this.shadowRoot?.querySelector('.focused')
+      if (focused) {
+        focused.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }, 0)
   }
 
   private close() {
@@ -245,41 +338,9 @@ export class DriveSelectorDialog extends LitElement {
     return this.favorites.includes(path)
   }
 
-  private toggleUncInput() {
-    const isLinux = navigator.userAgent.includes('Linux')
-    if (isLinux) {
-      this.dispatchEvent(new CustomEvent('open-smb'))
-      return
-    }
-    this.showUncInput = !this.showUncInput
-    this.uncPath = ''
+  private openNetworkDialog() {
+    this.dispatchEvent(new CustomEvent('open-smb'))
   }
-
-  private handleUncSubmit() {
-    if (this.uncPath && this.uncPath.startsWith('\\\\')) {
-      // Automatically add network share to favorites
-      this.dispatchEvent(
-        new CustomEvent('add-to-favorites', {
-          detail: this.uncPath,
-        }),
-      )
-
-      // Navigate to the network share
-      this.selectDrive(this.uncPath)
-      this.showUncInput = false
-      this.uncPath = ''
-    }
-  }
-
-  private handleUncKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      this.handleUncSubmit()
-    } else if (e.key === 'Escape') {
-      this.showUncInput = false
-      this.uncPath = ''
-    }
-  }
-
 
   render() {
     const isCurrentFavorite = this.isFavorite(this.currentPath)
@@ -288,11 +349,15 @@ export class DriveSelectorDialog extends LitElement {
       <div class="dialog-overlay" @click=${this.close}>
         <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
           <div class="dialog-header">
-            <span class="dialog-title"
-              >select drive, network & favorites</span
-            >
+            <span class="dialog-title">select drive, network & favorites</span>
             <div class="header-buttons">
-              <button class="dialog-refresh" @click=${this.refreshDrives} title="Refresh drives (e.g. after inserting USB stick)">Refresh</button>
+              <button
+                class="dialog-refresh"
+                @click=${this.refreshDrives}
+                title="Refresh drives (e.g. after inserting USB stick)"
+              >
+                Refresh
+              </button>
               <button class="dialog-close" @click=${this.close}>ESC</button>
             </div>
           </div>
@@ -330,7 +395,10 @@ export class DriveSelectorDialog extends LitElement {
                               this.moveFavoriteUp(favPath)
                             }}
                             ?disabled=${index === 0}
-                            style="background: #475569; border: none; color: white; padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 1rem; ${index === 0 ? 'opacity: 0.3; cursor: not-allowed;' : ''}"
+                            style="background: #475569; border: none; color: white; padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 1rem; ${index ===
+                            0
+                              ? 'opacity: 0.3; cursor: not-allowed;'
+                              : ''}"
                             title="Move up"
                           >
                             ⬆️
@@ -341,7 +409,10 @@ export class DriveSelectorDialog extends LitElement {
                               this.moveFavoriteDown(favPath)
                             }}
                             ?disabled=${index === this.favorites.length - 1}
-                            style="background: #475569; border: none; color: white; padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 1rem; ${index === this.favorites.length - 1 ? 'opacity: 0.3; cursor: not-allowed;' : ''}"
+                            style="background: #475569; border: none; color: white; padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 1rem; ${index ===
+                            this.favorites.length - 1
+                              ? 'opacity: 0.3; cursor: not-allowed;'
+                              : ''}"
                             title="Move down"
                           >
                             ⬇️
@@ -384,7 +455,10 @@ export class DriveSelectorDialog extends LitElement {
             <!-- FTP Section -->
             <div class="section-header">📡 FTP</div>
             <button
-              class="btn-add-network"
+              class="btn-add-network ${this.focusedIndex ===
+              this.favorites.length + this.drives.length
+                ? 'focused'
+                : ''}"
               @click=${() => this.dispatchEvent(new CustomEvent('open-ftp'))}
             >
               + Connect to FTP Server
@@ -394,9 +468,12 @@ export class DriveSelectorDialog extends LitElement {
             <div class="section-header">🌐 Network</div>
             ${this.networkShares.length > 0
               ? this.networkShares.map(
-                  (share) => html`
+                  (share, index) => html`
                     <div
-                      class="drive-item"
+                      class="drive-item ${this.focusedIndex ===
+                      this.favorites.length + this.drives.length + 1 + index
+                        ? 'focused'
+                        : ''}"
                       @click=${() => this.selectDrive(share.remotePath)}
                     >
                       <span class="drive-icon">🌐</span>
@@ -430,25 +507,64 @@ export class DriveSelectorDialog extends LitElement {
                       .value=${this.uncPath}
                       @input=${(e: Event) =>
                         (this.uncPath = (e.target as HTMLInputElement).value)}
-                      @keydown=${this.handleUncKeydown}
+                      @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === 'Enter') {
+                          if (this.uncPath && this.uncPath.startsWith('\\\\')) {
+                            this.dispatchEvent(
+                              new CustomEvent('add-to-favorites', {
+                                detail: this.uncPath,
+                              }),
+                            )
+                            this.selectDrive(this.uncPath)
+                            this.showUncInput = false
+                            this.uncPath = ''
+                          }
+                        } else if (e.key === 'Escape') {
+                          this.showUncInput = false
+                          this.uncPath = ''
+                        }
+                      }}
                       autofocus
                     />
                     <button
                       class="btn-small btn-go"
-                      @click=${this.handleUncSubmit}
+                      @click=${() => {
+                        if (this.uncPath && this.uncPath.startsWith('\\\\')) {
+                          this.dispatchEvent(
+                            new CustomEvent('add-to-favorites', {
+                              detail: this.uncPath,
+                            }),
+                          )
+                          this.selectDrive(this.uncPath)
+                          this.showUncInput = false
+                          this.uncPath = ''
+                        }
+                      }}
                     >
                       Go
                     </button>
                     <button
                       class="btn-small btn-cancel"
-                      @click=${this.toggleUncInput}
+                      @click=${() => {
+                        this.showUncInput = false
+                        this.uncPath = ''
+                      }}
                     >
                       Cancel
                     </button>
                   </div>
                 `
               : html`
-                  <button class="btn-add-network" @click=${this.toggleUncInput}>
+                  <button
+                    class="btn-add-network ${this.focusedIndex ===
+                    this.favorites.length +
+                      this.drives.length +
+                      1 +
+                      this.networkShares.length
+                      ? 'focused'
+                      : ''}"
+                    @click=${() => this.openNetworkDialog()}
+                  >
                     + Add Network Path
                   </button>
                 `}

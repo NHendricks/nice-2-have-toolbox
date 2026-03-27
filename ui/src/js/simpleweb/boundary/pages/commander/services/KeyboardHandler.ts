@@ -184,6 +184,11 @@ export class KeyboardHandler {
       return false
     }
 
+    // Let SimpleDialog handle Escape for FTP/SMB dialogs
+    if (this.commander.showFTPDialog || this.commander.showSMBDialog) {
+      return false
+    }
+
     event.preventDefault()
 
     if (this.commander.showHelp) {
@@ -444,6 +449,14 @@ export class KeyboardHandler {
     if (
       this.commander.contextMenu &&
       ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)
+    ) {
+      return
+    }
+
+    // When drive selector is open, let it handle arrow/enter/escape
+    if (
+      this.commander.showDriveSelector &&
+      ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(key)
     ) {
       return
     }
