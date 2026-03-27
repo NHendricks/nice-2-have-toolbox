@@ -8,7 +8,14 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 ### upcoming
 
-(you can download and test the dev version from https://github.com/NHendricks/nice-2-have-toolbox/actions/workflows/node.js.yml)
+...
+
+### v2.2.2 (12.03.2026)
+
+- commander
+  - fix show confirm dialog when overwriting files in a zip
+
+### v2.2.2 (12.03.2026)
 
 - commander
   - zips files 50 times faster
@@ -16,6 +23,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - fix ask for overwrite when target file exists
   - fix ESC closes only file diff window, not all compare dialogs
   - fix compare zip and directory recusive (directories in zips were marked as non existent)
+  - feature: edit files in compare dialog
 - task board
   - show edit task in modal also when clicking on title or description
   - when click on path show dropdown for recent paths. save them in localstorage

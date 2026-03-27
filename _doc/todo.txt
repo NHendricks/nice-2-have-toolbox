@@ -1,2 +1,2 @@
-- overwrite dialog is missing when copying to zip
+test
 - in linux samba connect uses user als connect user but it should use the user specified in coonnection details

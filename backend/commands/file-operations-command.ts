@@ -780,14 +780,38 @@ export class FileOperationsCommand implements ICommand {
 
       // Check common mount locations for existing mounts
       const uid = process.getuid?.() || 1000;
-      const username = os.userInfo().username;
+      const sysUsername = os.userInfo().username;
+
+      // Parse samba username from smbUrl if provided (may differ from system user)
+      let sambaUsername: string | undefined;
+      if (smbUrl) {
+        const urlMatch = smbUrl.match(/smb:\/\/(?:[^;]+;)?([^:]+):[^@]+@/);
+        if (urlMatch) {
+          sambaUsername = decodeURIComponent(urlMatch[1]);
+        }
+      }
 
       // GVFS mount point (used by GNOME, Nautilus, etc.)
-      const gvfsMountPoint = `/run/user/${uid}/gvfs/smb-share:server=${computer.toLowerCase()},share=${share.toLowerCase()}`;
-      const gvfsMountPointAlt = `/run/user/${uid}/gvfs/smb-share:server=${computer},share=${share}`;
+      // When connecting as a specific user, GVFS appends ",user={username}" to the path
+      const gvfsBase = `/run/user/${uid}/gvfs`;
+      const gvfsMountPoint = `${gvfsBase}/smb-share:server=${computer.toLowerCase()},share=${share.toLowerCase()}`;
+      const gvfsMountPointAlt = `${gvfsBase}/smb-share:server=${computer},share=${share}`;
+      const gvfsMountPointWithUser = sambaUsername
+        ? `${gvfsBase}/smb-share:server=${computer.toLowerCase()},share=${share.toLowerCase()},user=${sambaUsername.toLowerCase()}`
+        : undefined;
+      const gvfsMountPointWithUserAlt = sambaUsername
+        ? `${gvfsBase}/smb-share:server=${computer},share=${share},user=${sambaUsername}`
+        : undefined;
 
       // Check if already mounted via GVFS
-      for (const mountPoint of [gvfsMountPoint, gvfsMountPointAlt]) {
+      const gvfsCandidates = [
+        gvfsMountPoint,
+        gvfsMountPointAlt,
+        gvfsMountPointWithUser,
+        gvfsMountPointWithUserAlt,
+      ].filter(Boolean) as string[];
+
+      for (const mountPoint of gvfsCandidates) {
         if (fs.existsSync(mountPoint)) {
           const fullPath = subPath ? `${mountPoint}/${subPath}` : mountPoint;
           console.log(`[Linux] Share already mounted at GVFS: ${mountPoint}`);
@@ -799,7 +823,8 @@ export class FileOperationsCommand implements ICommand {
       }
 
       // Check /media/{username}/{share} mount point
-      const mediaMountPoint = `/media/${username}/${share}`;
+      const mediaUser = sambaUsername || sysUsername;
+      const mediaMountPoint = `/media/${mediaUser}/${share}`;
       if (fs.existsSync(mediaMountPoint)) {
         const fullPath = subPath
           ? `${mediaMountPoint}/${subPath}`
@@ -964,7 +989,7 @@ export class FileOperationsCommand implements ICommand {
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
         // Check if mount succeeded at GVFS location
-        for (const mountPoint of [gvfsMountPoint, gvfsMountPointAlt]) {
+        for (const mountPoint of gvfsCandidates) {
           if (fs.existsSync(mountPoint)) {
             const fullPath = subPath ? `${mountPoint}/${subPath}` : mountPoint;
             console.log(`[Linux] Successfully mounted at: ${mountPoint}`);
