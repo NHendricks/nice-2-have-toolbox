@@ -1050,6 +1050,7 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
     filePath: string,
   ): Promise<FileHandleResult[]> {
     const escapedPath = filePath.replace(/'/g, "'\\''");
+    const maxResults = 50;
 
     try {
       // -n = no host name resolution, -l = no user name resolution (avoids hangs)
@@ -1059,7 +1060,7 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
         `lsof -n -l -P -- '${escapedPath}' 2>/dev/null`,
         {
           timeout: 15000,
-          maxBuffer: 1024 * 1024,
+          maxBuffer: 4 * 1024 * 1024,
           killSignal: 'SIGKILL',
         },
       );
@@ -1067,8 +1068,9 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
       const lines = stdout.trim().split('\n');
       if (lines.length <= 1) return [];
 
+      // Collect unique PIDs first
       const seen = new Set<number>();
-      const results: FileHandleResult[] = [];
+      const pidNames: { pid: number; name: string }[] = [];
 
       for (const line of lines.slice(1)) {
         const parts = line.trim().split(/\s+/);
@@ -1079,30 +1081,30 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
 
         if (!Number.isFinite(pid) || pid <= 0 || seen.has(pid)) continue;
         seen.add(pid);
-
-        let command = name;
-        try {
-          const { stdout: cmdline } = await execAsync(`ps -p ${pid} -o args=`, {
-            timeout: 3000,
-          });
-          if (cmdline.trim()) command = cmdline.trim();
-        } catch {
-          /* ignore */
-        }
-
-        results.push({ pid, name, command });
+        pidNames.push({ pid, name });
+        if (pidNames.length >= maxResults) break;
       }
 
-      return results;
+      if (pidNames.length === 0) return [];
+
+      // Get all command lines in a single ps call
+      const commandMap = await this.getCommandMapForPids(
+        pidNames.map((p) => p.pid),
+      );
+
+      return pidNames.map(({ pid, name }) => ({
+        pid,
+        name,
+        command: commandMap.get(pid) || name,
+      }));
     } catch (error: any) {
       // lsof returns exit code 1 when no matching files are found — that's fine
       if (error?.stdout) {
-        // There might still be output even on error exit code
         const lines = String(error.stdout).trim().split('\n');
         if (lines.length <= 1) return [];
 
         const seen = new Set<number>();
-        const results: FileHandleResult[] = [];
+        const pidNames: { pid: number; name: string }[] = [];
         for (const line of lines.slice(1)) {
           const parts = line.trim().split(/\s+/);
           if (parts.length < 2) continue;
@@ -1110,12 +1112,52 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
           const pid = Number(parts[1]);
           if (!Number.isFinite(pid) || pid <= 0 || seen.has(pid)) continue;
           seen.add(pid);
-          results.push({ pid, name, command: name });
+          pidNames.push({ pid, name });
+          if (pidNames.length >= maxResults) break;
         }
-        return results;
+        if (pidNames.length === 0) return [];
+
+        const commandMap = await this.getCommandMapForPids(
+          pidNames.map((p) => p.pid),
+        );
+        return pidNames.map(({ pid, name }) => ({
+          pid,
+          name,
+          command: commandMap.get(pid) || name,
+        }));
       }
       return [];
     }
+  }
+
+  /** Get command lines for a list of PIDs in a single ps call. */
+  private async getCommandMapForPids(
+    pids: number[],
+  ): Promise<Map<number, string>> {
+    const map = new Map<number, string>();
+    if (pids.length === 0) return map;
+    try {
+      const pidList = pids.join(',');
+      const { stdout } = await execAsync(
+        `ps -p ${pidList} -o pid=,args= 2>/dev/null`,
+        { timeout: 5000, maxBuffer: 1024 * 1024 },
+      );
+      for (const line of stdout.trim().split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const match = trimmed.match(/^(\d+)\s+(.+)$/);
+        if (match) {
+          const pid = Number(match[1]);
+          const args = match[2].trim();
+          if (Number.isFinite(pid) && args) {
+            map.set(pid, args);
+          }
+        }
+      }
+    } catch {
+      /* ignore — fall back to process name */
+    }
+    return map;
   }
 
   private async getOpenPorts(): Promise<OpenPort[]> {
