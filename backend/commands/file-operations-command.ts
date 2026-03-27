@@ -782,12 +782,16 @@ export class FileOperationsCommand implements ICommand {
       const uid = process.getuid?.() || 1000;
       const sysUsername = os.userInfo().username;
 
-      // Parse samba username from smbUrl if provided (may differ from system user)
+      // Parse samba username and domain from smbUrl if provided (may differ from system user)
       let sambaUsername: string | undefined;
+      let sambaDomain: string | undefined;
       if (smbUrl) {
-        const urlMatch = smbUrl.match(/smb:\/\/(?:[^;]+;)?([^:]+):[^@]+@/);
+        const urlMatch = smbUrl.match(/smb:\/\/(?:([^;]+);)?([^:]+):[^@]+@/);
         if (urlMatch) {
-          sambaUsername = decodeURIComponent(urlMatch[1]);
+          sambaDomain = urlMatch[1]
+            ? decodeURIComponent(urlMatch[1])
+            : undefined;
+          sambaUsername = decodeURIComponent(urlMatch[2]);
         }
       }
 
@@ -977,11 +981,25 @@ export class FileOperationsCommand implements ICommand {
         }
 
         // Fall back to gio mount
+        // gio mount does not support inline passwords (user:password@host),
+        // but it does respect the username in the URL (user@host).
+        // Build a gio-compatible URL with the specified username so it connects
+        // as the right user instead of falling back to the system user.
+        let gioMountUrl: string;
+        if (sambaUsername) {
+          const userPart = sambaDomain
+            ? `${encodeURIComponent(sambaDomain)};${encodeURIComponent(sambaUsername)}`
+            : encodeURIComponent(sambaUsername);
+          gioMountUrl = `smb://${userPart}@${computer}/${share}`;
+        } else {
+          gioMountUrl = `smb://${computer}/${share}`;
+        }
+
         console.log(
-          `[Linux] Attempting to mount ${smbUrl ? '(with credentials)' : mountUrl} using gio mount`,
+          `[Linux] Attempting to mount ${gioMountUrl} using gio mount`,
         );
 
-        await execPromise(`gio mount "${mountUrl}"`, {
+        await execPromise(`gio mount "${gioMountUrl}"`, {
           timeout: 30000,
         });
 
