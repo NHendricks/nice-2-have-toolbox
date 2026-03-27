@@ -10,7 +10,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 ...
 
-### v2.2.2 (12.03.2026)
+### v2.2.3 (27.03.2026)
 
 - commander
   - fix show confirm dialog when overwriting files in a zip
@@ -19,6 +19,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - fix show right process names when " " is in path
   - fix process analysis on windows
   - fix ports
+  - fix show all processes in cpu / mem list
 
 ### v2.2.2 (12.03.2026)
 

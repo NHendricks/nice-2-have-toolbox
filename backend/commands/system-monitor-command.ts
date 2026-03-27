@@ -60,6 +60,39 @@ export class SystemMonitorCommand implements ICommand {
   /** Cached PowerShell binary name (resolved once, then reused). */
   private resolvedPsShell: string | null = null;
 
+  /** Whether the WMI perf counter warm-up has been triggered. */
+  private wmiWarmedUp = false;
+
+  constructor() {
+    // Pre-warm WMI performance counters in the background on Windows.
+    // The first query to Win32_PerfFormattedData_PerfProc_Process can take
+    // 10-30s while Windows initialises perf counters; subsequent queries
+    // return in <1s.  By triggering this at construction time the counters
+    // are ready by the time the user opens System Monitor.
+    this.prewarmWmiCounters();
+  }
+
+  private prewarmWmiCounters(): void {
+    if (process.platform !== 'win32' || this.wmiWarmedUp) return;
+    this.wmiWarmedUp = true;
+
+    const shell = `${SYS32}\\WindowsPowerShell\\v1.0\\powershell.exe`;
+    const script =
+      'Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Select-Object -First 1 | Out-Null';
+    const encoded = Buffer.from(script, 'utf16le').toString('base64');
+
+    // Fire-and-forget — we don't need the result, just the side-effect
+    // of warming up the WMI perf provider.  Use the already-imported `exec`.
+    const child = exec(
+      `"${shell}" -NoProfile -EncodedCommand ${encoded}`,
+      { timeout: 45000 },
+      () => {
+        /* ignore result */
+      },
+    );
+    child.unref?.();
+  }
+
   getDescription(): string {
     return 'System monitor: top CPU/memory process usage';
   }

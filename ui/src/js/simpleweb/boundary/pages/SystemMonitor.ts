@@ -170,9 +170,8 @@ export class SystemMonitor extends LitElement {
     .list {
       position: relative;
       z-index: 1;
-      min-height: 160px;
-      max-height: 240px;
-      flex: 0 0 auto;
+      min-height: 120px;
+      flex: 1 1 200px;
       overflow: auto;
       display: flex;
       flex-direction: column;
@@ -345,7 +344,6 @@ export class SystemMonitor extends LitElement {
   connectedCallback() {
     super.connectedCallback()
     this.refreshData()
-    this.loadOpenPorts()
   }
 
   disconnectedCallback() {
