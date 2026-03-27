@@ -3,7 +3,7 @@
     {
       "label": "Commander",
       "path": "/commander",
-      "icon": "📁"
+      "icon": "💾"
     },
     {
       "label": "GarbageFinder",
@@ -23,7 +23,7 @@
     {
       "label": "Restic UI",
       "path": "/restic",
-      "icon": "💾"
+      "icon": "🗄️"
     },
     {
       "label": "DocManager",
