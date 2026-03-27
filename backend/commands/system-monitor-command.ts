@@ -667,11 +667,13 @@ export class SystemMonitorCommand implements ICommand {
       // ignore command line enrichment failure
     }
 
+    const numCpus = os.cpus().length || 1;
     const entries = perfList
       .map((item: any) => {
         const pid = Number(item?.IDProcess);
         const processName = String(item?.Name || 'unknown');
-        const cpu = Number(item?.PercentProcessorTime || 0);
+        const cpuRaw = Number(item?.PercentProcessorTime || 0);
+        const cpu = cpuRaw / numCpus;
         const memoryMB = Number(item?.WorkingSetPrivate || 0) / (1024 * 1024);
         const ioBytesPersec = Number(item?.IODataBytesPersec || 0);
         const ioMB = ioBytesPersec / (1024 * 1024);
@@ -848,11 +850,13 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
         }
       }
 
+      const numCpus = os.cpus().length || 1;
       entries = perfList
         .map((item: any) => {
           const pid = Number(item?.IDProcess);
           const processName = String(item?.Name || 'unknown');
-          const cpuVal = Number(item?.PercentProcessorTime || 0);
+          const cpuRaw = Number(item?.PercentProcessorTime || 0);
+          const cpuVal = cpuRaw / numCpus;
           const memoryMB = Number(item?.WorkingSetPrivate || 0) / (1024 * 1024);
           const ioBytesPersec = Number(item?.IODataBytesPersec || 0);
           const ioMB = ioBytesPersec / (1024 * 1024);

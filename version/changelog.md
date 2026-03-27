@@ -21,6 +21,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - fix process analysis on windows
   - fix ports
   - fix show all processes in cpu / mem list
+  - fix calculate cpu percentage usage
   - feature: find which process holds a file handle (Handles tab)
 
 ### v2.2.2 (12.03.2026)
