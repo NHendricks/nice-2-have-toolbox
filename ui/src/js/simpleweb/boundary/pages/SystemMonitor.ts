@@ -554,7 +554,9 @@ export class SystemMonitor extends LitElement {
   private getShortProcessName(nameOrCommand: string): string {
     const executable = this.getExecutablePath(nameOrCommand)
     const parts = executable.split(/[\\/]/).filter(Boolean)
-    return (parts.length > 0 ? parts[parts.length - 1] : executable) || 'unknown'
+    return (
+      (parts.length > 0 ? parts[parts.length - 1] : executable) || 'unknown'
+    )
   }
 
   private getCommandText(entry: UsageEntry): string {
@@ -944,9 +946,12 @@ export class SystemMonitor extends LitElement {
                             if (sepIdx > 0) {
                               const dir = fullPath.substring(0, sepIdx + 1)
                               const file = fullPath.substring(sepIdx + 1)
-                              return html`<span class="path-dir">${dir}</span><span class="path-file">${file}</span>`
+                              return html`<span class="path-dir">${dir}</span
+                                ><span class="path-file">${file}</span>`
                             }
-                            return html`<span class="path-file">${fullPath}</span>`
+                            return html`<span class="path-file"
+                              >${fullPath}</span
+                            >`
                           })()}
                         </div>
                         <div class="value">${this.formatValue(entry)}</div>

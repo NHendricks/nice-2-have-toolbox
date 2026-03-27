@@ -11,6 +11,9 @@ import { CommandParameter, ICommand } from './command-interface.js';
 
 const execAsync = promisify(exec);
 
+/** Absolute path to System32 — child processes spawned by Electron may not have it on PATH. */
+const SYS32 = `${process.env.SystemRoot || 'C:\\Windows'}\\System32`;
+
 type ResourceMetric = 'cpu' | 'memory' | 'io';
 
 interface ProcessUsage {
@@ -189,7 +192,9 @@ export class SystemMonitorCommand implements ICommand {
     }
     try {
       if (process.platform === 'win32') {
-        await execAsync(`taskkill /PID ${numPid} /F`, { timeout: 5000 });
+        await execAsync(`"${SYS32}\\taskkill.exe" /PID ${numPid} /F`, {
+          timeout: 5000,
+        });
       } else {
         process.kill(numPid, 'SIGTERM');
       }
@@ -696,7 +701,11 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
     const cpu = await cpuPromise;
 
     // --- Parse disk availability ---
-    const diskList = Array.isArray(raw?.disk) ? raw.disk : raw?.disk ? [raw.disk] : [];
+    const diskList = Array.isArray(raw?.disk)
+      ? raw.disk
+      : raw?.disk
+        ? [raw.disk]
+        : [];
     let totalBytes = 0;
     let freeBytes = 0;
     for (const item of diskList) {
@@ -728,7 +737,11 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
     let entries: ProcessUsage[];
 
     if (metric === 'memory') {
-      const procList = Array.isArray(raw?.proc) ? raw.proc : raw?.proc ? [raw.proc] : [];
+      const procList = Array.isArray(raw?.proc)
+        ? raw.proc
+        : raw?.proc
+          ? [raw.proc]
+          : [];
       entries = procList
         .map((item: any) => {
           const pid = Number(item?.ProcessId);
@@ -750,8 +763,16 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
         .slice(0, limit);
     } else {
       // cpu / io
-      const perfList = Array.isArray(raw?.perf) ? raw.perf : raw?.perf ? [raw.perf] : [];
-      const cmdList = Array.isArray(raw?.cmd) ? raw.cmd : raw?.cmd ? [raw.cmd] : [];
+      const perfList = Array.isArray(raw?.perf)
+        ? raw.perf
+        : raw?.perf
+          ? [raw.perf]
+          : [];
+      const cmdList = Array.isArray(raw?.cmd)
+        ? raw.cmd
+        : raw?.cmd
+          ? [raw.cmd]
+          : [];
 
       const commandMap = new Map<number, string>();
       for (const item of cmdList) {
@@ -767,8 +788,7 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
           const pid = Number(item?.IDProcess);
           const processName = String(item?.Name || 'unknown');
           const cpuVal = Number(item?.PercentProcessorTime || 0);
-          const memoryMB =
-            Number(item?.WorkingSetPrivate || 0) / (1024 * 1024);
+          const memoryMB = Number(item?.WorkingSetPrivate || 0) / (1024 * 1024);
           const ioBytesPersec = Number(item?.IODataBytesPersec || 0);
           const ioMB = ioBytesPersec / (1024 * 1024);
 
@@ -799,7 +819,7 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
     // Use the full path so it works even when the child-process PATH
     // differs from the interactive shell (common inside Electron).
     if (process.platform === 'win32') {
-      return `${process.env.SystemRoot || 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+      return `${SYS32}\\WindowsPowerShell\\v1.0\\powershell.exe`;
     }
     // macOS / Linux: prefer pwsh (PowerShell Core), fall back to powershell
     return this.resolvedPsShell || 'pwsh';
@@ -868,10 +888,13 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
 
   private async getOpenPortsWindows(): Promise<OpenPort[]> {
     // Get listening TCP ports via netstat
-    const { stdout: netstatOut } = await execAsync('netstat -ano -p TCP', {
-      encoding: 'utf8',
-      timeout: 10000,
-    });
+    const { stdout: netstatOut } = await execAsync(
+      `"${SYS32}\\netstat.exe" -ano -p TCP`,
+      {
+        encoding: 'utf8',
+        timeout: 10000,
+      },
+    );
 
     const lines = netstatOut.trim().split('\n');
     const portEntries: {
@@ -912,7 +935,7 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
     if (uniquePids.length > 0) {
       try {
         const { stdout: tasklistOut } = await execAsync(
-          'tasklist /FO CSV /NH',
+          `"${SYS32}\\tasklist.exe" /FO CSV /NH`,
           { encoding: 'utf8', timeout: 10000 },
         );
         for (const tLine of tasklistOut.trim().split('\n')) {

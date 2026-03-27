@@ -14,6 +14,11 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 - commander
   - fix show confirm dialog when overwriting files in a zip
+  - fix sometimes uses wrong samba user on linux
+- system monitor
+  - fix show right process names when " " is in path
+  - fix process analysis on windows
+  - fix ports
 
 ### v2.2.2 (12.03.2026)
 
