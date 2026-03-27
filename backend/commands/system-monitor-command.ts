@@ -1052,10 +1052,17 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
     const escapedPath = filePath.replace(/'/g, "'\\''");
 
     try {
-      const { stdout } = await execAsync(`lsof '${escapedPath}' 2>/dev/null`, {
-        timeout: 10000,
-        maxBuffer: 1024 * 1024,
-      });
+      // -n = no host name resolution, -l = no user name resolution (avoids hangs)
+      // -P = no port name resolution
+      // On macOS lsof can be slow without these flags due to DNS lookups.
+      const { stdout } = await execAsync(
+        `lsof -n -l -P -- '${escapedPath}' 2>/dev/null`,
+        {
+          timeout: 15000,
+          maxBuffer: 1024 * 1024,
+          killSignal: 'SIGKILL',
+        },
+      );
 
       const lines = stdout.trim().split('\n');
       if (lines.length <= 1) return [];
@@ -1076,7 +1083,7 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
         let command = name;
         try {
           const { stdout: cmdline } = await execAsync(`ps -p ${pid} -o args=`, {
-            timeout: 2000,
+            timeout: 3000,
           });
           if (cmdline.trim()) command = cmdline.trim();
         } catch {
@@ -1087,7 +1094,26 @@ if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|Convert
       }
 
       return results;
-    } catch {
+    } catch (error: any) {
+      // lsof returns exit code 1 when no matching files are found — that's fine
+      if (error?.stdout) {
+        // There might still be output even on error exit code
+        const lines = String(error.stdout).trim().split('\n');
+        if (lines.length <= 1) return [];
+
+        const seen = new Set<number>();
+        const results: FileHandleResult[] = [];
+        for (const line of lines.slice(1)) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 2) continue;
+          const name = parts[0];
+          const pid = Number(parts[1]);
+          if (!Number.isFinite(pid) || pid <= 0 || seen.has(pid)) continue;
+          seen.add(pid);
+          results.push({ pid, name, command: name });
+        }
+        return results;
+      }
       return [];
     }
   }
