@@ -44,6 +44,12 @@ interface OpenPort {
   processName: string;
 }
 
+interface FileHandleResult {
+  pid: number;
+  name: string;
+  command: string;
+}
+
 interface MonitorResponse {
   success: boolean;
   metric?: ResourceMetric;
@@ -52,6 +58,7 @@ interface MonitorResponse {
   diskIoMBps?: number | null;
   resources?: ResourceAvailability;
   openPorts?: OpenPort[];
+  fileHandles?: FileHandleResult[];
   warning?: string;
   error?: string;
 }
@@ -104,7 +111,12 @@ export class SystemMonitorCommand implements ICommand {
         type: 'select',
         description: 'Action to perform',
         required: true,
-        options: ['top-processes', 'kill-process', 'open-ports'],
+        options: [
+          'top-processes',
+          'kill-process',
+          'open-ports',
+          'find-file-handle',
+        ],
         default: 'top-processes',
       },
       {
@@ -128,6 +140,13 @@ export class SystemMonitorCommand implements ICommand {
         description: 'Process ID to kill (for kill-process action)',
         required: false,
       },
+      {
+        name: 'filePath',
+        type: 'string',
+        description:
+          'File path to check for locking processes (for find-file-handle action)',
+        required: false,
+      },
     ];
   }
 
@@ -147,6 +166,19 @@ export class SystemMonitorCommand implements ICommand {
     try {
       if (action === 'kill-process') {
         return await this.killProcess(params?.pid);
+      }
+
+      if (action === 'find-file-handle') {
+        const filePath = params?.filePath;
+        if (!filePath || typeof filePath !== 'string') {
+          return { success: false, error: 'File path is required' };
+        }
+        const fileHandles = await this.findFileHandles(filePath.trim());
+        return {
+          success: true,
+          updatedAt: new Date().toISOString(),
+          fileHandles,
+        };
       }
 
       if (action === 'open-ports') {
@@ -902,6 +934,121 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
         'PowerShell konnte nicht ausgeführt werden. Ursprünglicher Fehler: ' +
           msg,
       );
+    }
+  }
+
+  private async findFileHandles(filePath: string): Promise<FileHandleResult[]> {
+    if (process.platform === 'win32') {
+      return this.findFileHandlesWindows(filePath);
+    }
+    return this.findFileHandlesUnix(filePath);
+  }
+
+  private async findFileHandlesWindows(
+    filePath: string,
+  ): Promise<FileHandleResult[]> {
+    const escapedPath = filePath.replace(/'/g, "''");
+    const script = `
+$ErrorActionPreference = 'Stop'
+Add-Type @'
+using System; using System.Collections.Generic; using System.Runtime.InteropServices;
+public static class RmApi {
+  [StructLayout(LayoutKind.Sequential)]
+  public struct RM_UNIQUE_PROCESS { public int dwProcessId; public System.Runtime.InteropServices.ComTypes.FILETIME ProcessStartTime; }
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+  public struct RM_PROCESS_INFO {
+    public RM_UNIQUE_PROCESS Process;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst=256)] public string strAppName;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst=64)] public string strServiceShortName;
+    public int ApplicationType; public int AppStatus; public int TSSessionId;
+    [MarshalAs(UnmanagedType.Bool)] public bool bRestartable;
+  }
+  [DllImport("rstrtmgr.dll",CharSet=CharSet.Unicode)] static extern int RmStartSession(out uint h,int f,string k);
+  [DllImport("rstrtmgr.dll")] static extern int RmEndSession(uint h);
+  [DllImport("rstrtmgr.dll",CharSet=CharSet.Unicode)] static extern int RmRegisterResources(uint h,uint nF,string[] f,uint nA,RM_UNIQUE_PROCESS[] a,uint nS,string[] s);
+  [DllImport("rstrtmgr.dll")] static extern int RmGetList(uint h,out uint needed,ref uint count,[In,Out] RM_PROCESS_INFO[] info,ref uint reasons);
+  public static RM_PROCESS_INFO[] Find(string path) {
+    uint h; string k=Guid.NewGuid().ToString();
+    if(RmStartSession(out h,0,k)!=0) return new RM_PROCESS_INFO[0];
+    try {
+      if(RmRegisterResources(h,1,new[]{path},0,null,0,null)!=0) return new RM_PROCESS_INFO[0];
+      uint needed=0,count=0,reasons=0;
+      int r=RmGetList(h,out needed,ref count,null,ref reasons);
+      if(r==234 && needed>0){
+        var info=new RM_PROCESS_INFO[needed]; count=needed;
+        if(RmGetList(h,out needed,ref count,info,ref reasons)==0){ var result=new RM_PROCESS_INFO[count]; Array.Copy(info,result,count); return result; }
+      }
+      return new RM_PROCESS_INFO[0];
+    } finally { RmEndSession(h); }
+  }
+}
+'@
+$results = [RmApi]::Find('${escapedPath}')
+$output = @()
+foreach($r in $results) {
+  $rpid = $r.Process.dwProcessId
+  $p = try { Get-Process -Id $rpid -ErrorAction SilentlyContinue } catch { $null }
+  $output += @{ pid=$rpid; name=$r.strAppName; command=if($p -and $p.Path){$p.Path}else{$r.strAppName} }
+}
+if($output.Count -eq 0){'[]'}elseif($output.Count -eq 1){'['+($output[0]|ConvertTo-Json -Depth 3 -Compress)+']'}else{$output|ConvertTo-Json -Depth 3 -Compress}
+`.trim();
+
+    const raw = await this.runPowerShellJson(script, 15000);
+    const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    return list
+      .map((item: any) => ({
+        pid: Number(item?.pid || 0),
+        name: String(item?.name || 'unknown'),
+        command: String(item?.command || item?.name || 'unknown'),
+      }))
+      .filter(
+        (item: FileHandleResult) => Number.isFinite(item.pid) && item.pid > 0,
+      );
+  }
+
+  private async findFileHandlesUnix(
+    filePath: string,
+  ): Promise<FileHandleResult[]> {
+    const escapedPath = filePath.replace(/'/g, "'\\''");
+
+    try {
+      const { stdout } = await execAsync(`lsof '${escapedPath}' 2>/dev/null`, {
+        timeout: 10000,
+        maxBuffer: 1024 * 1024,
+      });
+
+      const lines = stdout.trim().split('\n');
+      if (lines.length <= 1) return [];
+
+      const seen = new Set<number>();
+      const results: FileHandleResult[] = [];
+
+      for (const line of lines.slice(1)) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 2) continue;
+
+        const name = parts[0];
+        const pid = Number(parts[1]);
+
+        if (!Number.isFinite(pid) || pid <= 0 || seen.has(pid)) continue;
+        seen.add(pid);
+
+        let command = name;
+        try {
+          const { stdout: cmdline } = await execAsync(`ps -p ${pid} -o args=`, {
+            timeout: 2000,
+          });
+          if (cmdline.trim()) command = cmdline.trim();
+        } catch {
+          /* ignore */
+        }
+
+        results.push({ pid, name, command });
+      }
+
+      return results;
+    } catch {
+      return [];
     }
   }
 

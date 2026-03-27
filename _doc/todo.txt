@@ -1,5 +1,0 @@
-test
-- in linux samba connect uses user als connect user but it should use the user specified in coonnection details
-
-windows processes: "C:\Program Files\Synaptics\SynTP\SynTPEnh.exe"
-is shown as "program" blank seems to be a problem here

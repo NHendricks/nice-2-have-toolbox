@@ -2,7 +2,7 @@ import * as d3 from 'd3'
 import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 
-type Metric = 'cpu' | 'memory' | 'io' | 'ports'
+type Metric = 'cpu' | 'memory' | 'io' | 'ports' | 'handles'
 
 interface UsageEntry {
   pid: number
@@ -27,6 +27,12 @@ interface OpenPort {
   processName: string
 }
 
+interface FileHandleEntry {
+  pid: number
+  name: string
+  command: string
+}
+
 @customElement('nh-system-monitor')
 export class SystemMonitor extends LitElement {
   @state() private metric: Metric = 'cpu'
@@ -42,6 +48,10 @@ export class SystemMonitor extends LitElement {
   @state() private resources: ResourceAvailability | null = null
   @state() private liveMode = false
   @state() private openPorts: OpenPort[] = []
+  @state() private fileHandlePath = ''
+  @state() private fileHandleResults: FileHandleEntry[] = []
+  @state() private fileHandleLoading = false
+  @state() private fileHandleError = ''
   private refreshTimer: number | null = null
 
   static styles = css`
@@ -330,6 +340,33 @@ export class SystemMonitor extends LitElement {
       white-space: nowrap;
     }
 
+    .handle-search {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .handle-input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 8px;
+      padding: 0.5rem 0.7rem;
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .handle-input:focus {
+      border-color: rgba(59, 130, 246, 0.65);
+    }
+
+    .handle-input::placeholder {
+      color: rgba(148, 163, 184, 0.5);
+    }
+
     @media (max-width: 980px) {
       .chart-wrap {
         min-height: 300px;
@@ -611,6 +648,66 @@ export class SystemMonitor extends LitElement {
     }
   }
 
+  private async searchFileHandles() {
+    const path = this.fileHandlePath?.trim()
+    if (!path) return
+    this.fileHandleLoading = true
+    this.fileHandleError = ''
+    this.fileHandleResults = []
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'system-monitor',
+        { action: 'find-file-handle', filePath: path },
+      )
+      const result = response.data || response
+      if (result?.success) {
+        this.fileHandleResults = Array.isArray(result.fileHandles)
+          ? result.fileHandles
+          : []
+        if (this.fileHandleResults.length === 0) {
+          this.fileHandleError = 'No processes found holding this file.'
+        }
+      } else {
+        this.fileHandleError =
+          result?.error || 'Failed to search for file handles'
+      }
+    } catch (error: any) {
+      this.fileHandleError =
+        error?.message || 'Failed to search for file handles'
+    } finally {
+      this.fileHandleLoading = false
+    }
+  }
+
+  private async killHandleProcess(entry: FileHandleEntry, event: Event) {
+    const btn = event.currentTarget as HTMLButtonElement
+    if (!confirm(`Kill process "${entry.name}" (PID ${entry.pid})?`)) return
+    btn.disabled = true
+    btn.textContent = '...'
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'system-monitor',
+        { action: 'kill-process', pid: entry.pid },
+      )
+      const result = response.data || response
+      if (result?.success) {
+        btn.textContent = 'Killed'
+        setTimeout(() => this.searchFileHandles(), 800)
+      } else {
+        btn.textContent = 'Error'
+        btn.disabled = false
+        setTimeout(() => (btn.textContent = 'Kill'), 1500)
+      }
+    } catch {
+      btn.textContent = 'Error'
+      btn.disabled = false
+      setTimeout(() => (btn.textContent = 'Kill'), 1500)
+    }
+  }
+
   private renderChart() {
     const svgEl = this.shadowRoot?.querySelector(
       '#resource-pie',
@@ -785,6 +882,8 @@ export class SystemMonitor extends LitElement {
     this.metric = metric
     if (metric === 'ports') {
       this.loadOpenPorts()
+    } else if (metric === 'handles') {
+      // Don't auto-search — wait for user input
     } else {
       this.refreshData()
     }
@@ -821,6 +920,12 @@ export class SystemMonitor extends LitElement {
               Ports
             </button>
             <button
+              class=${this.metric === 'handles' ? 'active' : ''}
+              @click=${() => this.switchMetric('handles')}
+            >
+              Handles
+            </button>
+            <button
               class=${this.liveMode ? 'active' : ''}
               @click=${() => this.toggleLiveMode()}
             >
@@ -830,6 +935,8 @@ export class SystemMonitor extends LitElement {
               @click=${() => {
                 if (this.metric === 'ports') {
                   this.loadOpenPorts()
+                } else if (this.metric === 'handles') {
+                  this.searchFileHandles()
                 } else {
                   this.refreshData()
                 }
@@ -885,91 +992,149 @@ export class SystemMonitor extends LitElement {
                     : html`<div class="state">No open ports found</div>`}
                 </div>
               `
-            : html`
-                <div class="panel chart-wrap">
-                  ${this.loading && !this.entries.length
-                    ? html`<div class="state">
-                        <div>
-                          ${this.loadingFeedback || 'Loading system data...'}
-                        </div>
-                        <div
-                          style="font-size:0.92em;color:#60a5fa;margin-top:0.5em"
-                        >
-                          ${this.loadingCommand
-                            ? html`<div>
-                                Command:
-                                <span style="font-family:monospace"
-                                  >${this.loadingCommand}</span
-                                >
-                              </div>`
-                            : ''}
-                          ${this.loadingCommandFull
-                            ? html`<div
-                                style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
+            : this.metric === 'handles'
+              ? html`
+                  <div class="panel ports-list">
+                    <div class="ports-header">
+                      <span class="ports-title">🔍 File Handle Search</span>
+                    </div>
+                    <div class="handle-search">
+                      <input
+                        class="handle-input"
+                        type="text"
+                        placeholder="Enter file path to find locking processes..."
+                        .value=${this.fileHandlePath}
+                        @input=${(e: Event) => {
+                          this.fileHandlePath = (
+                            e.target as HTMLInputElement
+                          ).value
+                        }}
+                        @keydown=${(e: KeyboardEvent) => {
+                          if (e.key === 'Enter') this.searchFileHandles()
+                        }}
+                      />
+                      <button
+                        @click=${() => this.searchFileHandles()}
+                        ?disabled=${this.fileHandleLoading}
+                      >
+                        ${this.fileHandleLoading ? 'Searching...' : 'Search'}
+                      </button>
+                    </div>
+                    ${this.fileHandleError
+                      ? html`<div class="state">${this.fileHandleError}</div>`
+                      : ''}
+                    ${this.fileHandleResults.length > 0
+                      ? this.fileHandleResults.map(
+                          (entry) => html`
+                            <div class="port-row">
+                              <span class="port-number">PID ${entry.pid}</span>
+                              <span class="port-address" title=${entry.command}
+                                >${entry.command}</span
                               >
-                                Backend-Command:<br /><span
-                                  style="font-family:monospace;word-break:break-all"
-                                  >${this.loadingCommandFull}</span
+                              <span class="port-process">${entry.name}</span>
+                              <button
+                                class="kill-btn"
+                                @click=${(e: Event) =>
+                                  this.killHandleProcess(entry, e)}
+                              >
+                                Kill
+                              </button>
+                            </div>
+                          `,
+                        )
+                      : !this.fileHandleLoading && !this.fileHandleError
+                        ? html`<div class="state">
+                            Enter a file path and click Search to find which
+                            processes have a handle on it.
+                          </div>`
+                        : ''}
+                  </div>
+                `
+              : html`
+                  <div class="panel chart-wrap">
+                    ${this.loading && !this.entries.length
+                      ? html`<div class="state">
+                          <div>
+                            ${this.loadingFeedback || 'Loading system data...'}
+                          </div>
+                          <div
+                            style="font-size:0.92em;color:#60a5fa;margin-top:0.5em"
+                          >
+                            ${this.loadingCommand
+                              ? html`<div>
+                                  Command:
+                                  <span style="font-family:monospace"
+                                    >${this.loadingCommand}</span
+                                  >
+                                </div>`
+                              : ''}
+                            ${this.loadingCommandFull
+                              ? html`<div
+                                  style="margin-top:0.2em;font-size:0.88em;color:#38bdf8"
                                 >
-                              </div>`
-                            : ''}
-                          ${this.loadingWait
-                            ? html`<div style="margin-top:0.2em">
-                                Status: ${this.loadingWait}
-                              </div>`
-                            : ''}
-                        </div>
-                      </div>`
-                    : this.error
-                      ? html`<div class="state">${this.error}</div>`
-                      : html`
-                          <svg id="resource-pie"></svg>
-                          <div id="pie-tooltip" class="tooltip"></div>
-                        `}
-                </div>
+                                  Backend-Command:<br /><span
+                                    style="font-family:monospace;word-break:break-all"
+                                    >${this.loadingCommandFull}</span
+                                  >
+                                </div>`
+                              : ''}
+                            ${this.loadingWait
+                              ? html`<div style="margin-top:0.2em">
+                                  Status: ${this.loadingWait}
+                                </div>`
+                              : ''}
+                          </div>
+                        </div>`
+                      : this.error
+                        ? html`<div class="state">${this.error}</div>`
+                        : html`
+                            <svg id="resource-pie"></svg>
+                            <div id="pie-tooltip" class="tooltip"></div>
+                          `}
+                  </div>
 
-                <div class="panel list">
-                  ${this.entries.map(
-                    (entry) => html`
-                      <div class="row">
-                        <div class="name" title=${this.getCommandText(entry)}>
-                          ${(() => {
-                            const fullPath = this.getDisplayProcessName(
-                              this.getCommandText(entry),
-                            )
-                            const sepIdx = Math.max(
-                              fullPath.lastIndexOf('/'),
-                              fullPath.lastIndexOf('\\'),
-                            )
-                            if (sepIdx > 0) {
-                              const dir = fullPath.substring(0, sepIdx + 1)
-                              const file = fullPath.substring(sepIdx + 1)
-                              return html`<span class="path-dir">${dir}</span
-                                ><span class="path-file">${file}</span>`
-                            }
-                            return html`<span class="path-file"
-                              >${fullPath}</span
-                            >`
-                          })()}
+                  <div class="panel list">
+                    ${this.entries.map(
+                      (entry) => html`
+                        <div class="row">
+                          <div class="name" title=${this.getCommandText(entry)}>
+                            ${(() => {
+                              const fullPath = this.getDisplayProcessName(
+                                this.getCommandText(entry),
+                              )
+                              const sepIdx = Math.max(
+                                fullPath.lastIndexOf('/'),
+                                fullPath.lastIndexOf('\\'),
+                              )
+                              if (sepIdx > 0) {
+                                const dir = fullPath.substring(0, sepIdx + 1)
+                                const file = fullPath.substring(sepIdx + 1)
+                                return html`<span class="path-dir">${dir}</span
+                                  ><span class="path-file">${file}</span>`
+                              }
+                              return html`<span class="path-file"
+                                >${fullPath}</span
+                              >`
+                            })()}
+                          </div>
+                          <div class="value">${this.formatValue(entry)}</div>
+                          <button
+                            class="copy-btn"
+                            @click=${(e: Event) => this.copyCommand(entry, e)}
+                          >
+                            Copy
+                          </button>
+                          <button
+                            class="kill-btn"
+                            @click=${(e: Event) => this.killProcess(entry, e)}
+                          >
+                            Kill
+                          </button>
                         </div>
-                        <div class="value">${this.formatValue(entry)}</div>
-                        <button
-                          class="copy-btn"
-                          @click=${(e: Event) => this.copyCommand(entry, e)}
-                        >
-                          Copy
-                        </button>
-                        <button
-                          class="kill-btn"
-                          @click=${(e: Event) => this.killProcess(entry, e)}
-                        >
-                          Kill
-                        </button>
-                      </div>
-                    `,
-                  )}
-                </div>
-              `}
+                      `,
+                    )}
+                  </div>
+                `}
         </div>
       </div>
     `
