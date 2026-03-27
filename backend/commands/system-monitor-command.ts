@@ -25,6 +25,12 @@ interface ProcessUsage {
   ioMB: number;
 }
 
+interface DiskDriveInfo {
+  drive: string;
+  freeGB: number;
+  totalGB: number;
+}
+
 interface ResourceAvailability {
   cpuFreePercent: number | null;
   cpuUsedPercent: number | null;
@@ -34,6 +40,7 @@ interface ResourceAvailability {
   diskFreeGB: number | null;
   diskUsedGB: number | null;
   diskTotalGB: number | null;
+  diskDrives?: DiskDriveInfo[];
 }
 
 interface OpenPort {
@@ -305,6 +312,7 @@ export class SystemMonitorCommand implements ICommand {
       diskFreeGB: disk.freeGB,
       diskUsedGB: disk.usedGB,
       diskTotalGB: disk.totalGB,
+      diskDrives: (disk as any).drives || [],
     };
   }
 
@@ -371,25 +379,32 @@ export class SystemMonitorCommand implements ICommand {
     freeGB: number | null;
     usedGB: number | null;
     totalGB: number | null;
+    drives: DiskDriveInfo[];
   }> {
     const query =
-      'Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object Size,FreeSpace | ConvertTo-Json -Depth 3';
+      'Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID,Size,FreeSpace | ConvertTo-Json -Depth 3';
     const raw = await this.runPowerShellJson(query, 9000);
     const list = Array.isArray(raw) ? raw : [raw];
 
     let totalBytes = 0;
     let freeBytes = 0;
+    const drives: DiskDriveInfo[] = [];
     for (const item of list) {
       const size = Number(item?.Size || 0);
       const free = Number(item?.FreeSpace || 0);
       if (Number.isFinite(size) && size > 0) {
         totalBytes += size;
         freeBytes += Number.isFinite(free) ? Math.max(0, free) : 0;
+        drives.push({
+          drive: String(item?.DeviceID || '?'),
+          freeGB: this.bytesToGB(Math.max(0, free)),
+          totalGB: this.bytesToGB(size),
+        });
       }
     }
 
     if (totalBytes <= 0) {
-      return { freeGB: null, usedGB: null, totalGB: null };
+      return { freeGB: null, usedGB: null, totalGB: null, drives: [] };
     }
 
     const usedBytes = Math.max(0, totalBytes - freeBytes);
@@ -397,6 +412,7 @@ export class SystemMonitorCommand implements ICommand {
       freeGB: this.bytesToGB(freeBytes),
       usedGB: this.bytesToGB(usedBytes),
       totalGB: this.bytesToGB(totalBytes),
+      drives,
     };
   }
 
@@ -746,12 +762,12 @@ export class SystemMonitorCommand implements ICommand {
     const psScript =
       metric === 'memory'
         ? `
-$disk = try { Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object Size,FreeSpace } catch { @() }
+$disk = try { Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object DeviceID,Size,FreeSpace } catch { @() }
 $proc = try { Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -gt 0 } | Select-Object ProcessId,Name,WorkingSetSize,CommandLine } catch { @() }
 @{ disk=$disk; proc=$proc } | ConvertTo-Json -Depth 3 -Compress
 `.trim()
         : `
-$disk = try { Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object Size,FreeSpace } catch { @() }
+$disk = try { Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object DeviceID,Size,FreeSpace } catch { @() }
 $perf = try { Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.IDProcess -gt 0 -and $_.Name -ne '_Total' -and $_.Name -ne 'Idle' } | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate,IODataBytesPersec } catch { @() }
 $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLine } catch { @() }
 @{ disk=$disk; perf=$perf; cmd=$cmd } | ConvertTo-Json -Depth 3 -Compress
@@ -774,12 +790,18 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
         : [];
     let totalBytes = 0;
     let freeBytes = 0;
+    const diskDrives: DiskDriveInfo[] = [];
     for (const item of diskList) {
       const size = Number(item?.Size || 0);
       const free = Number(item?.FreeSpace || 0);
       if (Number.isFinite(size) && size > 0) {
         totalBytes += size;
         freeBytes += Number.isFinite(free) ? Math.max(0, free) : 0;
+        diskDrives.push({
+          drive: String(item?.DeviceID || '?'),
+          freeGB: this.bytesToGB(Math.max(0, free)),
+          totalGB: this.bytesToGB(size),
+        });
       }
     }
     const usedBytes = Math.max(0, totalBytes - freeBytes);
@@ -797,6 +819,7 @@ $cmd  = try { Get-CimInstance Win32_Process | Select-Object ProcessId,CommandLin
       diskFreeGB: totalBytes > 0 ? this.bytesToGB(freeBytes) : null,
       diskUsedGB: totalBytes > 0 ? this.bytesToGB(usedBytes) : null,
       diskTotalGB: totalBytes > 0 ? this.bytesToGB(totalBytes) : null,
+      diskDrives,
     };
 
     // --- Parse process entries ---

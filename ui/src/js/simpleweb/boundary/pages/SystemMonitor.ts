@@ -13,10 +13,17 @@ interface UsageEntry {
   ioMB?: number
 }
 
+interface DiskDriveInfo {
+  drive: string
+  freeGB: number
+  totalGB: number
+}
+
 interface ResourceAvailability {
   cpuFreePercent?: number | null
   memoryFreeMB?: number | null
   diskFreeGB?: number | null
+  diskDrives?: DiskDriveInfo[]
 }
 
 interface OpenPort {
@@ -1133,7 +1140,15 @@ export class SystemMonitor extends LitElement {
                           </div>`
                         : ''}
                       ${typeof this.resources?.diskFreeGB === 'number'
-                        ? html`<div class="summary-item">
+                        ? html`<div
+                            class="summary-item"
+                            title=${(this.resources.diskDrives || [])
+                              .map(
+                                (d) =>
+                                  `${d.drive} ${d.freeGB.toFixed(1)} / ${d.totalGB.toFixed(1)} GB`,
+                              )
+                              .join('\n')}
+                          >
                             <div class="summary-label">Disk free</div>
                             <div class="summary-value">
                               ${this.resources.diskFreeGB.toFixed(1)} GB
