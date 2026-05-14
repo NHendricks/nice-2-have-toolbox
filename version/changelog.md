@@ -13,6 +13,8 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 - garbage finder
   - improve visibility of scan process, add stop button
   - scan all folders in parallel
+- commander
+  - close drive dialog when creating new smb connection
 
 ### v2.2.3 (27.03.2026)
 

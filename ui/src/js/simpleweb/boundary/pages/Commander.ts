@@ -872,6 +872,22 @@ export class Commander extends LitElement {
           }
         }
 
+        // For network/Samba paths, show the SMB dialog with the error
+        const isNetworkPath =
+          path.startsWith('\\\\') ||
+          path.startsWith('//') ||
+          path.startsWith('smb://')
+        if (isNetworkPath) {
+          const errorMsg = data?.error || response.error || 'Unknown error'
+          this.pendingSmbPath = path
+          this.pendingSmbPane = pane
+          this.showSMBDialog = true
+          await this.updateComplete
+          const dialog = this.shadowRoot?.querySelector('#smb-dialog') as any
+          dialog?.connectionFailed(errorMsg)
+          return
+        }
+
         // Try to go up one level
         const parentPath = this.getParentPath(path)
 
@@ -910,6 +926,21 @@ export class Commander extends LitElement {
           this.rightPane = emptyState
           this.paneManager.setPane('right', this.rightPane)
         }
+      }
+
+      // For network/Samba paths, show the SMB dialog with the error
+      const isNetworkPath =
+        path.startsWith('\\\\') ||
+        path.startsWith('//') ||
+        path.startsWith('smb://')
+      if (isNetworkPath) {
+        this.pendingSmbPath = path
+        this.pendingSmbPane = pane
+        this.showSMBDialog = true
+        await this.updateComplete
+        const dialog = this.shadowRoot?.querySelector('#smb-dialog') as any
+        dialog?.connectionFailed(error.message || 'Unknown error')
+        return
       }
 
       // Try to go up one level
@@ -3702,6 +3733,7 @@ export class Commander extends LitElement {
                     ) as any
                     dialog?.connectionSuccess()
                     this.showSMBDialog = false
+                    this.showDriveSelector = false
                   }
                 } catch (error: any) {
                   if (!this.smbConnectionCancelled) {
