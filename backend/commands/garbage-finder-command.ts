@@ -19,6 +19,7 @@ interface FolderNode {
   depth: number;
   fileCount: number;
   folderCount: number;
+  isComplete: boolean;
 }
 
 export class GarbageFinderCommand implements ICommand {
@@ -34,7 +35,26 @@ export class GarbageFinderCommand implements ICommand {
   private totalSize: number = 0;
   private rootNode: FolderNode | null = null;
   private lastProgressUpdate: number = 0;
-  private progressThrottleMs: number = 100; // Update UI every 100ms max
+  private progressThrottleMs: number = 100;
+
+  private semaphoreLimit = 64;
+  private semaphoreActive = 0;
+  private semaphoreQueue: (() => void)[] = [];
+
+  private async acquire(): Promise<void> {
+    if (this.semaphoreActive < this.semaphoreLimit) {
+      this.semaphoreActive++;
+      return;
+    }
+    await new Promise<void>((resolve) => this.semaphoreQueue.push(resolve));
+    this.semaphoreActive++;
+  }
+
+  private release(): void {
+    this.semaphoreActive--;
+    const next = this.semaphoreQueue.shift();
+    if (next) next();
+  }
 
   setProgressCallback(
     callback: (
@@ -55,6 +75,8 @@ export class GarbageFinderCommand implements ICommand {
 
   resetCancellation() {
     this.cancelled = false;
+    this.semaphoreActive = 0;
+    this.semaphoreQueue = [];
   }
 
   async execute(params: any): Promise<any> {
@@ -107,6 +129,8 @@ export class GarbageFinderCommand implements ICommand {
     const tree = await this.buildFolderNode(absolutePath, 0);
     this.rootNode = tree;
 
+    if (tree) tree.isComplete = true;
+
     // Send final update
     if (this.progressCallback && tree) {
       this.progressCallback(
@@ -152,11 +176,14 @@ export class GarbageFinderCommand implements ICommand {
   }
 
   /**
-   * Recursively build folder node with size calculations (parallel processing)
+   * Recursively build folder node with size calculations (parallel processing).
+   * Accepts an optional pre-created node so callers can push it into the tree
+   * before scanning begins — enabling live size updates via shared reference.
    */
   private async buildFolderNode(
     folderPath: string,
     depth: number,
+    node?: FolderNode,
   ): Promise<FolderNode | null> {
     if (this.cancelled) {
       throw new Error('Operation cancelled by user');
@@ -164,15 +191,18 @@ export class GarbageFinderCommand implements ICommand {
 
     this.foldersScanned++;
 
-    const node: FolderNode = {
-      name: path.basename(folderPath) || folderPath,
-      path: folderPath,
-      size: 0,
-      children: [],
-      depth: depth,
-      fileCount: 0,
-      folderCount: 0,
-    };
+    if (!node) {
+      node = {
+        name: path.basename(folderPath) || folderPath,
+        path: folderPath,
+        size: 0,
+        children: [],
+        depth,
+        fileCount: 0,
+        folderCount: 0,
+        isComplete: false,
+      };
+    }
 
     // Set as root if this is the first node
     if (depth === 0) {
@@ -183,13 +213,18 @@ export class GarbageFinderCommand implements ICommand {
     this.sendProgressUpdate(folderPath);
 
     try {
-      const entries = await readdir(folderPath, { withFileTypes: true });
+      await this.acquire();
+      let entries;
+      try {
+        entries = await readdir(folderPath, { withFileTypes: true });
+      } finally {
+        this.release();
+      }
 
       if (this.cancelled) {
         throw new Error('Operation cancelled by user');
       }
 
-      // Separate directories and files
       const directories: { name: string; fullPath: string }[] = [];
       const files: { name: string; fullPath: string }[] = [];
 
@@ -204,54 +239,62 @@ export class GarbageFinderCommand implements ICommand {
         }
       }
 
-      // Process files in parallel (batch to avoid too many open handles)
-      const FILE_BATCH_SIZE = 100;
-      for (let i = 0; i < files.length; i += FILE_BATCH_SIZE) {
-        if (this.cancelled) {
-          throw new Error('Operation cancelled by user');
-        }
-        const batch = files.slice(i, i + FILE_BATCH_SIZE);
-        const fileResults = await Promise.all(
-          batch.map(async (file) => {
-            try {
-              const fileStats = await stat(file.fullPath);
-              return fileStats.size;
-            } catch {
-              return 0;
-            }
-          }),
-        );
-        for (const size of fileResults) {
-          node.size += size;
-          if (size > 0) {
-            node.fileCount++;
-            this.totalSize += size;
+      // Process all files in parallel, bounded by global semaphore
+      const fileSizes = await Promise.all(
+        files.map(async (file) => {
+          if (this.cancelled) return 0;
+          await this.acquire();
+          try {
+            const fileStats = await stat(file.fullPath);
+            return fileStats.size;
+          } catch {
+            return 0;
+          } finally {
+            this.release();
           }
+        }),
+      );
+
+      for (const size of fileSizes) {
+        node.size += size;
+        if (size > 0) {
+          node.fileCount++;
+          this.totalSize += size;
         }
       }
 
-      // Process directories in parallel (limit concurrency to avoid resource exhaustion)
-      const DIR_BATCH_SIZE = 10;
+      if (this.cancelled) {
+        throw new Error('Operation cancelled by user');
+      }
+
+      // Push child stubs into the tree immediately so they appear in progress updates
+      // before their subtrees are scanned. Each stub is filled in-place, so the shared
+      // object reference captures growing sizes as the scan progresses.
       node.folderCount = directories.length;
+      const childStubs = directories.map((dir) => {
+        const stub: FolderNode = {
+          name: path.basename(dir.fullPath),
+          path: dir.fullPath,
+          size: 0,
+          children: [],
+          depth: depth + 1,
+          fileCount: 0,
+          folderCount: 0,
+          isComplete: false,
+        };
+        node!.children.push(stub);
+        return { dir, stub };
+      });
 
-      for (let i = 0; i < directories.length; i += DIR_BATCH_SIZE) {
-        if (this.cancelled) {
-          throw new Error('Operation cancelled by user');
-        }
-        const batch = directories.slice(i, i + DIR_BATCH_SIZE);
-        const childResults = await Promise.all(
-          batch.map((dir) => this.buildFolderNode(dir.fullPath, depth + 1)),
-        );
-
-        for (const childNode of childResults) {
-          if (childNode) {
-            node.children.push(childNode);
-            node.size += childNode.size;
-            node.fileCount += childNode.fileCount;
-            node.folderCount += childNode.folderCount;
-          }
-        }
-      }
+      await Promise.all(
+        childStubs.map(async ({ dir, stub }) => {
+          await this.buildFolderNode(dir.fullPath, depth + 1, stub);
+          stub.isComplete = true;
+          node!.size += stub.size;
+          node!.fileCount += stub.fileCount;
+          node!.folderCount += stub.folderCount;
+        }),
+      );
 
       return node;
     } catch (error: any) {

@@ -1,0 +1,4 @@
+garbagefinder - parallelize file Analysis, add stop button 
+
+favoriten oben anzeigen und per shortcut erreichen?
+samba show error message when not successfull

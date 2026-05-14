@@ -10,6 +10,10 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 ...
 
+- garbage finder
+  - improve visibility of scan process, add stop button
+  - scan all folders in parallel
+
 ### v2.2.3 (27.03.2026)
 
 - commander
@@ -23,7 +27,7 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - fix show all processes in cpu / mem list
   - fix calculate cpu percentage usage
   - feature find which process holds a file handle (Handles tab)
-  - fetaure show drive infos as tooltip for free disc space
+  - feature show drive infos as tooltip for free disc space
 
 ### v2.2.2 (12.03.2026)
 

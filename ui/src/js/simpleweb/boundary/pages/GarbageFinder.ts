@@ -26,6 +26,7 @@ interface FolderNode {
   folderCount: number
   isAnalyzed: boolean
   isLoading: boolean
+  isComplete?: boolean
 }
 
 interface ScanProgress {
@@ -216,7 +217,7 @@ export class GarbageFinder extends LitElement {
       transition: width 0.3s ease;
     }
 
-    .progress-bar-text {
+.progress-bar-text {
       position: absolute;
       left: 50%;
       top: 50%;
@@ -293,6 +294,20 @@ export class GarbageFinder extends LitElement {
       }
       50% {
         opacity: 0.7;
+      }
+    }
+
+    .tree-node.unfinished {
+      animation: scanning-glow 1.8s ease-in-out infinite;
+    }
+
+    @keyframes scanning-glow {
+      0%,
+      100% {
+        background: rgba(14, 165, 233, 0.04);
+      }
+      50% {
+        background: rgba(14, 165, 233, 0.14);
       }
     }
 
@@ -748,9 +763,11 @@ export class GarbageFinder extends LitElement {
       percentage: 0,
     }
 
-    // Mark node as being analyzed
+    // Expand and mark node as being analyzed so children are visible during scan
+    this.expandedPaths.add(node.path)
     this.treeData = this.updateNodeInTree(this.treeData, node.path, {
       isLoading: true,
+      isExpanded: true,
     })
 
     try {
@@ -784,12 +801,14 @@ export class GarbageFinder extends LitElement {
   }
 
   updateAnalyzedNode(analyzedNode: FolderNode) {
+    const scanningPath = this.scanProgress.scanningPath
+    const stillScanning = this.scanProgress.isScanning
     const addAnalyzedFlag = (node: FolderNode, depth: number): FolderNode => ({
       ...node,
       depth,
       isAnalyzed: true,
       isExpanded: this.expandedPaths.has(node.path),
-      isLoading: false,
+      isLoading: stillScanning && node.path === scanningPath,
       children: node.children.map((child) => addAnalyzedFlag(child, depth + 1)),
     })
 
@@ -1077,12 +1096,15 @@ export class GarbageFinder extends LitElement {
       const isBeingAnalyzed =
         this.scanProgress.isScanning &&
         this.scanProgress.scanningPath === node.path
+      const isUnfinished =
+        this.scanProgress.isScanning &&
+        node.isAnalyzed &&
+        !node.isComplete &&
+        !isBeingAnalyzed
 
       return html`
         <div
-          class="tree-node ${node.isExpanded
-            ? 'expanded'
-            : ''} ${isBeingAnalyzed ? 'analyzing' : ''}"
+          class="tree-node ${node.isExpanded ? 'expanded' : ''} ${isBeingAnalyzed ? 'analyzing' : ''} ${isUnfinished ? 'unfinished' : ''}"
         >
           <div
             class="folder-name"
@@ -1256,15 +1278,12 @@ export class GarbageFinder extends LitElement {
                       >
                     </div>
                   </div>
-                </div>
-                <div class="progress-bar-container">
-                  <div
-                    class="progress-bar"
-                    style="width: ${this.scanProgress.percentage}%"
-                  ></div>
-                  <div class="progress-bar-text">
-                    ${this.scanProgress.percentage}%
-                  </div>
+                  <button
+                    class="btn btn-danger"
+                    @click=${() => this.cancelScan()}
+                  >
+                    Stop
+                  </button>
                 </div>
                 <div class="current-path">${this.scanProgress.currentPath}</div>
               </div>

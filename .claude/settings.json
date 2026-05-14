@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"d:\\\\dev\\\\nh-toolbox\\\\ui\\\\src\" -Recurse -Force | Where-Object {$_.PSIsContainer} | Select-Object -ExpandProperty Name | Sort-Object -Unique)"
+    ]
+  }
+}

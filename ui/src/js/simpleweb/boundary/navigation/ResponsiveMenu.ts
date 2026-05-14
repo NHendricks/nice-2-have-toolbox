@@ -104,15 +104,15 @@ export class ResponsiveMenu extends LitElement {
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 14px;
-      width: 52px;
-      height: 52px;
+      border-radius: 7px;
+      width: 26px;
+      height: 26px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow:
         0 4px 12px rgba(0, 0, 0, 0.4),
@@ -173,16 +173,20 @@ export class ResponsiveMenu extends LitElement {
     }
 
     .burger-line {
-      width: 28px;
-      height: 3px;
+      width: 10px;
+      height: 1.5px;
       background: var(--text-primary);
       border-radius: 2px;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
+    .burger-btn.open .burger-line {
+      width: 18px;
+    }
+
     .burger-btn.open .burger-line:nth-child(1) {
-      transform: rotate(45deg) translate(8px, 8px);
+      transform: rotate(45deg) translate(6px, 5px);
     }
 
     .burger-btn.open .burger-line:nth-child(2) {
@@ -190,7 +194,7 @@ export class ResponsiveMenu extends LitElement {
     }
 
     .burger-btn.open .burger-line:nth-child(3) {
-      transform: rotate(-45deg) translate(8px, -8px);
+      transform: rotate(-45deg) translate(4px, -4px);
     }
 
     .fullscreen-menu {
