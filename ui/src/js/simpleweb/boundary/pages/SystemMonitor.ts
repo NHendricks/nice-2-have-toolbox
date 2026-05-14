@@ -22,6 +22,8 @@ interface DiskDriveInfo {
 interface ResourceAvailability {
   cpuFreePercent?: number | null
   memoryFreeMB?: number | null
+  memoryUsedMB?: number | null
+  memoryTotalMB?: number | null
   diskFreeGB?: number | null
   diskDrives?: DiskDriveInfo[]
 }
@@ -299,6 +301,13 @@ export class SystemMonitor extends LitElement {
       color: #93c5fd;
       font-size: 0.84rem;
       font-weight: 600;
+    }
+
+    .value-secondary {
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 400;
+      margin-left: 0.4rem;
     }
 
     .state {
@@ -1131,14 +1140,31 @@ export class SystemMonitor extends LitElement {
                             </div>
                           </div>`
                         : ''}
-                      ${this.resources?.memoryFreeMB != null
+                      ${this.resources?.memoryUsedMB != null
                         ? html`<div class="summary-item">
-                            <div class="summary-label">Memory free</div>
+                            <div class="summary-label">Memory used</div>
                             <div class="summary-value">
-                              ${this.formatFreeMemory()}
+                              ${(
+                                (this.resources.memoryUsedMB ?? 0) / 1024
+                              ).toFixed(1)}
+                              GB
+                              ${this.resources.memoryTotalMB != null
+                                ? html` /
+                                  ${(
+                                    this.resources.memoryTotalMB / 1024
+                                  ).toFixed(1)}
+                                  GB`
+                                : ''}
                             </div>
                           </div>`
-                        : ''}
+                        : this.resources?.memoryFreeMB != null
+                          ? html`<div class="summary-item">
+                              <div class="summary-label">Memory free</div>
+                              <div class="summary-value">
+                                ${this.formatFreeMemory()}
+                              </div>
+                            </div>`
+                          : ''}
                       ${typeof this.resources?.diskFreeGB === 'number'
                         ? html`<div
                             class="summary-item"
@@ -1190,7 +1216,18 @@ export class SystemMonitor extends LitElement {
                               >`
                             })()}
                           </div>
-                          <div class="value">${this.formatValue(entry)}</div>
+                          <div class="value">
+                            ${this.formatValue(entry)}
+                            ${this.metric === 'cpu' && entry.memoryMB != null
+                              ? html`<span class="value-secondary"
+                                  >${(entry.memoryMB || 0).toFixed(0)} MB</span
+                                >`
+                              : this.metric === 'memory' && entry.cpu != null
+                                ? html`<span class="value-secondary"
+                                    >${(entry.cpu || 0).toFixed(1)} %</span
+                                  >`
+                                : ''}
+                          </div>
                           <button
                             class="copy-btn"
                             @click=${(e: Event) => this.copyCommand(entry, e)}

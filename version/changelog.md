@@ -15,6 +15,8 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
   - scan all folders in parallel
 - commander
   - close drive dialog when creating new smb connection
+- sysmon
+  show cpu and memory usage per process in tables
 
 ### v2.2.3 (27.03.2026)
 

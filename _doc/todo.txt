@@ -1,2 +1,1 @@
 favoriten oben anzeigen und per shortcut erreichen?
-samba show error message when not successfull
