@@ -594,6 +594,9 @@ export class Commander extends LitElement {
       this.showDriveSelector = false
       this.showFTPDialog = true
     } else if (selectedItem.type === 'add-network') {
+      // Fresh connection: clear any stale path so the share picked in the dialog is used
+      this.pendingSmbPath = null
+      this.pendingSmbPane = this.activePane
       this.showDriveSelector = false
       this.showSMBDialog = true
     } else {
@@ -3655,6 +3658,9 @@ export class Commander extends LitElement {
                 this.showFTPDialog = true
               }}
               @open-smb=${() => {
+                // Fresh connection: clear any stale path so the dialog's picked share is used
+                this.pendingSmbPath = null
+                this.pendingSmbPane = this.activePane
                 this.showDriveSelector = false
                 this.showSMBDialog = true
               }}

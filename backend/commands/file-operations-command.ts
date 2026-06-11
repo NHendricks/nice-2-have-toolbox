@@ -21,6 +21,9 @@ const rmdir = promisify(fs.rmdir);
 const unlink = promisify(fs.unlink);
 const execPromise = promisify(exec);
 
+// net.exe is not on PATH in the spawned CLI child process — always use the full path.
+const NET_EXE = `${process.env.SystemRoot || 'C:\\Windows'}\\System32\\net.exe`;
+
 /**
  * Parse .n2henv file and return environment variables
  * Searches in the given directory and parent directories up to root
@@ -220,7 +223,7 @@ export class FileOperationsCommand implements ICommand {
         case 'network-computers':
           return await this.listNetworkComputers();
         case 'browse-computer-shares':
-          return await this.browseComputerShares(params.computerName);
+          return await this.browseComputerShares(params.computerName, params.smbUrl);
         case 'directory-size':
           return await this.getDirectorySize(params.dirPath);
         case 'write-file':
@@ -419,7 +422,7 @@ export class FileOperationsCommand implements ICommand {
 
     if (process.platform === 'win32') {
       try {
-        const { stdout } = await execPromise('net use', {
+        const { stdout } = await execPromise(`"${NET_EXE}" use`, {
           encoding: 'utf8',
           timeout: 10000,
         });
@@ -571,67 +574,129 @@ export class FileOperationsCommand implements ICommand {
    * Browse shares on a specific computer (Windows only)
    * Uses 'net view \\computername' command
    */
-  private async browseComputerShares(computerName: string): Promise<any> {
-    if (process.platform !== 'win32') {
-      return { success: true, operation: 'browse-computer-shares', shares: [] };
-    }
-
+  private async browseComputerShares(computerName: string, smbUrl?: string): Promise<any> {
     if (!computerName) {
-      return {
-        success: false,
-        error: 'computerName is required',
-      };
+      return { success: false, error: 'computerName is required' };
     }
 
-    try {
-      // Ensure computer name has proper format
-      const computer = computerName.replace(/^\\\\/, '');
-      const { stdout } = await execPromise(`net view \\\\${computer}`, {
-        encoding: 'utf8',
-        timeout: 15000,
-      });
+    const computer = computerName.replace(/^\\\\/, '').replace(/^\/\//, '');
 
-      const shares: { name: string; type: string; remark: string }[] = [];
-
-      // Parse net view \\computer output
-      // Format: Share name      Type         Used as  Comment
-      //         Documents       Disk
-      //         Printers        Print
-      const lines = stdout.split('\n');
-      let inShareList = false;
-
-      for (const line of lines) {
-        // Start parsing after the header line (contains dashes)
-        if (line.match(/^-+/)) {
-          inShareList = true;
-          continue;
-        }
-        if (inShareList && line.trim()) {
-          // Parse share line: name, type, optional remark
-          const match = line.match(/^([^\s]+)\s+(Disk|Print|IPC)\s*(.*)?$/i);
-          if (match) {
-            shares.push({
-              name: match[1],
-              type: match[2],
-              remark: (match[3] || '').trim(),
-            });
+    if (process.platform === 'win32') {
+      // Parse credentials from smbUrl: smb://[domain;]user:pass@server/
+      let username: string | undefined;
+      let password: string | undefined;
+      let domain: string | undefined;
+      if (smbUrl) {
+        const m = smbUrl.match(/smb:\/\/([^@]+)@/);
+        if (m) {
+          const creds = decodeURIComponent(m[1]);
+          const domSep = creds.indexOf(';');
+          const userPass = domSep >= 0 ? creds.substring(domSep + 1) : creds;
+          if (domSep >= 0) domain = creds.substring(0, domSep);
+          const colonIdx = userPass.indexOf(':');
+          if (colonIdx >= 0) {
+            username = userPass.substring(0, colonIdx);
+            password = userPass.substring(colonIdx + 1);
           }
         }
       }
 
-      return {
-        success: true,
-        operation: 'browse-computer-shares',
-        computerName: computer,
-        shares,
-      };
+      const ipc = `\\\\${computer}\\IPC$`;
+      let connectedIpc = false;
+
+      // Authenticate first — keep going even if this fails (might already be connected)
+      if (username && password) {
+        try {
+          const userArg = domain ? `${domain}\\${username}` : username;
+          const netUseCmd = `"${NET_EXE}" use "${ipc}" "${password}" /user:"${userArg}" /persistent:no`;
+          console.log('[browseComputerShares] Running:', netUseCmd.replace(password, '***'));
+          const netUseResult = await execPromise(netUseCmd, { encoding: 'utf8', timeout: 10000 });
+          console.log('[browseComputerShares] net use stdout:', netUseResult.stdout);
+          connectedIpc = true;
+        } catch (netUseErr: any) {
+          console.log('[browseComputerShares] net use failed (continuing anyway):', netUseErr.message);
+        }
+      }
+
+      try {
+        console.log(`[browseComputerShares] Running: net view \\\\${computer}`);
+        const { stdout } = await execPromise(`"${NET_EXE}" view \\\\${computer}`, {
+          encoding: 'utf8',
+          timeout: 15000,
+        });
+        console.log('[browseComputerShares] net view stdout:', stdout);
+
+        const shares: { name: string; type: string; remark: string }[] = [];
+        const lines = stdout.split('\n');
+        let inShareList = false;
+
+        for (const line of lines) {
+          if (line.match(/^-+/)) { inShareList = true; continue; }
+          if (!inShareList || !line.trim()) continue;
+          // Locale-independent: a share row is "name  <2+ spaces>  type [remark]".
+          // The trailing "command completed" message uses single spaces, so it won't match.
+          const match = line.match(/^(\S+)\s{2,}(\S+)\s*(.*)$/);
+          if (!match) continue;
+          const name = match[1];
+          // Skip hidden/admin shares (IPC$, ADMIN$, C$, ...)
+          if (name.endsWith('$')) continue;
+          shares.push({ name, type: 'disk', remark: (match[3] || '').trim() });
+        }
+
+        console.log('[browseComputerShares] Parsed shares:', shares);
+        return { success: true, operation: 'browse-computer-shares', computerName: computer, shares };
+      } catch (error: any) {
+        console.log('[browseComputerShares] net view failed:', error.message);
+        return { success: false, operation: 'browse-computer-shares', error: error.message };
+      } finally {
+        if (connectedIpc) {
+          execPromise(`"${NET_EXE}" use "${ipc}" /delete /yes`, { timeout: 5000 }).catch(() => {});
+        }
+      }
+    }
+
+    // Linux / macOS: use smbclient -L
+    // Credentials from smbUrl: smb://[domain;]user:pass@server/share
+    let userFlag = '';
+    if (smbUrl) {
+      const m = smbUrl.match(/smb:\/\/([^@]+)@/);
+      if (m) {
+        const creds = decodeURIComponent(m[1]);       // domain;user:pass  or  user:pass
+        const domSep = creds.indexOf(';');
+        if (domSep >= 0) {
+          const domain = creds.substring(0, domSep);
+          const rest   = creds.substring(domSep + 1); // user:pass
+          userFlag = `-U "${domain}\\${rest}"`;
+        } else {
+          userFlag = `-U "${creds}"`;
+        }
+      }
+    }
+
+    const cmd = userFlag
+      ? `smbclient -L "//${computer}" ${userFlag} --no-pass`
+      : `smbclient -L "//${computer}" -N`;
+
+    try {
+      const { stdout } = await execPromise(cmd, { encoding: 'utf8', timeout: 15000 });
+
+      const shares: { name: string; type: string; remark: string }[] = [];
+      const lines = stdout.split('\n');
+      let inShareList = false;
+
+      for (const line of lines) {
+        if (/^\s*-{3,}/.test(line)) { inShareList = true; continue; }
+        if (inShareList) {
+          const m = line.match(/^\s*(\S+)\s+(Disk|IPC|Printer)\s*(.*)?$/i);
+          if (m) {
+            shares.push({ name: m[1], type: m[2], remark: (m[3] || '').trim() });
+          }
+        }
+      }
+
+      return { success: true, operation: 'browse-computer-shares', computerName: computer, shares };
     } catch (error: any) {
-      return {
-        success: false,
-        operation: 'browse-computer-shares',
-        shares: [],
-        error: error.message,
-      };
+      return { success: false, operation: 'browse-computer-shares', shares: [], error: error.message };
     }
   }
 
@@ -1141,7 +1206,7 @@ export class FileOperationsCommand implements ICommand {
       const shareUncPath = `\\\\${server}\\${shareName}`;
 
       // Build net use command with credentials
-      let netUseCmd = `net use "${shareUncPath}" "${password}" /user:`;
+      let netUseCmd = `"${NET_EXE}" use "${shareUncPath}" "${password}" /user:`;
       if (domain) {
         netUseCmd += `"${domain}\\${username}"`;
       } else {
@@ -1153,6 +1218,10 @@ export class FileOperationsCommand implements ICommand {
         `[Windows] Connecting to share: ${shareUncPath} as ${domain ? domain + '\\' : ''}${username}`,
       );
 
+      // Strip the password from any text before it leaves the backend
+      const maskSecret = (msg: string) =>
+        password ? msg.split(password).join('***') : msg;
+
       try {
         await execPromise(netUseCmd, { timeout: 30000 });
         console.log(`[Windows] Successfully connected to ${shareUncPath}`);
@@ -1163,10 +1232,11 @@ export class FileOperationsCommand implements ICommand {
           console.log(`[Windows] Share already connected: ${shareUncPath}`);
           return { success: true };
         }
-        console.error(`[Windows] net use failed:`, error.message);
+        const safeMessage = maskSecret(error.message || 'Unknown error');
+        console.error(`[Windows] net use failed:`, safeMessage);
         return {
           success: false,
-          error: `Failed to connect: ${error.message}`,
+          error: `Failed to connect: ${safeMessage}`,
         };
       }
     } catch (error: any) {

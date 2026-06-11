@@ -1,6 +1,6 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
-import '../../../components/SimpleDialog'
+import '../../../components/SimpleDialog.js'
 
 @customElement('smb-connection-dialog')
 export class SMBConnectionDialog extends LitElement {
@@ -176,6 +176,114 @@ export class SMBConnectionDialog extends LitElement {
       font-size: 0.85rem;
       margin-bottom: 1rem;
     }
+
+    .folder-browser {
+      margin-top: 0.5rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .folder-browser-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .folder-browser-path {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #e2e8f0;
+    }
+
+    .folder-browser-list {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .folder-browser-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .folder-browser-item:hover {
+      background: #1e3a5f;
+    }
+
+    .folder-browser-item.up {
+      color: #94a3b8;
+    }
+
+    .folder-browser-select {
+      padding: 0.4rem 0.75rem;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-browse {
+      background: #1e3a8a;
+      color: #dbeafe;
+      border: 1px solid #3b82f6;
+      padding: 0.4rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .btn-browse:hover:not(:disabled) {
+      background: #1e40af;
+    }
+
+    .btn-browse:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-select-folder {
+      flex: 1;
+      background: #059669;
+      color: #fff;
+      border: none;
+      padding: 0.4rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .btn-select-folder:hover {
+      background: #047857;
+    }
+
+    .btn-close-browser {
+      background: #475569;
+      color: #fff;
+      border: none;
+      padding: 0.4rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .btn-close-browser:hover {
+      background: #64748b;
+    }
   `
 
   @property({ type: Boolean }) open = false
@@ -186,7 +294,6 @@ export class SMBConnectionDialog extends LitElement {
 
   @state() private server = ''
   @state() private share = ''
-  @state() private subPath = '' // Subfolder path after \\server\share\subfolder
   @state() private username = ''
   @state() private password = ''
   @state() private domain = ''
@@ -200,6 +307,11 @@ export class SMBConnectionDialog extends LitElement {
     password: string
     domain: string
   }> = []
+
+  @state() private sharePickerOpen = false
+  @state() private sharePickerShares: string[] = []
+  @state() private sharePickerLoading = false
+  @state() private sharePickerError = ''
 
   connectedCallback() {
     super.connectedCallback()
@@ -227,10 +339,6 @@ export class SMBConnectionDialog extends LitElement {
     if (parts.length >= 2) {
       this.server = parts[0]
       this.share = parts[1]
-      // Store subfolder path if present (e.g., \\server\share\folder\subfolder)
-      if (parts.length > 2) {
-        this.subPath = parts.slice(2).join('/')
-      }
     }
   }
 
@@ -270,6 +378,65 @@ export class SMBConnectionDialog extends LitElement {
     this.setStatus('Connection deleted', 'info')
   }
 
+  private buildSmbUrl(): string {
+    const encodedUser = encodeURIComponent(this.username)
+    const encodedPassword = encodeURIComponent(this.password)
+    const userPart = this.domain
+      ? `${encodeURIComponent(this.domain)};${encodedUser}`
+      : encodedUser
+    return `smb://${userPart}:${encodedPassword}@${this.server}/${this.share}`
+  }
+
+  private async openSharePicker() {
+    if (!this.server) {
+      this.setStatus('Please enter server name first', 'error')
+      return
+    }
+    if (!this.username || !this.password) {
+      this.setStatus('Please enter username and password first', 'error')
+      return
+    }
+    this.sharePickerOpen = true
+    this.sharePickerLoading = true
+    this.sharePickerError = ''
+    this.sharePickerShares = []
+
+    const encodedUser = encodeURIComponent(this.username)
+    const encodedPassword = encodeURIComponent(this.password)
+    const userPart = this.domain
+      ? `${encodeURIComponent(this.domain)};${encodedUser}`
+      : encodedUser
+    const tempSmbUrl = `smb://${userPart}:${encodedPassword}@${this.server}/`
+
+    try {
+      const response = await (window as any).electron.ipcRenderer.invoke(
+        'cli-execute',
+        'file-operations',
+        { operation: 'browse-computer-shares', computerName: this.server, smbUrl: tempSmbUrl },
+      )
+      const data = response?.data as any
+      const result = data ?? response
+      if (result?.success === false) {
+        this.sharePickerError = result?.error || 'Failed to list shares'
+      } else if (Array.isArray(result?.shares)) {
+        this.sharePickerShares = (result.shares as Array<{ name: string; type: string }>)
+          .filter((s) => s.type.toLowerCase() === 'disk')
+          .map((s) => s.name)
+      } else {
+        this.sharePickerError = result?.error || 'Failed to list shares'
+      }
+    } catch (e: any) {
+      this.sharePickerError = e.message || 'Unknown error'
+    } finally {
+      this.sharePickerLoading = false
+    }
+  }
+
+  private selectShare(name: string) {
+    this.share = name
+    this.sharePickerOpen = false
+  }
+
   private async connect() {
     if (!this.server || !this.share) {
       this.setStatus('Please enter server and share name', 'error')
@@ -307,21 +474,9 @@ export class SMBConnectionDialog extends LitElement {
     this.connecting = true
     this.setStatus('Connecting...', 'info')
 
-    // Build SMB URL with credentials
-    // Format: smb://[domain;]username:password@server/share
-    const encodedUser = encodeURIComponent(this.username)
-    const encodedPassword = encodeURIComponent(this.password)
-    const userPart = this.domain
-      ? `${encodeURIComponent(this.domain)};${encodedUser}`
-      : encodedUser
+    const smbUrl = this.buildSmbUrl()
 
-    const smbUrl = `smb://${userPart}:${encodedPassword}@${this.server}/${this.share}`
-
-    // Build full UNC path including subfolder if present
-    let uncPath = `\\\\${this.server}\\${this.share}`
-    if (this.subPath) {
-      uncPath += `\\${this.subPath.replace(/\//g, '\\')}`
-    }
+    const uncPath = `\\\\${this.server}\\${this.share}`
 
     // Dispatch connect event with SMB URL
     this.dispatchEvent(
@@ -435,19 +590,6 @@ export class SMBConnectionDialog extends LitElement {
           </div>
 
           <div class="form-group">
-            <label class="form-label">Share Name *</label>
-            <input
-              type="text"
-              class="form-input"
-              placeholder="backup"
-              .value=${this.share}
-              @input=${(e: Event) =>
-                (this.share = (e.target as HTMLInputElement).value)}
-              ?disabled=${this.connecting}
-            />
-          </div>
-
-          <div class="form-group">
             <label class="form-label">Username *</label>
             <input
               type="text"
@@ -485,6 +627,55 @@ export class SMBConnectionDialog extends LitElement {
               ?disabled=${this.connecting}
             />
           </div>
+
+          <div class="form-group">
+            <label class="form-label">Share Name *</label>
+            <div style="display:flex;gap:0.5rem;">
+              <input
+                type="text"
+                class="form-input"
+                style="flex:1;"
+                placeholder="backup"
+                .value=${this.share}
+                @input=${(e: Event) =>
+                  (this.share = (e.target as HTMLInputElement).value)}
+                ?disabled=${this.connecting}
+              />
+              <button
+                class="btn-browse"
+                @click=${this.openSharePicker}
+                ?disabled=${this.connecting || !this.server || !this.username || !this.password}
+                title="Browse available shares"
+              >
+                📂 Browse
+              </button>
+            </div>
+            ${this.sharePickerOpen
+              ? html`
+                  <div class="folder-browser">
+                    <div class="folder-browser-header">
+                      <span>🖥️</span>
+                      <span class="folder-browser-path">\\\\${this.server}</span>
+                    </div>
+                    <div class="folder-browser-list">
+                      ${this.sharePickerLoading
+                        ? html`<div style="padding:0.75rem;color:#94a3b8;">Loading...</div>`
+                        : this.sharePickerError
+                          ? html`<div style="padding:0.75rem;color:#fca5a5;">${this.sharePickerError}</div>`
+                          : this.sharePickerShares.length === 0
+                            ? html`<div style="padding:0.75rem;color:#94a3b8;">No shares found</div>`
+                            : this.sharePickerShares.map(
+                                (s) => html`<div class="folder-browser-item" @click=${() => this.selectShare(s)}>🗂️ ${s}</div>`,
+                              )}
+                    </div>
+                    <div class="folder-browser-select">
+                      <button class="btn-close-browser" @click=${() => { this.sharePickerOpen = false }}>Cancel</button>
+                    </div>
+                  </div>
+                `
+              : ''}
+          </div>
+
 
           <div class="checkbox-group">
             <input
