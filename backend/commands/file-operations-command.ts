@@ -655,7 +655,40 @@ export class FileOperationsCommand implements ICommand {
       }
     }
 
-    // Linux / macOS: use smbclient -L
+    // macOS: use smbutil view (built-in, no smbclient needed)
+    if (process.platform === 'darwin') {
+      let hostPart = computer;
+      if (smbUrl) {
+        const m = smbUrl.match(/smb:\/\/([^@]+)@/);
+        if (m) {
+          const creds = decodeURIComponent(m[1]); // domain;user:pass  or  user:pass
+          const domSep = creds.indexOf(';');
+          if (domSep >= 0) {
+            // domain;user:pass → user:pass@computer (smbutil doesn't support domain prefix)
+            hostPart = `${creds.substring(domSep + 1)}@${computer}`;
+          } else {
+            hostPart = `${creds}@${computer}`;
+          }
+        }
+      }
+      const cmd = `smbutil view "//${hostPart}"`;
+      try {
+        const { stdout } = await execPromise(cmd, { encoding: 'utf8', timeout: 15000 });
+        const shares: { name: string; type: string; remark: string }[] = [];
+        for (const line of stdout.split('\n')) {
+          // smbutil output: "ShareName    <type>    <comment>"  after a dashes separator
+          const m = line.match(/^(\S+)\s+(Disk|IPC|Printer)\s*(.*)?$/i);
+          if (m && !m[1].endsWith('$')) {
+            shares.push({ name: m[1], type: m[2], remark: (m[3] || '').trim() });
+          }
+        }
+        return { success: true, operation: 'browse-computer-shares', computerName: computer, shares };
+      } catch (error: any) {
+        return { success: false, operation: 'browse-computer-shares', shares: [], error: error.message };
+      }
+    }
+
+    // Linux: use smbclient -L
     // Credentials from smbUrl: smb://[domain;]user:pass@server/share
     let userFlag = '';
     if (smbUrl) {
@@ -705,7 +738,10 @@ export class FileOperationsCommand implements ICommand {
    * Converts \\computer\share to smb://computer/share and mounts it
    * Uses retry mechanism with polling to handle slow network connections
    */
-  private async mountNetworkShareOnMac(uncPath: string): Promise<{
+  private async mountNetworkShareOnMac(
+    uncPath: string,
+    smbUrl?: string,
+  ): Promise<{
     success: boolean;
     mountPoint?: string;
     error?: string;
@@ -727,84 +763,90 @@ export class FileOperationsCommand implements ICommand {
       const share = pathParts[1];
       const subPath = pathParts.slice(2).join('/');
 
-      // SMB URL for mounting
-      const smbUrl = `smb://${computer}/${share}`;
-
-      // Mount point will be at /Volumes/share
-      const mountPoint = `/Volumes/${share}`;
+      // Mount point: use /tmp so we can create it without root permissions
+      const mountPoint = `/tmp/nh-smb-${computer}-${share}`;
       const fullPath = subPath ? `${mountPoint}/${subPath}` : mountPoint;
 
       // Check if already mounted
       if (fs.existsSync(mountPoint)) {
-        console.log(`[Mac] Share already mounted at: ${mountPoint}`);
-        return {
-          success: true,
-          mountPoint: fullPath,
-        };
+        try {
+          await fs.promises.access(mountPoint, fs.constants.R_OK);
+          console.log(`[Mac] Share already mounted at: ${mountPoint}`);
+          return { success: true, mountPoint: fullPath };
+        } catch {
+          // Mount point exists but not accessible — try unmounting and re-mounting
+          await execPromise(`diskutil unmount force "${mountPoint}"`).catch(() => {});
+        }
       }
 
-      console.log(`[Mac] Mounting ${smbUrl} to ${mountPoint}`);
+      // Build mount URL: embed credentials if available so no dialog appears
+      let mountSmbUrl: string;
+      if (smbUrl) {
+        const m = smbUrl.match(/smb:\/\/([^@]+)@/);
+        if (m) {
+          const creds = m[1]; // already encoded (user:pass or domain;user:pass)
+          mountSmbUrl = `smb://${creds}@${computer}/${share}`;
+        } else {
+          mountSmbUrl = `smb://${computer}/${share}`;
+        }
+      } else {
+        mountSmbUrl = `smb://${computer}/${share}`;
+      }
 
-      // Use 'open' command to mount the share (prompts for credentials if needed)
-      // This is user-friendly as it uses Finder's mount dialog
+      console.log(`[Mac] Mounting ${mountSmbUrl.replace(/:([^@:]+)@/, ':***@')} to ${mountPoint}`);
+
+      // Use mount_smbfs when credentials are present — it mounts silently without any dialog.
+      // Fall back to 'open' (which may show a dialog) when no credentials are provided.
+      if (smbUrl && smbUrl.includes('@')) {
+        try {
+          await fs.promises.mkdir(mountPoint, { recursive: true });
+          await execPromise(`mount_smbfs "${mountSmbUrl}" "${mountPoint}"`, { timeout: 20000 });
+          await fs.promises.access(mountPoint, fs.constants.R_OK);
+          console.log(`[Mac] mount_smbfs succeeded at: ${mountPoint}`);
+          return { success: true, mountPoint: fullPath };
+        } catch (mountErr: any) {
+          console.error(`[Mac] mount_smbfs failed:`, mountErr.message);
+          fs.rmdir(mountPoint, () => {});
+          return { success: false, error: `Failed to mount: ${mountErr.message}` };
+        }
+      }
+
+      // No credentials — use 'open' which mounts to /Volumes/<share> via Finder (may show auth dialog)
+      const openSmbUrl = `smb://${computer}/${share}`;
+      const volumesMountPoint = `/Volumes/${share}`;
       try {
-        await execPromise(`open "${smbUrl}"`, {
-          timeout: 10000,
-        });
+        await execPromise(`open "${openSmbUrl}"`, { timeout: 10000 });
 
-        // Polling loop: Wait up to 60 seconds, checking every 500ms
-        // This handles slow network connections and manual password entry gracefully
-        const maxAttempts = 120; // 120 * 500ms = 60 seconds (enough for password entry)
-        const pollInterval = 500; // 500ms between checks
+        const maxAttempts = 120;
+        const pollInterval = 500;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
-          // Check if mount point exists
-          if (fs.existsSync(mountPoint)) {
-            console.log(
-              `[Mac] Mount point detected at: ${mountPoint} (after ${(attempt + 1) * pollInterval}ms)`,
-            );
-
-            // Wait a bit longer and verify we can actually access it
+          if (fs.existsSync(volumesMountPoint)) {
+            console.log(`[Mac] Mount point detected at: ${volumesMountPoint} (after ${(attempt + 1) * pollInterval}ms)`);
             await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // Try to access the mount point to ensure it's fully mounted
             try {
-              await fs.promises.access(mountPoint, fs.constants.R_OK);
-              console.log(
-                `[Mac] Successfully mounted and accessible at: ${mountPoint}`,
-              );
-              return {
-                success: true,
-                mountPoint: fullPath,
-              };
-            } catch (accessError) {
-              console.log(
-                `[Mac] Mount point exists but not yet accessible, continuing to wait...`,
-              );
+              await fs.promises.access(volumesMountPoint, fs.constants.R_OK);
+              const volFullPath = subPath ? `${volumesMountPoint}/${subPath}` : volumesMountPoint;
+              console.log(`[Mac] Successfully mounted and accessible at: ${volumesMountPoint}`);
+              return { success: true, mountPoint: volFullPath };
+            } catch {
               // Continue polling
             }
           }
         }
 
-        // After all attempts, mount point still not found
         return {
           success: false,
-          error: `Mount point not found after ${(maxAttempts * pollInterval) / 1000} seconds. Please check if the share is accessible and credentials are correct.`,
+          error: `Mount point not found after ${(maxAttempts * pollInterval) / 1000} seconds.`,
         };
       } catch (error: any) {
         console.error(`[Mac] Mount error:`, error);
-        return {
-          success: false,
-          error: `Failed to mount: ${error.message}`,
-        };
+        return { success: false, error: `Failed to mount: ${error.message}` };
       }
     } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
-      };
+      return { success: false, error: error.message };
     }
   }
 
@@ -1369,7 +1411,7 @@ export class FileOperationsCommand implements ICommand {
       };
 
       if (process.platform === 'darwin') {
-        mountResult = await this.mountNetworkShareOnMac(folderPath);
+        mountResult = await this.mountNetworkShareOnMac(folderPath, smbUrl);
       } else if (process.platform === 'linux') {
         mountResult = await this.mountNetworkShareOnLinux(folderPath, smbUrl);
       } else {
