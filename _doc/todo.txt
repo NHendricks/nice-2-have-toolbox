@@ -1,3 +1,5 @@
+- apps wieder richtig bauen - klappt nicht mehr auf github
+
 - dateien auf nas besser organisieren, also 
   - sinnvoll zippen, wo sehr viele Dateien liegen außer lauter fotos z.B. und 
   - sehr große Dateien finden
