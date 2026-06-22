@@ -43,25 +43,38 @@ jobs:
         run: npm run installDependencies
         env:
           npm_config_arch: ${{ matrix.arch }}
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+      - name: Download Electron binary
+        working-directory: process
+        run: node node_modules/electron/install.js
+        env:
           ELECTRON_ARCH: ${{ matrix.arch }}
           ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
 
       - name: Verify Electron binary
         shell: bash
         run: |
-          DIST="process/node_modules/electron/dist"
-          if [ ! -d "$DIST" ] || [ -z "$(ls -A $DIST)" ]; then
-            echo "ERROR: Electron dist is missing or empty at $DIST"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            BINARY="process/node_modules/electron/dist/electron.exe"
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            BINARY="process/node_modules/electron/dist/Electron.app"
+          else
+            BINARY="process/node_modules/electron/dist/electron"
+          fi
+          if [ ! -e "$BINARY" ]; then
+            echo "ERROR: Electron binary not found: $BINARY"
+            ls -la process/node_modules/electron/dist/ 2>/dev/null || echo "dist/ missing"
             exit 1
           fi
-          echo "Electron dist OK: $(ls $DIST | head -5)"
+          echo "OK: $BINARY"
 
       - name: Build Electron app
         run: npm run ${{ matrix.build-script }}
         env:
           npm_config_arch: ${{ matrix.arch }}
           ELECTRON_ARCH: ${{ matrix.arch }}
-          ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
