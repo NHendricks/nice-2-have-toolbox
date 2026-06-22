@@ -33,16 +33,35 @@ jobs:
           node-version: 24.x
           cache: 'npm'
 
+      - name: Cache Electron binary
+        uses: actions/cache@v4
+        with:
+          path: .electron-cache
+          key: electron-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('process/package.json') }}
+
       - name: Install dependencies
         run: npm run installDependencies
         env:
           npm_config_arch: ${{ matrix.arch }}
           ELECTRON_ARCH: ${{ matrix.arch }}
+          ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+
+      - name: Verify Electron binary
+        shell: bash
+        run: |
+          DIST="process/node_modules/electron/dist"
+          if [ ! -d "$DIST" ] || [ -z "$(ls -A $DIST)" ]; then
+            echo "ERROR: Electron dist is missing or empty at $DIST"
+            exit 1
+          fi
+          echo "Electron dist OK: $(ls $DIST | head -5)"
+
       - name: Build Electron app
         run: npm run ${{ matrix.build-script }}
         env:
           npm_config_arch: ${{ matrix.arch }}
           ELECTRON_ARCH: ${{ matrix.arch }}
+          ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
