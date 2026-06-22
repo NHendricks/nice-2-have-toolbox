@@ -1,13 +1,9 @@
-- einfach Befehle als clipboard-Angebot
-
 - dateien auf nas besser organisieren, also 
   - sinnvoll zippen, wo sehr viele Dateien liegen außer lauter fotos z.B. und 
   - sehr große Dateien finden
 
+- einfach Befehle als clipboard-Angebot
+
 - rsync mit anzeige speed und daten fortschritt
 
-i have to specify the smb folder. can i get the folders of a share for all systems (win mac linux)
-
-wenn ich den Ordner ändere in der samba config biete mir speichern wieder an, da es ja dann eine neue connection wird
-
-favoriten oben anzeigen und per shortcut erreichen?
+- favoriten oben anzeigen und per shortcut erreichen?

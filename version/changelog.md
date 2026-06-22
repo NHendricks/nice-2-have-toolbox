@@ -10,11 +10,14 @@ You can find the binary downloads here: https://github.com/NHendricks/nh-toolbox
 
 ...
 
+### v2.2.4 (22.06.2026)
+
 - garbage finder
   - improve visibility of scan process, add stop button
   - scan all folders in parallel
 - commander
   - close drive dialog when creating new smb connection
+  - improve smb connection (search for available shares)
 - sysmon
   show cpu and memory usage per process in tables
 
