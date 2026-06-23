@@ -33,7 +33,7 @@ jobs:
           node-version: 24.x
           cache: 'npm'
 
-      - name: Cache Electron binary
+      - name: Cache Electron zip
         uses: actions/cache@v4
         with:
           path: .electron-cache
@@ -46,22 +46,43 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
       - name: Download Electron binary
-        working-directory: process
-        run: node node_modules/electron/install.js
+        shell: bash
         env:
           ELECTRON_ARCH: ${{ matrix.arch }}
-          ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+        run: |
+          VERSION=$(node -p "require('./process/node_modules/electron/package.json').version")
+          ARCH="${ELECTRON_ARCH}"
+          case "$RUNNER_OS" in
+            Windows) PLATFORM="win32" ;;
+            macOS)   PLATFORM="darwin" ;;
+            *)       PLATFORM="linux"  ;;
+          esac
+          DIST="process/node_modules/electron/dist"
+          CACHE_FILE=".electron-cache/electron-v${VERSION}-${PLATFORM}-${ARCH}.zip"
+          mkdir -p ".electron-cache"
+          if [ ! -f "$CACHE_FILE" ]; then
+            URL="https://github.com/electron/electron/releases/download/v${VERSION}/electron-v${VERSION}-${PLATFORM}-${ARCH}.zip"
+            echo "Downloading $URL"
+            curl -fL --retry 3 --retry-delay 5 "$URL" -o "$CACHE_FILE"
+          else
+            echo "Using cached $CACHE_FILE"
+          fi
+          rm -rf "$DIST"
+          mkdir -p "$DIST"
+          unzip -q "$CACHE_FILE" -d "$DIST"
+          if [[ "$PLATFORM" == "linux" ]]; then
+            chmod +x "$DIST/electron"
+          fi
+          echo "Electron dist contents: $(ls $DIST | head -5)"
 
       - name: Verify Electron binary
         shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            BINARY="process/node_modules/electron/dist/electron.exe"
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            BINARY="process/node_modules/electron/dist/Electron.app"
-          else
-            BINARY="process/node_modules/electron/dist/electron"
-          fi
+          case "$RUNNER_OS" in
+            Windows) BINARY="process/node_modules/electron/dist/electron.exe" ;;
+            macOS)   BINARY="process/node_modules/electron/dist/Electron.app" ;;
+            *)       BINARY="process/node_modules/electron/dist/electron" ;;
+          esac
           if [ ! -e "$BINARY" ]; then
             echo "ERROR: Electron binary not found: $BINARY"
             ls -la process/node_modules/electron/dist/ 2>/dev/null || echo "dist/ missing"
